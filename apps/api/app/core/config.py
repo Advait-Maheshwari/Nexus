@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str = Field(default="change-me", alias="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     access_token_expire_minutes: int = Field(default=60, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+    auth_backend: str = Field(default="local", alias="NEXUS_AUTH_BACKEND")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     google_ai_api_key: str | None = Field(default=None, alias="GOOGLE_AI_API_KEY")

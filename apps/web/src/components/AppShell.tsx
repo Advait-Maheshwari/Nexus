@@ -6,6 +6,7 @@ import {
   Factory,
   Github,
   Lightbulb,
+  LogOut,
   NotebookPen,
   Orbit,
   PanelLeftClose,
@@ -56,10 +57,11 @@ const navItems: NavItem[] = [
 interface AppShellProps {
   activeView: ViewKey;
   onViewChange: (view: ViewKey) => void;
+  onLogout: () => void;
   children: React.ReactNode;
 }
 
-export function AppShell({ activeView, onViewChange, children }: AppShellProps) {
+export function AppShell({ activeView, onViewChange, onLogout, children }: AppShellProps) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-void text-slate-100">
       <div className="grid-field pointer-events-none absolute inset-0 opacity-30" />
@@ -103,7 +105,22 @@ export function AppShell({ activeView, onViewChange, children }: AppShellProps) 
             <Button icon={<Sparkles size={16} />} variant="primary">
               AI Briefing
             </Button>
+            <Button
+              icon={<LogOut size={16} />}
+              variant="ghost"
+              aria-label="Log out"
+              title="Log out"
+              onClick={onLogout}
+            />
           </div>
+          <Button
+            icon={<LogOut size={16} />}
+            variant="ghost"
+            className="h-10 w-10 px-0 sm:hidden"
+            aria-label="Log out"
+            title="Log out"
+            onClick={onLogout}
+          />
         </div>
       </header>
 

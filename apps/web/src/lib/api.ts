@@ -1,9 +1,41 @@
 import { missionData } from "@/data/nexusSeed";
 import type { MissionData, ProjectSummary } from "@/types/domain";
+import type { NexusSession } from "@/types/auth";
 import type { GitHubRepositoryActivity } from "@/types/integrations";
 import type { WorkspaceFeature, WorkspaceProject, WorkspaceTask } from "@/types/workspace";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+
+export async function authenticate(
+  mode: "login" | "register",
+  input: { email: string; password: string; fullName?: string }
+): Promise<NexusSession> {
+  const response = await fetch(`${API_URL}/api/v1/auth/${mode}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: input.email,
+      password: input.password,
+      ...(mode === "register" ? { full_name: input.fullName } : {})
+    })
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(payload?.detail ?? `Authentication failed with ${response.status}`);
+  }
+
+  const payload = (await response.json()) as {
+    access_token: string;
+    user_id: string;
+    workspace_id: string;
+  };
+  return {
+    accessToken: payload.access_token,
+    userId: payload.user_id,
+    workspaceId: payload.workspace_id,
+    mode: "api"
+  };
+}
 
 interface ApiProjectSummary {
   id: string;
