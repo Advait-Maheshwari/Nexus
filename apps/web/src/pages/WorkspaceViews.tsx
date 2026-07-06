@@ -18,6 +18,7 @@ import { StatusPill } from "@/components/StatusPill";
 import type { MissionData, TimelineNode } from "@/types/domain";
 
 const GalaxyScene = lazy(() => import("@/scenes/GalaxyScene"));
+const DnaScene = lazy(() => import("@/scenes/DnaScene"));
 
 export function GalaxyView({ data }: { data: MissionData }) {
   const [selectedProjectId, setSelectedProjectId] = useState(data.projects[0]?.id ?? "");
@@ -195,22 +196,81 @@ function PlanetMetric({ label, value }: { label: string; value: string | number 
 }
 
 export function TimelineView({ data }: { data: MissionData }) {
-  return (
-    <section className="glass-panel min-h-[calc(100vh-8rem)] rounded-lg p-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-violet">DNA</p>
-          <h2 className="mt-1 text-2xl font-semibold text-white">Timeline</h2>
-        </div>
-        <Dna className="text-violet" size={26} />
-      </div>
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeNode = data.timeline[activeIndex];
 
-      <div className="relative mt-10 grid gap-5">
-        <div className="absolute left-4 top-0 h-full w-px bg-gradient-to-b from-cyan via-violet to-solar md:left-1/2" />
-        {data.timeline.map((node, index) => (
-          <TimelineRow key={node.id} node={node} index={index} />
-        ))}
+  return (
+    <section
+      className="grid min-h-[calc(100vh-8rem)] gap-4 xl:grid-cols-[minmax(0,1fr)_340px]"
+      onWheel={(event) => {
+        if (Math.abs(event.deltaY) < 8) return;
+        setActiveIndex((current) =>
+          Math.max(0, Math.min(data.timeline.length - 1, current + (event.deltaY > 0 ? 1 : -1)))
+        );
+      }}
+    >
+      <div className="relative min-h-[560px] overflow-hidden rounded-lg border border-white/10 bg-void">
+        <Suspense fallback={<div className="h-full bg-void" />}>
+          <DnaScene nodes={data.timeline} activeIndex={activeIndex} onSelect={setActiveIndex} />
+        </Suspense>
+        <div className="pointer-events-none absolute left-4 top-4">
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-violet">DNA Timeline</p>
+          <h2 className="mt-1 text-2xl font-semibold text-white">Project Evolution</h2>
+        </div>
       </div>
+      <aside className="space-y-3">
+        {activeNode ? (
+          <section className="glass-panel rounded-lg p-5">
+            <div className="flex items-start justify-between gap-3">
+              <Dna className="text-violet" size={24} />
+              <StatusPill status={activeNode.status} />
+            </div>
+            <p className="mt-5 font-mono text-xs uppercase tracking-[0.18em] text-cyan">
+              {activeNode.date}
+            </p>
+            <h3 className="mt-2 text-xl font-semibold text-white">{activeNode.label}</h3>
+            <p className="mt-2 text-sm capitalize text-slate-400">{activeNode.type}</p>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                aria-label="Previous timeline node"
+                disabled={activeIndex === 0}
+                onClick={() => setActiveIndex((index) => Math.max(0, index - 1))}
+                className="h-10 flex-1 rounded-md border border-white/10 text-sm text-slate-300 disabled:opacity-30"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                aria-label="Next timeline node"
+                disabled={activeIndex === data.timeline.length - 1}
+                onClick={() => setActiveIndex((index) => Math.min(data.timeline.length - 1, index + 1))}
+                className="h-10 flex-1 rounded-md border border-cyan/25 bg-cyan/10 text-sm text-cyan disabled:opacity-30"
+              >
+                Next
+              </button>
+            </div>
+          </section>
+        ) : null}
+        <section className="glass-panel rounded-lg p-4">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-slate-500">Sequence</p>
+          <div className="mt-3 space-y-1">
+            {data.timeline.map((node, index) => (
+              <button
+                key={node.id}
+                type="button"
+                onClick={() => setActiveIndex(index)}
+                className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm ${
+                  index === activeIndex ? "bg-violet/15 text-white" : "text-slate-400 hover:bg-white/[0.04]"
+                }`}
+              >
+                <span className="font-mono text-[10px] text-slate-600">{String(index + 1).padStart(2, "0")}</span>
+                <span className="truncate">{node.label}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      </aside>
     </section>
   );
 }

@@ -18,6 +18,7 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 - Phase 1 completion track continues inside this phase.
 - Galaxy View as the primary spatial overview.
 - DNA Timeline for milestone/task chronology.
+- 3D DNA Timeline with scroll/step navigation (interactive first version complete).
 - City Builder for project health and completion (interactive first version complete).
 - Textured star/planet/moon Galaxy hierarchy with distance-safe rendering.
 - Smooth transitions between 3D exploration and 2D editing.

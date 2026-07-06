@@ -40,6 +40,7 @@ Started:
 - Functional Settings and Profile views.
 - Firebase Hosting deployment and optional Google identity session.
 - Textured planetary surfaces, star coronas, rings, task moons, and zoom visibility compensation.
+- Scroll-driven 3D DNA timeline with selectable status nodes.
 - Functional project Calendar, Ideas, and Journal workspaces.
 - Local AI recommendations tied to project graph signals.
 - Phase 1 completion track running in parallel.
