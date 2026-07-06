@@ -17,10 +17,7 @@ import type { NexusSession } from "@/types/auth";
 const SESSION_KEY = "nexus.session.v1";
 
 function App() {
-  const [session, setSession] = useState<NexusSession | null>(() => {
-    const saved = sessionStorage.getItem(SESSION_KEY);
-    return saved ? (JSON.parse(saved) as NexusSession) : null;
-  });
+  const [session, setSession] = useState<NexusSession | null>(loadSession);
   const [activeView, setActiveView] = useState<ViewKey>("mission");
   const { data: missionData } = useMissionData();
 
@@ -61,3 +58,13 @@ function App() {
 }
 
 export default App;
+
+function loadSession(): NexusSession | null {
+  try {
+    const saved = sessionStorage.getItem(SESSION_KEY);
+    return saved ? (JSON.parse(saved) as NexusSession) : null;
+  } catch {
+    sessionStorage.removeItem(SESSION_KEY);
+    return null;
+  }
+}

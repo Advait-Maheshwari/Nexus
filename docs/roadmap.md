@@ -29,7 +29,11 @@ Phase 1 is not considered fully complete until auth and real CRUD persistence ar
 
 ## Phase 3: Free Integrations
 
-- GitHub commits/issues/PR activity.
+- Status: started.
+- GitHub commit activity adapter and UI are complete.
+- GitHub Pages and Netlify deployment configurations are complete.
+- GitHub Pages requires one repository-owner enablement action before the first deployment.
+- GitHub issues/PR activity.
 - Google Calendar deadlines.
 - Google Drive attachments.
 - Notion import/export.
@@ -38,12 +42,24 @@ Phase 1 is not considered fully complete until auth and real CRUD persistence ar
 
 ## Phase 4: SaaS Foundation
 
+- Status: started in parallel at the user's request.
+- Signup, login, logout, JWT browser session, and PostgreSQL account/workspace creation foundation.
 - Workspace invitations.
 - Roles and permissions.
+- Authenticated PostgreSQL CRUD and strict workspace tenant filtering.
 - Usage limits.
 - Billing-ready plans.
 - Admin analytics.
 - Production observability.
+
+## Phase 5: Secure Launch
+
+- Desktop-first production UX with mobile companion workflows.
+- End-to-end authentication and tenant-isolation tests.
+- Rate limiting, email verification, password reset, and audit events.
+- Backups, restore drills, dependency scanning, and security review.
+- Free-tier frontend, API, and PostgreSQL deployment with documented limits.
+- Public beta readiness and incident response runbook.
 
 ## Permanent Constraint: Zero Cost
 

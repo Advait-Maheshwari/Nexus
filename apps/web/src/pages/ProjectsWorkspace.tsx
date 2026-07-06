@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { StatusPill } from "@/components/StatusPill";
+import { ProjectOverview } from "@/components/ProjectOverview";
 import { Button } from "@/components/ui/Button";
 import { useProjectWorkspace } from "@/hooks/useProjectWorkspace";
 import { cn } from "@/lib/utils";
@@ -146,6 +147,11 @@ export function ProjectsView() {
                 />
               </div>
             </header>
+
+            <ProjectOverview
+              projectId={workspace.selectedProject.id}
+              projectName={workspace.selectedProject.name}
+            />
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
               <section className="glass-panel rounded-lg p-4">
@@ -474,4 +480,3 @@ function TaskStatusIcon({ status }: { status: WorkStatus }) {
   }
   return <CircleDashed size={18} className="text-slate-500" />;
 }
-
