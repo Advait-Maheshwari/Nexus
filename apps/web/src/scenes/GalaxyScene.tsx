@@ -21,7 +21,17 @@ const relationshipColor: Record<ProjectRelationship["type"], string> = {
   inspiration: "#48e5ff"
 };
 
-function ProjectStar({ project, index }: { project: ProjectSummary; index: number }) {
+function ProjectStar({
+  project,
+  index,
+  selected,
+  onSelect
+}: {
+  project: ProjectSummary;
+  index: number;
+  selected: boolean;
+  onSelect?: (projectId: string) => void;
+}) {
   const group = useRef<THREE.Group>(null);
   const orbit = useRef<THREE.Group>(null);
   const pulse = useRef<THREE.Mesh>(null);
@@ -64,14 +74,29 @@ function ProjectStar({ project, index }: { project: ProjectSummary; index: numbe
   );
 
   return (
-    <group ref={group} position={project.coordinates}>
+    <group
+      ref={group}
+      position={project.coordinates}
+      scale={selected ? 1.18 : 1}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect?.(project.id);
+      }}
+      onPointerOver={(event) => {
+        event.stopPropagation();
+        document.body.style.cursor = "pointer";
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = "default";
+      }}
+    >
       <Float speed={1.1 + index * 0.2} rotationIntensity={0.22} floatIntensity={0.16}>
         <mesh>
           <sphereGeometry args={[0.16 + project.progress / 900, 48, 48]} />
           <meshStandardMaterial
             color={color}
             emissive={color}
-            emissiveIntensity={1.6}
+            emissiveIntensity={selected ? 2.8 : 1.6}
             roughness={0.24}
           />
         </mesh>
@@ -80,8 +105,12 @@ function ProjectStar({ project, index }: { project: ProjectSummary; index: numbe
           <meshBasicMaterial color={project.accent} transparent opacity={0.08} depthWrite={false} />
         </mesh>
         <mesh rotation={[Math.PI / 2.2, 0, 0]}>
-          <torusGeometry args={[0.34, 0.003, 16, 128]} />
-          <meshBasicMaterial color={project.accent} transparent opacity={0.42} />
+          <torusGeometry args={[selected ? 0.4 : 0.34, selected ? 0.006 : 0.003, 16, 128]} />
+          <meshBasicMaterial
+            color={selected ? "#ffffff" : project.accent}
+            transparent
+            opacity={selected ? 0.9 : 0.42}
+          />
         </mesh>
         {planets.map((planet) => (
           <mesh key={`${project.id}-${planet.id}-orbit`} rotation={[Math.PI / 2.2, 0, 0]}>
@@ -219,13 +248,23 @@ function ProjectLinks({
 
 export function GalaxyScene({
   projects,
-  relationships = []
+  relationships = [],
+  selectedProjectId,
+  onSelectProject
 }: {
   projects: ProjectSummary[];
   relationships?: ProjectRelationship[];
+  selectedProjectId?: string;
+  onSelectProject?: (projectId: string) => void;
 }) {
+  const selectedProject = projects.find((project) => project.id === selectedProjectId);
+
   return (
-    <Canvas camera={{ position: [0, 0.35, 4.2], fov: 52 }} dpr={[1, 1.8]}>
+    <Canvas
+      camera={{ position: [0, 0.35, 4.2], fov: 52 }}
+      dpr={[1, 1.8]}
+      onPointerMissed={() => onSelectProject?.("")}
+    >
       <color attach="background" args={["#02040a"]} />
       <fog attach="fog" args={["#02040a", 4, 8]} />
       <ambientLight intensity={0.8} />
@@ -234,12 +273,21 @@ export function GalaxyScene({
       <Stars radius={80} depth={40} count={2400} factor={3.4} saturation={0.3} fade speed={0.38} />
       <ProjectLinks projects={projects} relationships={relationships} />
       {projects.map((project, index) => (
-        <ProjectStar key={project.id} project={project} index={index} />
+        <ProjectStar
+          key={project.id}
+          project={project}
+          index={index}
+          selected={project.id === selectedProjectId}
+          onSelect={onSelectProject}
+        />
       ))}
       <OrbitControls
         enablePan={false}
-        enableZoom={false}
-        autoRotate
+        enableZoom
+        minDistance={2.4}
+        maxDistance={6.4}
+        target={selectedProject?.coordinates ?? [0, 0, 0]}
+        autoRotate={!selectedProjectId}
         autoRotateSpeed={0.32}
         maxPolarAngle={Math.PI / 1.65}
         minPolarAngle={Math.PI / 3.2}

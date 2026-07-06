@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart3,
@@ -15,88 +15,116 @@ import {
 
 import { ProjectOrbitCard } from "@/components/ProjectOrbitCard";
 import { StatusPill } from "@/components/StatusPill";
-import { Button } from "@/components/ui/Button";
-import type { MissionData, ProjectSummary, TimelineNode } from "@/types/domain";
+import type { MissionData, TimelineNode } from "@/types/domain";
 
 const GalaxyScene = lazy(() => import("@/scenes/GalaxyScene"));
 
-export function ProjectsView({ data }: { data: MissionData }) {
-  return (
-    <section className="grid gap-4 xl:grid-cols-[1fr_360px]">
-      <div className="grid gap-3 md:grid-cols-2">
-        {data.projects.map((project) => (
-          <ProjectOrbitCard key={project.id} project={project} />
-        ))}
-      </div>
-      <ProjectDetails project={data.projects[0]} />
-    </section>
-  );
-}
-
-function ProjectDetails({ project }: { project: ProjectSummary }) {
-  return (
-    <aside className="glass-panel rounded-lg p-5">
-      <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">{project.codename}</p>
-      <h2 className="mt-2 text-2xl font-semibold text-white">{project.name}</h2>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <StatusPill status={project.status} />
-        <StatusPill health={project.health} />
-      </div>
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        <Detail label="Features" value={project.featureCount.toString()} />
-        <Detail label="Tasks" value={project.taskCount.toString()} />
-        <Detail label="Velocity" value={project.velocity.toFixed(1)} />
-        <Detail label="Blocked" value={project.blockedTaskCount.toString()} />
-      </div>
-      <Button className="mt-5 w-full" variant="primary">
-        Open Project
-      </Button>
-    </aside>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
-      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
-    </div>
-  );
-}
-
 export function GalaxyView({ data }: { data: MissionData }) {
+  const [selectedProjectId, setSelectedProjectId] = useState(data.projects[0]?.id ?? "");
+  const selectedProject = data.projects.find((project) => project.id === selectedProjectId);
+  const linkedProjects = useMemo(() => {
+    if (!selectedProject) {
+      return [];
+    }
+
+    return data.relationships
+      .filter(
+        (relationship) =>
+          relationship.sourceProjectId === selectedProject.id ||
+          relationship.targetProjectId === selectedProject.id
+      )
+      .map((relationship) => {
+        const linkedId =
+          relationship.sourceProjectId === selectedProject.id
+            ? relationship.targetProjectId
+            : relationship.sourceProjectId;
+        return {
+          relationship,
+          project: data.projects.find((project) => project.id === linkedId)
+        };
+      })
+      .filter((link) => link.project);
+  }, [data.projects, data.relationships, selectedProject]);
+
   return (
     <section className="grid min-h-[calc(100vh-8rem)] gap-4 xl:grid-cols-[1fr_360px]">
       <div className="relative min-h-[520px] overflow-hidden rounded-lg border border-white/10 bg-void">
         <Suspense fallback={<div className="h-full w-full bg-void" />}>
-          <GalaxyScene projects={data.projects} relationships={data.relationships} />
+          <GalaxyScene
+            projects={data.projects}
+            relationships={data.relationships}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={setSelectedProjectId}
+          />
         </Suspense>
+        <div className="pointer-events-none absolute bottom-4 left-4 rounded-md border border-white/10 bg-void/80 px-3 py-2 backdrop-blur-md">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
+            Navigation
+          </p>
+          <p className="mt-1 text-xs text-slate-300">Select a star / drag to orbit / scroll to zoom</p>
+        </div>
       </div>
       <div className="space-y-3">
-        <section className="glass-panel rounded-lg p-4">
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">
-            Constellation Links
-          </p>
-          <div className="mt-3 space-y-3">
-            {data.relationships.map((relationship) => (
-              <div
-                key={relationship.id}
-                className="rounded-md border border-white/10 bg-white/[0.04] p-3"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-white">{relationship.type}</span>
-                  <span className="font-mono text-xs text-cyan">
-                    {Math.round(relationship.strength * 100)}%
-                  </span>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{relationship.label}</p>
+        {selectedProject ? (
+          <>
+            <ProjectOrbitCard project={selectedProject} />
+            <section className="glass-panel rounded-lg p-4">
+              <p className="font-mono text-xs uppercase tracking-[0.24em] text-violet">
+                Feature Planets
+              </p>
+              <div className="mt-3 space-y-2">
+                {selectedProject.planets.map((planet) => (
+                  <div
+                    key={planet.id}
+                    className="rounded-md border border-white/10 bg-white/[0.04] p-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-white">{planet.name}</span>
+                      <span className="font-mono text-xs text-cyan">{planet.progress}%</span>
+                    </div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-violet to-cyan"
+                        style={{ width: `${planet.progress}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
-        {data.projects.map((project) => (
-          <ProjectOrbitCard key={project.id} project={project} />
-        ))}
+            </section>
+            <section className="glass-panel rounded-lg p-4">
+              <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">
+                Constellation Links
+              </p>
+              <div className="mt-3 space-y-3">
+                {linkedProjects.length > 0 ? (
+                  linkedProjects.map(({ relationship, project }) => (
+                    <button
+                      key={relationship.id}
+                      type="button"
+                      onClick={() => project && setSelectedProjectId(project.id)}
+                      className="w-full rounded-md border border-white/10 bg-white/[0.04] p-3 text-left transition hover:border-cyan/30 hover:bg-cyan/[0.06]"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-white">{project?.name}</span>
+                        <span className="font-mono text-xs text-cyan">
+                          {Math.round(relationship.strength * 100)}%
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-slate-300">{relationship.label}</p>
+                    </button>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-400">No active links in this constellation.</p>
+                )}
+              </div>
+            </section>
+          </>
+        ) : (
+          <section className="glass-panel rounded-lg p-5 text-sm text-slate-300">
+            Select a project star to inspect its system.
+          </section>
+        )}
       </div>
     </section>
   );
