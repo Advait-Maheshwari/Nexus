@@ -7,6 +7,7 @@ import {
 } from "firebase/auth";
 
 import type { NexusSession } from "@/types/auth";
+import { exchangeFirebaseToken } from "@/lib/api";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? "AIzaSyChJSRE-5owbu7elTb5RjRgFLHth9orsSM",
@@ -30,15 +31,25 @@ export async function signInWithGoogle(): Promise<NexusSession> {
   provider.setCustomParameters({ prompt: "select_account" });
   const credential = await signInWithPopup(auth, provider);
   const accessToken = await credential.user.getIdToken();
-  return {
-    accessToken,
-    userId: credential.user.uid,
-    workspaceId: `firebase-${credential.user.uid}`,
-    mode: "firebase",
+  const profile = {
     displayName: credential.user.displayName ?? undefined,
     email: credential.user.email ?? undefined,
     photoUrl: credential.user.photoURL ?? undefined
   };
+  try {
+    return {
+      ...(await exchangeFirebaseToken(accessToken)),
+      ...profile
+    };
+  } catch {
+    return {
+    accessToken,
+    userId: credential.user.uid,
+    workspaceId: `firebase-${credential.user.uid}`,
+    mode: "firebase",
+      ...profile
+    };
+  }
 }
 
 export async function signOutFirebase(): Promise<void> {

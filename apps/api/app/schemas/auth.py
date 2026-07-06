@@ -43,6 +43,10 @@ class LoginRequest(BaseModel):
         return value.strip().lower()
 
 
+class FirebaseExchangeRequest(BaseModel):
+    id_token: str = Field(min_length=100, max_length=8192)
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

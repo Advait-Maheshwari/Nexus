@@ -21,16 +21,21 @@
 
 - Production startup rejects default or short JWT secrets.
 - Authentication responses use `Cache-Control: no-store`.
+- Firebase ID tokens require RS256 signatures, known Google key IDs, the Nexus Firebase audience,
+  the expected issuer, expiry validity, and a verified email.
 - API responses deny framing, MIME sniffing, sensitive permissions, and cross-origin opener access.
 - Production responses enable HSTS.
 - Request bodies above 1 MB are rejected.
+- Authentication is limited to 12 requests/minute per client and general API traffic to
+  180 requests/minute per client on the single free service instance.
+- Project mutations create tenant-scoped audit events.
 - CORS is limited to the configured frontend and local development origins.
 
 ## Launch Work Remaining
 
-- Add Redis-backed distributed rate limiting when a free hosted or self-hosted Redis is selected.
+- Replace process-local throttling with distributed rate limiting before horizontal scaling.
 - Add verified email, password reset, refresh-token rotation, and session revocation.
-- Run PostgreSQL tenant-isolation integration tests in CI.
+- Run the existing tenant-isolation suite against live PostgreSQL in CI.
 - Add audit events, encrypted backups, restore drills, and dependency scanning.
 - Complete an external security review before public SaaS launch.
 - Exchange Firebase ID tokens for Nexus API sessions before treating Google users as

@@ -39,6 +39,8 @@ Started:
 - Editable project blueprint overview.
 - Functional Settings and Profile views.
 - Firebase Hosting deployment and optional Google identity session.
+- Textured planetary surfaces, star coronas, rings, task moons, and zoom visibility compensation.
+- Functional project Calendar, Ideas, and Journal workspaces.
 - Local AI recommendations tied to project graph signals.
 - Phase 1 completion track running in parallel.
 
@@ -48,10 +50,14 @@ Next: real 3D DNA timeline, live-data cinematic views, and local daily briefing.
 
 - Database signup creates an isolated workspace and owner membership.
 - JWTs are bound to Nexus issuer/audience and checked against live membership.
+- Firebase ID tokens are validated by signature, issuer, audience, expiry, and verified email,
+  then exchanged for Nexus workspace JWTs.
 - Every database project, feature, and task query is filtered by workspace.
 - Full names accept letters and spaces only; passwords require letters and numbers.
 - Production rejects short/default JWT secrets.
 - Auth responses disable caching; API responses include strict browser security headers.
 - Request bodies are capped at 1 MB.
+- Authentication and API requests are rate limited, mutations emit project audit events, and
+  Dependabot monitors application, Python, and workflow dependencies.
 - Authorization integration tests against a live PostgreSQL service remain pending.
-- Firebase identities remain device-local until server-side token exchange is implemented.
+- SQLite-backed tenant isolation tests are complete; live PostgreSQL verification remains pending.

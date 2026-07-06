@@ -19,6 +19,7 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 - Galaxy View as the primary spatial overview.
 - DNA Timeline for milestone/task chronology.
 - City Builder for project health and completion (interactive first version complete).
+- Textured star/planet/moon Galaxy hierarchy with distance-safe rendering.
 - Smooth transitions between 3D exploration and 2D editing.
 - Local/free daily briefing.
 - Rule-based suggested next task.
@@ -46,6 +47,7 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 - Signup, login, logout, JWT browser session, and PostgreSQL account/workspace creation foundation.
 - Firebase Google identity adapter and Firebase Hosting deployment.
 - Authenticated project/feature/task persistence with strict workspace filters.
+- Tenant-scoped milestone Calendar, scored Ideas, and project Journal persistence.
 - Functional account Profile and persistent Settings.
 - Workspace invitations.
 - Roles and permissions.
@@ -60,6 +62,8 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 - Status: started in parallel.
 - Full-name and password policy enforcement.
 - JWT issuer, audience, expiry, type, and membership validation.
+- Verified Firebase token exchange into Nexus workspace sessions.
+- Request throttling, mutation audit events, and automated dependency updates.
 - Strict API headers, no-store auth responses, request-size limits, and production secret checks.
 - Desktop-first production UX with mobile companion workflows.
 - End-to-end authentication and tenant-isolation tests.

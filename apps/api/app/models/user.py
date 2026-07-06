@@ -18,6 +18,7 @@ class User(IdMixin, TimestampMixin, Base):
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
     full_name: Mapped[str] = mapped_column(String(160), nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(String(500))
+    firebase_uid: Mapped[str | None] = mapped_column(String(128), unique=True, index=True)
     password_hash: Mapped[str | None] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

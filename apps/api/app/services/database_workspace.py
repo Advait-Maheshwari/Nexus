@@ -6,11 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import AuthContext
 from app.models.feature import Feature
+from app.models.enums import ActivityAction
 from app.models.project import Project
 from app.models.task import Task, TaskDependency
 from app.schemas.feature import FeatureCreate, FeatureRead, FeatureUpdate
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
+from app.services.audit import record_activity
 
 
 class DatabaseWorkspace:
@@ -35,6 +37,16 @@ class DatabaseWorkspace:
             **data.model_dump(),
         )
         session.add(project)
+        await session.flush()
+        record_activity(
+            session,
+            auth,
+            project_id=project.id,
+            action=ActivityAction.created,
+            entity_type="project",
+            entity_id=project.id,
+            message=f"Created project {project.name}",
+        )
         await session.commit()
         await session.refresh(project)
         return await self._project_read(session, project)
@@ -54,6 +66,16 @@ class DatabaseWorkspace:
         project = await self._project(session, auth, project_id)
         for field, value in data.model_dump(exclude_unset=True).items():
             setattr(project, field, value)
+        record_activity(
+            session,
+            auth,
+            project_id=project.id,
+            action=ActivityAction.updated,
+            entity_type="project",
+            entity_id=project.id,
+            message=f"Updated project {project.name}",
+            payload={"fields": list(data.model_dump(exclude_unset=True))},
+        )
         await session.commit()
         await session.refresh(project)
         return await self._project_read(session, project)
@@ -63,6 +85,15 @@ class DatabaseWorkspace:
     ) -> None:
         project = await self._project(session, auth, project_id)
         project.archived_at = datetime.now(UTC)
+        record_activity(
+            session,
+            auth,
+            project_id=project.id,
+            action=ActivityAction.archived,
+            entity_type="project",
+            entity_id=project.id,
+            message=f"Archived project {project.name}",
+        )
         await session.commit()
 
     async def list_features(
@@ -95,6 +126,16 @@ class DatabaseWorkspace:
             **data.model_dump(),
         )
         session.add(feature)
+        await session.flush()
+        record_activity(
+            session,
+            auth,
+            project_id=project_id,
+            action=ActivityAction.created,
+            entity_type="feature",
+            entity_id=feature.id,
+            message=f"Created feature {feature.title}",
+        )
         await session.commit()
         await session.refresh(feature)
         return await self._feature_read(session, feature)
@@ -111,6 +152,19 @@ class DatabaseWorkspace:
             setattr(feature, field, value)
         if data.status is not None:
             feature.completed_at = datetime.now(UTC) if data.status.value == "done" else None
+        record_activity(
+            session,
+            auth,
+            project_id=feature.project_id,
+            action=(
+                ActivityAction.completed
+                if data.status is not None and data.status.value == "done"
+                else ActivityAction.updated
+            ),
+            entity_type="feature",
+            entity_id=feature.id,
+            message=f"Updated feature {feature.title}",
+        )
         await session.commit()
         await session.refresh(feature)
         return await self._feature_read(session, feature)
@@ -130,6 +184,15 @@ class DatabaseWorkspace:
                 status.HTTP_409_CONFLICT,
                 "Move or delete this feature's tasks first",
             )
+        record_activity(
+            session,
+            auth,
+            project_id=feature.project_id,
+            action=ActivityAction.archived,
+            entity_type="feature",
+            entity_id=feature.id,
+            message=f"Deleted feature {feature.title}",
+        )
         await session.delete(feature)
         await session.commit()
 
@@ -168,6 +231,16 @@ class DatabaseWorkspace:
             **data.model_dump(),
         )
         session.add(task)
+        await session.flush()
+        record_activity(
+            session,
+            auth,
+            project_id=project_id,
+            action=ActivityAction.created,
+            entity_type="task",
+            entity_id=task.id,
+            message=f"Created task {task.title}",
+        )
         await session.commit()
         await session.refresh(task)
         return self._task_read(task)
@@ -184,6 +257,19 @@ class DatabaseWorkspace:
             setattr(task, field, value)
         if data.status is not None:
             task.completed_at = datetime.now(UTC) if data.status.value == "done" else None
+        record_activity(
+            session,
+            auth,
+            project_id=task.project_id,
+            action=(
+                ActivityAction.completed
+                if data.status is not None and data.status.value == "done"
+                else ActivityAction.updated
+            ),
+            entity_type="task",
+            entity_id=task.id,
+            message=f"Updated task {task.title}",
+        )
         await session.commit()
         await session.refresh(task)
         return self._task_read(task)
@@ -197,6 +283,15 @@ class DatabaseWorkspace:
                 (TaskDependency.task_id == task.id)
                 | (TaskDependency.depends_on_task_id == task.id)
             )
+        )
+        record_activity(
+            session,
+            auth,
+            project_id=task.project_id,
+            action=ActivityAction.archived,
+            entity_type="task",
+            entity_id=task.id,
+            message=f"Deleted task {task.title}",
         )
         await session.delete(task)
         await session.commit()

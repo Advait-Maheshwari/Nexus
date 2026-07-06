@@ -3,6 +3,11 @@ import type { MissionData, ProjectSummary } from "@/types/domain";
 import type { NexusSession } from "@/types/auth";
 import type { GitHubRepositoryActivity } from "@/types/integrations";
 import type { WorkspaceFeature, WorkspaceProject, WorkspaceTask } from "@/types/workspace";
+import type {
+  JournalRecord,
+  ProjectIdea,
+  ProjectMilestone
+} from "@/types/planning";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
@@ -23,6 +28,28 @@ export async function authenticate(
     throw new Error(await apiError(response, "Authentication failed"));
   }
 
+  const payload = (await response.json()) as {
+    access_token: string;
+    user_id: string;
+    workspace_id: string;
+  };
+  return {
+    accessToken: payload.access_token,
+    userId: payload.user_id,
+    workspaceId: payload.workspace_id,
+    mode: "api"
+  };
+}
+
+export async function exchangeFirebaseToken(idToken: string): Promise<NexusSession> {
+  const response = await fetch(`${API_URL}/api/v1/auth/firebase`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_token: idToken })
+  });
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Cloud synchronization is unavailable"));
+  }
   const payload = (await response.json()) as {
     access_token: string;
     user_id: string;
@@ -352,6 +379,154 @@ export async function updateWorkspaceTask(
     throw new Error(`Update task failed with ${response.status}`);
   }
   return mapTask(await response.json());
+}
+
+export async function listIdeas(accessToken: string): Promise<ProjectIdea[]> {
+  const response = await fetch(`${API_URL}/api/v1/ideas`, {
+    headers: authHeaders(accessToken)
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Ideas API failed"));
+  return ((await response.json()) as ApiIdea[]).map(mapIdea);
+}
+
+export async function createIdea(
+  projectId: string,
+  input: { title: string; body?: string; score: number; source?: string },
+  accessToken: string
+): Promise<ProjectIdea> {
+  const response = await fetch(`${API_URL}/api/v1/projects/${projectId}/ideas`, {
+    method: "POST",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify(input)
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Create idea failed"));
+  return mapIdea((await response.json()) as ApiIdea);
+}
+
+export async function listJournal(accessToken: string): Promise<JournalRecord[]> {
+  const response = await fetch(`${API_URL}/api/v1/journal`, {
+    headers: authHeaders(accessToken)
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Journal API failed"));
+  return ((await response.json()) as ApiJournal[]).map(mapJournal);
+}
+
+export async function createJournalEntry(
+  projectId: string,
+  input: { title: string; body: string; mood?: string },
+  accessToken: string
+): Promise<JournalRecord> {
+  const response = await fetch(`${API_URL}/api/v1/projects/${projectId}/journal`, {
+    method: "POST",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify(input)
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Create journal entry failed"));
+  return mapJournal((await response.json()) as ApiJournal);
+}
+
+export async function listMilestones(accessToken: string): Promise<ProjectMilestone[]> {
+  const response = await fetch(`${API_URL}/api/v1/milestones`, {
+    headers: authHeaders(accessToken)
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Milestones API failed"));
+  return ((await response.json()) as ApiMilestone[]).map(mapMilestone);
+}
+
+export async function createMilestone(
+  projectId: string,
+  input: { title: string; description?: string; due_date?: string },
+  accessToken: string
+): Promise<ProjectMilestone> {
+  const response = await fetch(`${API_URL}/api/v1/projects/${projectId}/milestones`, {
+    method: "POST",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify(input)
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Create milestone failed"));
+  return mapMilestone((await response.json()) as ApiMilestone);
+}
+
+export async function updateMilestone(
+  milestoneId: string,
+  input: { status: ProjectMilestone["status"] },
+  accessToken: string
+): Promise<ProjectMilestone> {
+  const response = await fetch(`${API_URL}/api/v1/milestones/${milestoneId}`, {
+    method: "PATCH",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify(input)
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Update milestone failed"));
+  return mapMilestone((await response.json()) as ApiMilestone);
+}
+
+interface ApiIdea {
+  id: string;
+  project_id: string;
+  title: string;
+  body?: string | null;
+  score: number;
+  source?: string | null;
+  created_at: string;
+}
+
+interface ApiJournal {
+  id: string;
+  project_id: string;
+  title: string;
+  body: string;
+  mood?: string | null;
+  summary?: string | null;
+  created_at: string;
+}
+
+interface ApiMilestone {
+  id: string;
+  project_id: string;
+  title: string;
+  description?: string | null;
+  status: ProjectMilestone["status"];
+  due_date?: string | null;
+  completed_at?: string | null;
+  created_at: string;
+}
+
+function mapIdea(item: ApiIdea): ProjectIdea {
+  return {
+    id: item.id,
+    projectId: item.project_id,
+    title: item.title,
+    body: item.body ?? undefined,
+    score: item.score,
+    source: item.source ?? undefined,
+    createdAt: item.created_at
+  };
+}
+
+function mapJournal(item: ApiJournal): JournalRecord {
+  return {
+    id: item.id,
+    projectId: item.project_id,
+    title: item.title,
+    body: item.body,
+    mood: item.mood ?? undefined,
+    summary: item.summary ?? undefined,
+    createdAt: item.created_at
+  };
+}
+
+function mapMilestone(item: ApiMilestone): ProjectMilestone {
+  return {
+    id: item.id,
+    projectId: item.project_id,
+    title: item.title,
+    description: item.description ?? undefined,
+    status: item.status,
+    dueDate: item.due_date ?? undefined,
+    completedAt: item.completed_at ?? undefined,
+    createdAt: item.created_at
+  };
 }
 
 function authHeaders(accessToken: string, json = false): HeadersInit {

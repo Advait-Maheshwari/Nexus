@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: nexus-api
+    runtime: docker
+    plan: free
+    rootDir: apps/api
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NEXUS_ENV
+        value: production
+      - key: NEXUS_AUTH_BACKEND
+        value: database
+      - key: NEXUS_WEB_URL
+        value: https://nexus-advait-pm.web.app
+      - key: FIREBASE_PROJECT_ID
+        value: nexus-advait-pm
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false

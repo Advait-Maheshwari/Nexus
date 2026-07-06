@@ -8,11 +8,11 @@ import { ProfileView, SettingsView } from "@/pages/AccountViews";
 import { CityBuilderView } from "@/pages/CityBuilder";
 import { IntegrationsView } from "@/pages/IntegrationsView";
 import { MissionControl } from "@/pages/MissionControl";
+import { CalendarView, IdeasView, JournalView } from "@/pages/PlanningViews";
 import { ProjectsView } from "@/pages/ProjectsWorkspace";
 import {
   AnalyticsView,
   GalaxyView,
-  PlaceholderView,
   TimelineView
 } from "@/pages/WorkspaceViews";
 import type { NexusSession } from "@/types/auth";
@@ -53,9 +53,9 @@ function App() {
       {activeView === "timeline" ? <TimelineView data={missionData} /> : null}
       {activeView === "analytics" ? <AnalyticsView data={missionData} /> : null}
       {activeView === "city" ? <CityBuilderView data={missionData} /> : null}
-      {activeView === "calendar" ? <PlaceholderView view="calendar" /> : null}
-      {activeView === "ideas" ? <PlaceholderView view="ideas" /> : null}
-      {activeView === "journal" ? <PlaceholderView view="journal" /> : null}
+      {activeView === "calendar" ? <CalendarView session={session} /> : null}
+      {activeView === "ideas" ? <IdeasView session={session} /> : null}
+      {activeView === "journal" ? <JournalView session={session} /> : null}
       {activeView === "integrations" ? <IntegrationsView /> : null}
       {activeView === "settings" ? <SettingsView /> : null}
       {activeView === "profile" ? <ProfileView session={session} /> : null}

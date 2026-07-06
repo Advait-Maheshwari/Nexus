@@ -9,6 +9,7 @@ from app.models.enums import WorkspaceRole
 from app.models.user import User
 from app.models.workspace import Workspace, WorkspaceMember
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+from app.services.firebase_auth import FirebaseIdentity
 
 
 async def register_user(request: RegisterRequest, session: AsyncSession) -> TokenResponse:
@@ -53,6 +54,60 @@ async def login_user(request: LoginRequest, session: AsyncSession) -> TokenRespo
     )
     if not workspace_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "No workspace membership found")
+    return _token_response(user, workspace_id)
+
+
+async def exchange_firebase_identity(
+    identity: FirebaseIdentity, session: AsyncSession
+) -> TokenResponse:
+    user = await session.scalar(select(User).where(User.firebase_uid == identity.uid))
+    if user is None:
+        user = await session.scalar(
+            select(User).where(func.lower(User.email) == identity.email)
+        )
+        if user is not None and user.firebase_uid not in {None, identity.uid}:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Account identity conflict")
+
+    if user is None:
+        user = User(
+            email=identity.email,
+            full_name=identity.full_name,
+            avatar_url=identity.avatar_url,
+            firebase_uid=identity.uid,
+        )
+        workspace = Workspace(
+            name=f"{identity.full_name}'s Nexus",
+            slug=f"{_slug(identity.full_name)}-{uuid4().hex[:8]}",
+        )
+        session.add_all(
+            [
+                user,
+                workspace,
+                WorkspaceMember(
+                    workspace=workspace,
+                    user=user,
+                    role=WorkspaceRole.owner,
+                ),
+            ]
+        )
+        await session.commit()
+        await session.refresh(user)
+        await session.refresh(workspace)
+        return _token_response(user, workspace.id)
+
+    if not user.is_active:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Account is disabled")
+    if user.firebase_uid is None:
+        user.firebase_uid = identity.uid
+    user.avatar_url = identity.avatar_url or user.avatar_url
+    workspace_id = await session.scalar(
+        select(WorkspaceMember.workspace_id)
+        .where(WorkspaceMember.user_id == user.id)
+        .order_by(WorkspaceMember.created_at)
+    )
+    if not workspace_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "No workspace membership found")
+    await session.commit()
     return _token_response(user, workspace_id)
 
 

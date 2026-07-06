@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.request_limits import RequestSizeLimitMiddleware
+from app.core.rate_limit import RateLimitMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
 
 
@@ -23,6 +24,7 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestSizeLimitMiddleware)
+    app.add_middleware(RateLimitMiddleware)
 
     app.include_router(api_router, prefix="/api/v1")
 
