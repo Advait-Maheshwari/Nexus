@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from "react";
-import { LockKeyhole, LogIn, Orbit, ShieldCheck, UserPlus } from "lucide-react";
+import { Chrome, LockKeyhole, LogIn, Orbit, ShieldCheck, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import { authenticate } from "@/lib/api";
+import { signInWithGoogle } from "@/lib/firebase";
 import type { NexusSession } from "@/types/auth";
 
 export function AuthView({ onAuthenticated }: { onAuthenticated: (session: NexusSession) => void }) {
@@ -33,6 +34,18 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
       workspaceId: "workspace-personal",
       mode: "local"
     });
+  }
+
+  async function continueWithGoogle() {
+    setLoading(true);
+    setError("");
+    try {
+      onAuthenticated(await signInWithGoogle());
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Google sign-in is unavailable.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -76,7 +89,13 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
               </h2>
             </div>
             {mode === "register" ? (
-              <AuthInput label="Full name" value={fullName} onChange={setFullName} />
+              <AuthInput
+                label="Full name"
+                value={fullName}
+                onChange={setFullName}
+                pattern="[A-Za-z ]+"
+                title="Use letters and spaces only"
+              />
             ) : null}
             <AuthInput label="Email" type="email" value={email} onChange={setEmail} />
             <AuthInput
@@ -84,7 +103,7 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
               type="password"
               value={password}
               onChange={setPassword}
-              minLength={8}
+              minLength={10}
               autoComplete={mode === "register" ? "new-password" : "current-password"}
             />
             {error ? (
@@ -108,6 +127,16 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
             Offline preview
             <span className="h-px flex-1 bg-white/10" />
           </div>
+          <Button
+            type="button"
+            variant="secondary"
+            className="mb-3 w-full"
+            icon={<Chrome size={16} />}
+            disabled={loading}
+            onClick={continueWithGoogle}
+          >
+            Continue with Google
+          </Button>
           <Button
             type="button"
             variant="secondary"
@@ -152,6 +181,9 @@ function AuthInput({
   type = "text",
   minLength,
   autoComplete
+  ,
+  pattern,
+  title
 }: {
   label: string;
   value: string;
@@ -159,6 +191,8 @@ function AuthInput({
   type?: string;
   minLength?: number;
   autoComplete?: string;
+  pattern?: string;
+  title?: string;
 }) {
   return (
     <label className="grid gap-1.5 text-xs uppercase tracking-[0.16em] text-slate-500">
@@ -169,6 +203,8 @@ function AuthInput({
         value={value}
         minLength={minLength}
         autoComplete={autoComplete}
+        pattern={pattern}
+        title={title}
         onChange={(event) => onChange(event.target.value)}
         className="h-11 rounded-md border border-white/10 bg-navy px-3 text-sm normal-case text-white outline-none focus:border-cyan/50"
       />

@@ -2,7 +2,10 @@ import { useState } from "react";
 
 import { AppShell, type ViewKey } from "@/components/AppShell";
 import { useMissionData } from "@/hooks/useMissionData";
+import { signOutFirebase } from "@/lib/firebase";
 import { AuthView } from "@/pages/AuthView";
+import { ProfileView, SettingsView } from "@/pages/AccountViews";
+import { CityBuilderView } from "@/pages/CityBuilder";
 import { IntegrationsView } from "@/pages/IntegrationsView";
 import { MissionControl } from "@/pages/MissionControl";
 import { ProjectsView } from "@/pages/ProjectsWorkspace";
@@ -37,22 +40,25 @@ function App() {
       activeView={activeView}
       onViewChange={setActiveView}
       onLogout={() => {
+        if (session.mode === "firebase") {
+          void signOutFirebase();
+        }
         sessionStorage.removeItem(SESSION_KEY);
         setSession(null);
       }}
     >
       {activeView === "mission" ? <MissionControl data={missionData} /> : null}
-      {activeView === "projects" ? <ProjectsView /> : null}
+      {activeView === "projects" ? <ProjectsView session={session} /> : null}
       {activeView === "galaxy" ? <GalaxyView data={missionData} /> : null}
       {activeView === "timeline" ? <TimelineView data={missionData} /> : null}
       {activeView === "analytics" ? <AnalyticsView data={missionData} /> : null}
-      {activeView === "city" ? <PlaceholderView view="city" /> : null}
+      {activeView === "city" ? <CityBuilderView data={missionData} /> : null}
       {activeView === "calendar" ? <PlaceholderView view="calendar" /> : null}
       {activeView === "ideas" ? <PlaceholderView view="ideas" /> : null}
       {activeView === "journal" ? <PlaceholderView view="journal" /> : null}
       {activeView === "integrations" ? <IntegrationsView /> : null}
-      {activeView === "settings" ? <PlaceholderView view="settings" /> : null}
-      {activeView === "profile" ? <PlaceholderView view="profile" /> : null}
+      {activeView === "settings" ? <SettingsView /> : null}
+      {activeView === "profile" ? <ProfileView session={session} /> : null}
     </AppShell>
   );
 }

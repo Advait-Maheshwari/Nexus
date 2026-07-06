@@ -20,8 +20,7 @@ export async function authenticate(
     })
   });
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
-    throw new Error(payload?.detail ?? `Authentication failed with ${response.status}`);
+    throw new Error(await apiError(response, "Authentication failed"));
   }
 
   const payload = (await response.json()) as {
@@ -135,8 +134,10 @@ export async function fetchGitHubActivity(
   };
 }
 
-export async function listWorkspaceProjects(): Promise<WorkspaceProject[]> {
-  const response = await fetch(`${API_URL}/api/v1/projects`);
+export async function listWorkspaceProjects(accessToken: string): Promise<WorkspaceProject[]> {
+  const response = await fetch(`${API_URL}/api/v1/projects`, {
+    headers: authHeaders(accessToken)
+  });
   if (!response.ok) {
     throw new Error(`Projects API failed with ${response.status}`);
   }
@@ -171,10 +172,10 @@ export async function createWorkspaceProject(input: {
   codename: string;
   description?: string;
   priority: WorkspaceProject["priority"];
-}): Promise<WorkspaceProject> {
+}, accessToken: string): Promise<WorkspaceProject> {
   const response = await fetch(`${API_URL}/api/v1/projects`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(accessToken, true),
     body: JSON.stringify(input)
   });
   if (!response.ok) {
@@ -206,8 +207,13 @@ export async function createWorkspaceProject(input: {
   };
 }
 
-export async function listWorkspaceFeatures(projectId: string): Promise<WorkspaceFeature[]> {
-  const response = await fetch(`${API_URL}/api/v1/projects/${projectId}/features`);
+export async function listWorkspaceFeatures(
+  projectId: string,
+  accessToken: string
+): Promise<WorkspaceFeature[]> {
+  const response = await fetch(`${API_URL}/api/v1/projects/${projectId}/features`, {
+    headers: authHeaders(accessToken)
+  });
   if (!response.ok) {
     throw new Error(`Features API failed with ${response.status}`);
   }
@@ -239,11 +245,12 @@ export async function listWorkspaceFeatures(projectId: string): Promise<Workspac
 
 export async function createWorkspaceFeature(
   projectId: string,
-  input: { title: string; description?: string; priority: WorkspaceFeature["priority"] }
+  input: { title: string; description?: string; priority: WorkspaceFeature["priority"] },
+  accessToken: string
 ): Promise<WorkspaceFeature> {
   const response = await fetch(`${API_URL}/api/v1/projects/${projectId}/features`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(accessToken, true),
     body: JSON.stringify(input)
   });
   if (!response.ok) {
@@ -275,8 +282,13 @@ export async function createWorkspaceFeature(
   };
 }
 
-export async function listWorkspaceTasks(projectId: string): Promise<WorkspaceTask[]> {
-  const response = await fetch(`${API_URL}/api/v1/projects/${projectId}/tasks`);
+export async function listWorkspaceTasks(
+  projectId: string,
+  accessToken: string
+): Promise<WorkspaceTask[]> {
+  const response = await fetch(`${API_URL}/api/v1/projects/${projectId}/tasks`, {
+    headers: authHeaders(accessToken)
+  });
   if (!response.ok) {
     throw new Error(`Tasks API failed with ${response.status}`);
   }
@@ -307,11 +319,12 @@ export async function createWorkspaceTask(
     feature_id?: string;
     priority: WorkspaceTask["priority"];
     estimate_minutes: number;
-  }
+  },
+  accessToken: string
 ): Promise<WorkspaceTask> {
   const response = await fetch(`${API_URL}/api/v1/projects/${projectId}/tasks`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(accessToken, true),
     body: JSON.stringify(input)
   });
   if (!response.ok) {
@@ -327,17 +340,39 @@ export async function updateWorkspaceTask(
     title: string;
     priority: WorkspaceTask["priority"];
     time_spent_minutes: number;
-  }>
+  }>,
+  accessToken: string
 ): Promise<WorkspaceTask> {
   const response = await fetch(`${API_URL}/api/v1/tasks/${taskId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(accessToken, true),
     body: JSON.stringify(input)
   });
   if (!response.ok) {
     throw new Error(`Update task failed with ${response.status}`);
   }
   return mapTask(await response.json());
+}
+
+function authHeaders(accessToken: string, json = false): HeadersInit {
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    ...(json ? { "Content-Type": "application/json" } : {})
+  };
+}
+
+async function apiError(response: Response, fallback: string): Promise<string> {
+  const payload = (await response.json().catch(() => null)) as
+    | { detail?: string | Array<{ msg?: string }> }
+    | null;
+  const detail = payload?.detail;
+  if (typeof detail === "string") {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    return detail.map((item) => item.msg).filter(Boolean).join(". ") || fallback;
+  }
+  return `${fallback} (${response.status})`;
 }
 
 function mapTask(task: {

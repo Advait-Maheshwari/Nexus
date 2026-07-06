@@ -10,6 +10,7 @@ import {
   updateWorkspaceTask
 } from "@/lib/api";
 import type { Priority, WorkStatus } from "@/types/domain";
+import type { NexusSession } from "@/types/auth";
 import type { WorkspaceFeature, WorkspaceProject, WorkspaceTask } from "@/types/workspace";
 
 const STORAGE_KEY = "nexus.workspace.v1";
@@ -89,30 +90,42 @@ const initialLocalState: LocalState = {
   ]
 };
 
-export function useProjectWorkspace() {
-  const [state, setState] = useState<LocalState>(() => loadLocalState());
+export function useProjectWorkspace(session: NexusSession) {
+  const storageKey = `${STORAGE_KEY}.${session.workspaceId}`;
+  const [state, setState] = useState<LocalState>(() => loadLocalState(storageKey));
   const [selectedProjectId, setSelectedProjectId] = useState(state.projects[0]?.id ?? "");
   const [mode, setMode] = useState<"api" | "local">("local");
+  const [error, setError] = useState("");
 
   const refreshApiProject = useCallback(async (projectId: string) => {
     const [features, tasks] = await Promise.all([
-      listWorkspaceFeatures(projectId),
-      listWorkspaceTasks(projectId)
+      listWorkspaceFeatures(projectId, session.accessToken),
+      listWorkspaceTasks(projectId, session.accessToken)
     ]);
     setState((current) => ({ ...current, features, tasks }));
-  }, []);
+  }, [session.accessToken]);
 
   useEffect(() => {
+    if (session.mode !== "api") {
+      setMode("local");
+      return;
+    }
     let active = true;
-    listWorkspaceProjects()
+    listWorkspaceProjects(session.accessToken)
       .then(async (projects) => {
-        if (!active || projects.length === 0) {
+        if (!active) {
           return;
         }
-        const projectId = projects[0].id;
+        const projectId = projects[0]?.id ?? "";
+        if (!projectId) {
+          setState({ projects: [], features: [], tasks: [] });
+          setSelectedProjectId("");
+          setMode("api");
+          return;
+        }
         const [features, tasks] = await Promise.all([
-          listWorkspaceFeatures(projectId),
-          listWorkspaceTasks(projectId)
+          listWorkspaceFeatures(projectId, session.accessToken),
+          listWorkspaceTasks(projectId, session.accessToken)
         ]);
         if (!active) {
           return;
@@ -120,19 +133,26 @@ export function useProjectWorkspace() {
         setState({ projects, features, tasks });
         setSelectedProjectId(projectId);
         setMode("api");
+        setError("");
       })
-      .catch(() => setMode("local"));
+      .catch((reason) => {
+        if (active) {
+          setMode("api");
+          setState({ projects: [], features: [], tasks: [] });
+          setError(reason instanceof Error ? reason.message : "Workspace API unavailable");
+        }
+      });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [session.accessToken, session.mode]);
 
   useEffect(() => {
     if (mode === "local") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(storageKey, JSON.stringify(state));
     }
-  }, [mode, state]);
+  }, [mode, state, storageKey]);
 
   const selectedProject = state.projects.find((project) => project.id === selectedProjectId);
   const features = useMemo(
@@ -151,7 +171,7 @@ export function useProjectWorkspace() {
     priority: Priority;
   }) {
     if (mode === "api") {
-      const project = await createWorkspaceProject(input);
+      const project = await createWorkspaceProject(input, session.accessToken);
       setState((current) => ({ ...current, projects: [...current.projects, project] }));
       setSelectedProjectId(project.id);
       return;
@@ -180,7 +200,7 @@ export function useProjectWorkspace() {
       return;
     }
     if (mode === "api") {
-      const feature = await createWorkspaceFeature(selectedProjectId, input);
+      const feature = await createWorkspaceFeature(selectedProjectId, input, session.accessToken);
       setState((current) => ({ ...current, features: [...current.features, feature] }));
       return;
     }
@@ -209,12 +229,16 @@ export function useProjectWorkspace() {
       return;
     }
     if (mode === "api") {
-      const task = await createWorkspaceTask(selectedProjectId, {
-        title: input.title,
-        feature_id: input.featureId,
-        priority: input.priority,
-        estimate_minutes: input.estimateMinutes
-      });
+      const task = await createWorkspaceTask(
+        selectedProjectId,
+        {
+          title: input.title,
+          feature_id: input.featureId,
+          priority: input.priority,
+          estimate_minutes: input.estimateMinutes
+        },
+        session.accessToken
+      );
       setState((current) => ({ ...current, tasks: [...current.tasks, task] }));
       await refreshApiProject(selectedProjectId);
       return;
@@ -235,7 +259,7 @@ export function useProjectWorkspace() {
 
   async function setTaskStatus(taskId: string, status: WorkStatus) {
     if (mode === "api") {
-      const task = await updateWorkspaceTask(taskId, { status });
+      const task = await updateWorkspaceTask(taskId, { status }, session.accessToken);
       setState((current) => ({
         ...current,
         tasks: current.tasks.map((item) => (item.id === task.id ? task : item))
@@ -252,6 +276,7 @@ export function useProjectWorkspace() {
 
   return {
     mode,
+    error,
     projects: state.projects,
     selectedProject,
     selectedProjectId,
@@ -265,12 +290,11 @@ export function useProjectWorkspace() {
   };
 }
 
-function loadLocalState(): LocalState {
+function loadLocalState(storageKey: string): LocalState {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(storageKey);
     return saved ? (JSON.parse(saved) as LocalState) : initialLocalState;
   } catch {
     return initialLocalState;
   }
 }
-

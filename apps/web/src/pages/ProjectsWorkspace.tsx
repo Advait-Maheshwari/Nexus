@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { useProjectWorkspace } from "@/hooks/useProjectWorkspace";
 import { cn } from "@/lib/utils";
 import type { Priority, WorkStatus } from "@/types/domain";
+import type { NexusSession } from "@/types/auth";
 
 const nextStatus: Record<WorkStatus, WorkStatus> = {
   backlog: "ready",
@@ -29,8 +30,8 @@ const nextStatus: Record<WorkStatus, WorkStatus> = {
   archived: "archived"
 };
 
-export function ProjectsView() {
-  const workspace = useProjectWorkspace();
+export function ProjectsView({ session }: { session: NexusSession }) {
+  const workspace = useProjectWorkspace(session);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showFeatureForm, setShowFeatureForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -101,6 +102,11 @@ export function ProjectsView() {
       </aside>
 
       <div className="space-y-4">
+        {workspace.error ? (
+          <div className="rounded-md border border-risk/25 bg-risk/10 px-4 py-3 text-sm text-risk">
+            {workspace.error}. Sign out and reconnect to restore secure synchronization.
+          </div>
+        ) : null}
         {showProjectForm ? (
           <ProjectForm
             onSubmit={async (input) => {

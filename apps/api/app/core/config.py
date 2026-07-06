@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import AnyHttpUrl, Field
+from pydantic import AnyHttpUrl, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,12 +13,24 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://nexus:nexus@localhost:5432/nexus"
     jwt_secret_key: str = Field(default="change-me", alias="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    jwt_issuer: str = Field(default="nexus-api", alias="JWT_ISSUER")
+    jwt_audience: str = Field(default="nexus-web", alias="JWT_AUDIENCE")
     access_token_expire_minutes: int = Field(default=60, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
     auth_backend: str = Field(default="local", alias="NEXUS_AUTH_BACKEND")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     google_ai_api_key: str | None = Field(default=None, alias="GOOGLE_AI_API_KEY")
     github_token: str | None = Field(default=None, alias="GITHUB_TOKEN")
+
+    @model_validator(mode="after")
+    def validate_production_security(self) -> "Settings":
+        if self.env.lower() == "production" and (
+            self.jwt_secret_key == "change-me" or len(self.jwt_secret_key) < 32
+        ):
+            raise ValueError("Production JWT_SECRET_KEY must contain at least 32 characters")
+        if self.auth_backend not in {"local", "database"}:
+            raise ValueError("NEXUS_AUTH_BACKEND must be local or database")
+        return self
 
     @property
     def cors_origins(self) -> list[str]:

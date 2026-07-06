@@ -113,11 +113,33 @@ export function GalaxyView({ data }: { data: MissionData }) {
                 ))}
               </div>
               {selectedPlanet ? (
-                <div className="mt-3 grid grid-cols-3 gap-2 border-t border-white/10 pt-3 text-center">
-                  <PlanetMetric label="Tasks" value={selectedPlanet.taskCount} />
-                  <PlanetMetric label="Blocked" value={selectedPlanet.blockedTaskCount} />
-                  <PlanetMetric label="Progress" value={`${selectedPlanet.progress}%`} />
-                </div>
+                <>
+                  <div className="mt-3 grid grid-cols-3 gap-2 border-t border-white/10 pt-3 text-center">
+                    <PlanetMetric label="Moons" value={selectedPlanet.taskCount} />
+                    <PlanetMetric label="Blocked" value={selectedPlanet.blockedTaskCount} />
+                    <PlanetMetric label="Progress" value={`${selectedPlanet.progress}%`} />
+                  </div>
+                  <div className="mt-3 flex items-center justify-between rounded-md border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <span className="text-xs text-slate-400">Task moon signal</span>
+                    <div className="flex gap-1.5">
+                      {Array.from({ length: Math.min(8, selectedPlanet.taskCount) }, (_, index) => (
+                        <span
+                          key={`${selectedPlanet.id}-signal-${index}`}
+                          className="h-2 w-2 rounded-full"
+                          style={{
+                            backgroundColor:
+                              index < selectedPlanet.blockedTaskCount
+                                ? "#fb7185"
+                                : index / Math.min(8, selectedPlanet.taskCount) <
+                                    selectedPlanet.progress / 100
+                                  ? "#4ade80"
+                                  : "#64748b"
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </>
               ) : null}
             </section>
             <section className="glass-panel rounded-lg p-4">

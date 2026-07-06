@@ -171,6 +171,22 @@ function FeaturePlanetMesh({
   const mesh = useRef<THREE.Mesh>(null);
   const glow = useRef<THREE.Mesh>(null);
   const color = new THREE.Color(planet.color);
+  const moons = useMemo(
+    () =>
+      Array.from({ length: Math.min(6, planet.taskCount) }, (_, index) => {
+        const angle = (index / Math.min(6, planet.taskCount)) * Math.PI * 2;
+        const blocked = index < planet.blockedTaskCount;
+        return {
+          position: [
+            Math.cos(angle) * planet.size * 3.4,
+            Math.sin(angle * 2) * planet.size * 0.65,
+            Math.sin(angle) * planet.size * 3.4
+          ] as [number, number, number],
+          color: blocked ? "#fb7185" : index / Math.min(6, planet.taskCount) < planet.progress / 100 ? "#4ade80" : "#94a3b8"
+        };
+      }),
+    [planet.blockedTaskCount, planet.progress, planet.size, planet.taskCount]
+  );
 
   useFrame(({ clock }) => {
     const elapsed = clock.getElapsedTime();
@@ -225,6 +241,24 @@ function FeaturePlanetMesh({
           <sphereGeometry args={[0.012, 12, 12]} />
           <meshBasicMaterial color="#fb7185" />
         </mesh>
+      ) : null}
+      {selected ? (
+        <>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[planet.size * 3.4, 0.0012, 8, 72]} />
+            <meshBasicMaterial color="#dff8ff" transparent opacity={0.28} />
+          </mesh>
+          {moons.map((moon, index) => (
+            <mesh key={`${planet.id}-moon-${index}`} position={moon.position}>
+              <sphereGeometry args={[Math.max(0.006, planet.size * 0.18), 14, 14]} />
+              <meshStandardMaterial
+                color={moon.color}
+                emissive={moon.color}
+                emissiveIntensity={0.75}
+              />
+            </mesh>
+          ))}
+        </>
       ) : null}
     </group>
   );

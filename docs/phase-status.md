@@ -2,7 +2,7 @@
 
 ## Phase 1: Core Spine
 
-Status: foundation complete, completion track merged into Phase 2.
+Status: complete for the current local-first release.
 
 Completed foundation:
 
@@ -16,39 +16,42 @@ Completed foundation:
 - Local zero-cost AI planner boundary.
 - Docker Compose foundation.
 - Zero-cost auth endpoints with JWT token issuing.
-- Local project CRUD API.
-- Local feature CRUD API.
-- Local task/subtask-ready CRUD API.
+- Local and PostgreSQL project CRUD paths.
+- Local and PostgreSQL feature CRUD paths.
+- Local and PostgreSQL task/subtask-ready CRUD paths.
 - Frontend API-first Mission Control loading with seed fallback.
 
-Still required before Phase 1 is truly complete in the production sense:
-
-- Real auth screens and JWT session flow in the UI.
-- PostgreSQL-backed project CRUD.
-- PostgreSQL-backed feature CRUD.
-- PostgreSQL-backed task/subtask CRUD.
-- Basic tests for progress, health, and CRUD.
-- Replace the broad initial Alembic migration with granular table-by-table migrations before production.
-
-Decision: these items will be completed alongside Phase 2 instead of blocking Phase 2. Cinematic views must consume the same project graph and CRUD contracts rather than a separate visual-only data model.
+The auth UI, JWT session flow, database CRUD services, frontend bearer-token wiring, and core
+tests are complete. A live PostgreSQL integration test environment and granular follow-up
+migrations remain launch hardening work rather than Phase 1 product work.
 
 ## Phase 2: Cinematic AI Operating System
 
-Status: started.
+Status: active.
 
 Started:
 
-- Galaxy feature-planets.
+- Interactive Galaxy project stars and feature planets.
+- Selected feature task moons.
 - Project relationship links.
 - Relationship strength/type visualization.
+- Interactive City Builder portfolio districts.
+- Editable project blueprint overview.
+- Functional Settings and Profile views.
+- Firebase Hosting deployment and optional Google identity session.
 - Local AI recommendations tied to project graph signals.
 - Phase 1 completion track running in parallel.
 
-Next:
+Next: real 3D DNA timeline, live-data cinematic views, and local daily briefing.
 
-- Clickable project/planet selection.
-- Auth UI.
-- PostgreSQL persistence wiring.
-- DNA timeline as a real 3D scene.
-- City Builder health visualization.
-- Local daily briefing generated from live project data.
+## Phase 4 and 5 Checkpoint
+
+- Database signup creates an isolated workspace and owner membership.
+- JWTs are bound to Nexus issuer/audience and checked against live membership.
+- Every database project, feature, and task query is filtered by workspace.
+- Full names accept letters and spaces only; passwords require letters and numbers.
+- Production rejects short/default JWT secrets.
+- Auth responses disable caching; API responses include strict browser security headers.
+- Request bodies are capped at 1 MB.
+- Authorization integration tests against a live PostgreSQL service remain pending.
+- Firebase identities remain device-local until server-side token exchange is implemented.

@@ -2,7 +2,7 @@
 
 ## Phase 1: Core Spine
 
-- Status: foundation complete, product implementation still in progress.
+- Status: complete for the current release.
 - Email auth and JWT sessions.
 - Projects, features, tasks, subtasks, milestones.
 - Progress calculation from task to feature to project.
@@ -10,7 +10,7 @@
 - Activity log.
 - Basic analytics and health score.
 
-Phase 1 is not considered fully complete until auth and real CRUD persistence are wired through both UI and PostgreSQL-backed API. The scaffold, domain model, dashboard shell, analytics foundation, activity concept, health scoring, local auth endpoints, local CRUD APIs, and API-first frontend loading are in place. Remaining Phase 1 work is now part of the Phase 2 execution track.
+Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI are in place.
 
 ## Phase 2: Cinematic AI Operating System
 
@@ -18,7 +18,7 @@ Phase 1 is not considered fully complete until auth and real CRUD persistence ar
 - Phase 1 completion track continues inside this phase.
 - Galaxy View as the primary spatial overview.
 - DNA Timeline for milestone/task chronology.
-- City Builder for project health and completion.
+- City Builder for project health and completion (interactive first version complete).
 - Smooth transitions between 3D exploration and 2D editing.
 - Local/free daily briefing.
 - Rule-based suggested next task.
@@ -44,6 +44,9 @@ Phase 1 is not considered fully complete until auth and real CRUD persistence ar
 
 - Status: started in parallel at the user's request.
 - Signup, login, logout, JWT browser session, and PostgreSQL account/workspace creation foundation.
+- Firebase Google identity adapter and Firebase Hosting deployment.
+- Authenticated project/feature/task persistence with strict workspace filters.
+- Functional account Profile and persistent Settings.
 - Workspace invitations.
 - Roles and permissions.
 - Authenticated PostgreSQL CRUD and strict workspace tenant filtering.
@@ -54,11 +57,16 @@ Phase 1 is not considered fully complete until auth and real CRUD persistence ar
 
 ## Phase 5: Secure Launch
 
+- Status: started in parallel.
+- Full-name and password policy enforcement.
+- JWT issuer, audience, expiry, type, and membership validation.
+- Strict API headers, no-store auth responses, request-size limits, and production secret checks.
 - Desktop-first production UX with mobile companion workflows.
 - End-to-end authentication and tenant-isolation tests.
 - Rate limiting, email verification, password reset, and audit events.
 - Backups, restore drills, dependency scanning, and security review.
 - Free-tier frontend, API, and PostgreSQL deployment with documented limits.
+- Exchange Google/Firebase identity tokens for tenant-scoped Nexus API sessions.
 - Public beta readiness and incident response runbook.
 
 ## Permanent Constraint: Zero Cost

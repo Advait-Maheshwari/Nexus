@@ -11,7 +11,7 @@ def test_auth_registers_and_logs_in_without_paid_services() -> None:
     registration = RegisterRequest(
         email="captain@nexus.local",
         full_name="Nexus Captain",
-        password="zero-cost-secure-password",
+        password="zero-cost-secure-password-7",
     )
 
     registered = store.register(registration)
