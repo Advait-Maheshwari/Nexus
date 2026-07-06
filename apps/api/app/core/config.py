@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     google_ai_api_key: str | None = Field(default=None, alias="GOOGLE_AI_API_KEY")
+    github_token: str | None = Field(default=None, alias="GITHUB_TOKEN")
 
     @property
     def cors_origins(self) -> list[str]:
@@ -29,4 +30,3 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-

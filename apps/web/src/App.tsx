@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { AppShell, type ViewKey } from "@/components/AppShell";
 import { useMissionData } from "@/hooks/useMissionData";
+import { IntegrationsView } from "@/pages/IntegrationsView";
 import { MissionControl } from "@/pages/MissionControl";
 import { ProjectsView } from "@/pages/ProjectsWorkspace";
 import {
@@ -26,6 +27,7 @@ function App() {
       {activeView === "calendar" ? <PlaceholderView view="calendar" /> : null}
       {activeView === "ideas" ? <PlaceholderView view="ideas" /> : null}
       {activeView === "journal" ? <PlaceholderView view="journal" /> : null}
+      {activeView === "integrations" ? <IntegrationsView /> : null}
       {activeView === "settings" ? <PlaceholderView view="settings" /> : null}
       {activeView === "profile" ? <PlaceholderView view="profile" /> : null}
     </AppShell>

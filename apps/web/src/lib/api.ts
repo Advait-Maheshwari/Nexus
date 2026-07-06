@@ -1,5 +1,6 @@
 import { missionData } from "@/data/nexusSeed";
 import type { MissionData, ProjectSummary } from "@/types/domain";
+import type { GitHubRepositoryActivity } from "@/types/integrations";
 import type { WorkspaceFeature, WorkspaceProject, WorkspaceTask } from "@/types/workspace";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
@@ -58,6 +59,47 @@ export async function fetchMissionControl(): Promise<MissionData> {
       actionLabel: recommendation.action_label
     })),
     activity: payload.activity
+  };
+}
+
+export async function fetchGitHubActivity(
+  owner: string,
+  repo: string
+): Promise<GitHubRepositoryActivity> {
+  const response = await fetch(
+    `${API_URL}/api/v1/integrations/github/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/activity`
+  );
+  if (!response.ok) {
+    throw new Error(`GitHub integration failed with ${response.status}`);
+  }
+
+  const payload = (await response.json()) as {
+    repository: string;
+    commits: Array<{
+      sha: string;
+      message: string;
+      author: string;
+      committed_at: string;
+      url: string;
+      verified: boolean;
+    }>;
+    rate_limit_remaining?: number | null;
+    authenticated: boolean;
+  };
+
+  return {
+    repository: payload.repository,
+    commits: payload.commits.map((commit) => ({
+      sha: commit.sha,
+      message: commit.message,
+      author: commit.author,
+      committedAt: commit.committed_at,
+      url: commit.url,
+      verified: commit.verified
+    })),
+    rateLimitRemaining: payload.rate_limit_remaining ?? undefined,
+    authenticated: payload.authenticated,
+    source: "github"
   };
 }
 

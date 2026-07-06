@@ -21,7 +21,13 @@ const GalaxyScene = lazy(() => import("@/scenes/GalaxyScene"));
 
 export function GalaxyView({ data }: { data: MissionData }) {
   const [selectedProjectId, setSelectedProjectId] = useState(data.projects[0]?.id ?? "");
+  const [selectedPlanetId, setSelectedPlanetId] = useState(
+    data.projects[0]?.planets[0]?.id ?? ""
+  );
   const selectedProject = data.projects.find((project) => project.id === selectedProjectId);
+  const selectedPlanet = selectedProject?.planets.find(
+    (planet) => planet.id === selectedPlanetId
+  );
   const linkedProjects = useMemo(() => {
     if (!selectedProject) {
       return [];
@@ -54,7 +60,16 @@ export function GalaxyView({ data }: { data: MissionData }) {
             projects={data.projects}
             relationships={data.relationships}
             selectedProjectId={selectedProjectId}
-            onSelectProject={setSelectedProjectId}
+            selectedPlanetId={selectedPlanetId}
+            onSelectProject={(projectId) => {
+              setSelectedProjectId(projectId);
+              const project = data.projects.find((item) => item.id === projectId);
+              setSelectedPlanetId(project?.planets[0]?.id ?? "");
+            }}
+            onSelectPlanet={(projectId, planetId) => {
+              setSelectedProjectId(projectId);
+              setSelectedPlanetId(planetId);
+            }}
           />
         </Suspense>
         <div className="pointer-events-none absolute bottom-4 left-4 rounded-md border border-white/10 bg-void/80 px-3 py-2 backdrop-blur-md">
@@ -74,9 +89,15 @@ export function GalaxyView({ data }: { data: MissionData }) {
               </p>
               <div className="mt-3 space-y-2">
                 {selectedProject.planets.map((planet) => (
-                  <div
+                  <button
                     key={planet.id}
-                    className="rounded-md border border-white/10 bg-white/[0.04] p-3"
+                    type="button"
+                    onClick={() => setSelectedPlanetId(planet.id)}
+                    className={`w-full rounded-md border p-3 text-left transition ${
+                      selectedPlanetId === planet.id
+                        ? "border-violet/45 bg-violet/10"
+                        : "border-white/10 bg-white/[0.04] hover:border-white/20"
+                    }`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm font-semibold text-white">{planet.name}</span>
@@ -88,9 +109,16 @@ export function GalaxyView({ data }: { data: MissionData }) {
                         style={{ width: `${planet.progress}%` }}
                       />
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
+              {selectedPlanet ? (
+                <div className="mt-3 grid grid-cols-3 gap-2 border-t border-white/10 pt-3 text-center">
+                  <PlanetMetric label="Tasks" value={selectedPlanet.taskCount} />
+                  <PlanetMetric label="Blocked" value={selectedPlanet.blockedTaskCount} />
+                  <PlanetMetric label="Progress" value={`${selectedPlanet.progress}%`} />
+                </div>
+              ) : null}
             </section>
             <section className="glass-panel rounded-lg p-4">
               <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">
@@ -102,7 +130,12 @@ export function GalaxyView({ data }: { data: MissionData }) {
                     <button
                       key={relationship.id}
                       type="button"
-                      onClick={() => project && setSelectedProjectId(project.id)}
+                      onClick={() => {
+                        if (project) {
+                          setSelectedProjectId(project.id);
+                          setSelectedPlanetId(project.planets[0]?.id ?? "");
+                        }
+                      }}
                       className="w-full rounded-md border border-white/10 bg-white/[0.04] p-3 text-left transition hover:border-cyan/30 hover:bg-cyan/[0.06]"
                     >
                       <div className="flex items-center justify-between gap-3">
@@ -127,6 +160,15 @@ export function GalaxyView({ data }: { data: MissionData }) {
         )}
       </div>
     </section>
+  );
+}
+
+function PlanetMetric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-md bg-white/[0.04] px-2 py-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-slate-500">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-white">{value}</p>
+    </div>
   );
 }
 

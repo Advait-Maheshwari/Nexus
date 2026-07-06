@@ -25,12 +25,16 @@ function ProjectStar({
   project,
   index,
   selected,
-  onSelect
+  selectedPlanetId,
+  onSelect,
+  onSelectPlanet
 }: {
   project: ProjectSummary;
   index: number;
   selected: boolean;
+  selectedPlanetId?: string;
   onSelect?: (projectId: string) => void;
+  onSelectPlanet?: (projectId: string, planetId: string) => void;
 }) {
   const group = useRef<THREE.Group>(null);
   const orbit = useRef<THREE.Group>(null);
@@ -120,7 +124,12 @@ function ProjectStar({
         ))}
         <group ref={orbit}>
           {planets.map((planet) => (
-            <FeaturePlanetMesh key={`${project.id}-${planet.id}`} planet={planet} />
+            <FeaturePlanetMesh
+              key={`${project.id}-${planet.id}`}
+              planet={planet}
+              selected={selected && selectedPlanetId === planet.id}
+              onSelect={() => onSelectPlanet?.(project.id, planet.id)}
+            />
           ))}
         </group>
         <Billboard position={[0, -0.5, 0]}>
@@ -150,7 +159,15 @@ type SceneFeaturePlanet = FeaturePlanet & {
   size: number;
 };
 
-function FeaturePlanetMesh({ planet }: { planet: SceneFeaturePlanet }) {
+function FeaturePlanetMesh({
+  planet,
+  selected,
+  onSelect
+}: {
+  planet: SceneFeaturePlanet;
+  selected: boolean;
+  onSelect?: () => void;
+}) {
   const mesh = useRef<THREE.Mesh>(null);
   const glow = useRef<THREE.Mesh>(null);
   const color = new THREE.Color(planet.color);
@@ -166,19 +183,38 @@ function FeaturePlanetMesh({ planet }: { planet: SceneFeaturePlanet }) {
   });
 
   return (
-    <group position={planet.position}>
+    <group
+      position={planet.position}
+      scale={selected ? 1.45 : 1}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect?.();
+      }}
+      onPointerOver={(event) => {
+        event.stopPropagation();
+        document.body.style.cursor = "pointer";
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = "default";
+      }}
+    >
       <mesh ref={mesh}>
         <sphereGeometry args={[planet.size, 28, 28]} />
         <meshStandardMaterial
           color={color}
           emissive={color}
-          emissiveIntensity={planet.blockedTaskCount > 0 ? 1.1 : 0.58}
+          emissiveIntensity={selected ? 1.8 : planet.blockedTaskCount > 0 ? 1.1 : 0.58}
           roughness={0.32}
         />
       </mesh>
       <mesh ref={glow}>
         <sphereGeometry args={[planet.size * 1.9, 24, 24]} />
-        <meshBasicMaterial color={color} transparent opacity={0.08} depthWrite={false} />
+        <meshBasicMaterial
+          color={selected ? "#ffffff" : color}
+          transparent
+          opacity={selected ? 0.2 : 0.08}
+          depthWrite={false}
+        />
       </mesh>
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[planet.size * 2.35, 0.0018, 8, 64]} />
@@ -250,12 +286,16 @@ export function GalaxyScene({
   projects,
   relationships = [],
   selectedProjectId,
-  onSelectProject
+  selectedPlanetId,
+  onSelectProject,
+  onSelectPlanet
 }: {
   projects: ProjectSummary[];
   relationships?: ProjectRelationship[];
   selectedProjectId?: string;
+  selectedPlanetId?: string;
   onSelectProject?: (projectId: string) => void;
+  onSelectPlanet?: (projectId: string, planetId: string) => void;
 }) {
   const selectedProject = projects.find((project) => project.id === selectedProjectId);
 
@@ -278,7 +318,9 @@ export function GalaxyScene({
           project={project}
           index={index}
           selected={project.id === selectedProjectId}
+          selectedPlanetId={selectedPlanetId}
           onSelect={onSelectProject}
+          onSelectPlanet={onSelectPlanet}
         />
       ))}
       <OrbitControls

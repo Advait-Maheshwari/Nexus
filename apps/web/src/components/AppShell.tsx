@@ -4,6 +4,7 @@ import {
   CircuitBoard,
   Dna,
   Factory,
+  Github,
   Lightbulb,
   NotebookPen,
   Orbit,
@@ -27,6 +28,7 @@ export type ViewKey =
   | "calendar"
   | "ideas"
   | "journal"
+  | "integrations"
   | "settings"
   | "profile";
 
@@ -46,6 +48,7 @@ const navItems: NavItem[] = [
   { key: "calendar", label: "Calendar", icon: CalendarDays },
   { key: "ideas", label: "Ideas", icon: Lightbulb },
   { key: "journal", label: "Journal", icon: NotebookPen },
+  { key: "integrations", label: "Integrations", icon: Github },
   { key: "settings", label: "Settings", icon: Settings },
   { key: "profile", label: "Profile", icon: UserCircle }
 ];
@@ -104,8 +107,33 @@ export function AppShell({ activeView, onViewChange, children }: AppShellProps) 
         </div>
       </header>
 
-      <main className="relative z-10 min-h-screen px-4 pb-6 pt-24 lg:pl-[112px]">{children}</main>
+      <main className="relative z-10 min-h-screen px-4 pb-24 pt-24 lg:pb-6 lg:pl-[112px]">
+        {children}
+      </main>
+
+      <nav className="glass-panel fixed bottom-3 left-3 right-3 z-30 flex gap-1 overflow-x-auto rounded-lg p-2 lg:hidden">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeView === item.key;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              aria-label={item.label}
+              title={item.label}
+              onClick={() => onViewChange(item.key)}
+              className={cn(
+                "flex h-12 min-w-12 shrink-0 items-center justify-center rounded-md border transition",
+                isActive
+                  ? "border-cyan/45 bg-cyan/15 text-cyan shadow-glow"
+                  : "border-transparent text-slate-400 hover:bg-white/[0.06] hover:text-white"
+              )}
+            >
+              <Icon size={19} />
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }
-
