@@ -9,7 +9,6 @@ import {
   LogOut,
   NotebookPen,
   Orbit,
-  PanelLeftClose,
   Rocket,
   Settings,
   Sparkles,
@@ -62,6 +61,8 @@ interface AppShellProps {
 }
 
 export function AppShell({ activeView, onViewChange, onLogout, children }: AppShellProps) {
+  const activeItem = navItems.find((item) => item.key === activeView);
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-void text-slate-100">
       <div className="grid-field pointer-events-none absolute inset-0 opacity-30" />
@@ -98,11 +99,16 @@ export function AppShell({ activeView, onViewChange, onLogout, children }: AppSh
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="font-mono text-xs uppercase tracking-[0.28em] text-cyan">Nexus</p>
-            <h1 className="truncate text-xl font-semibold text-white sm:text-2xl">Mission Control</h1>
+            <h1 className="truncate text-xl font-semibold text-white sm:text-2xl">
+              {activeItem?.label ?? "Mission Control"}
+            </h1>
           </div>
           <div className="hidden items-center gap-2 sm:flex">
-            <Button icon={<PanelLeftClose size={16} />} variant="ghost" aria-label="Toggle command rail" />
-            <Button icon={<Sparkles size={16} />} variant="primary">
+            <Button
+              icon={<Sparkles size={16} />}
+              variant="primary"
+              onClick={() => onViewChange("mission")}
+            >
               AI Briefing
             </Button>
             <Button
@@ -128,7 +134,7 @@ export function AppShell({ activeView, onViewChange, onLogout, children }: AppSh
         {children}
       </main>
 
-      <nav className="glass-panel fixed bottom-3 left-3 right-3 z-30 flex gap-1 overflow-x-auto rounded-lg p-2 lg:hidden">
+      <nav className="no-scrollbar glass-panel fixed bottom-3 left-3 right-3 z-30 flex gap-1 overflow-x-auto rounded-lg p-2 lg:hidden">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.key;

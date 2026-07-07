@@ -202,55 +202,73 @@ function FeaturePlanetMesh({
   systemSelected: boolean;
   onSelect?: () => void;
 }) {
+  const group = useRef<THREE.Group>(null);
   const mesh = useRef<THREE.Mesh>(null);
   const glow = useRef<THREE.Mesh>(null);
+  const clouds = useRef<THREE.Mesh>(null);
   const color = new THREE.Color(planet.color);
   const surfaceTexture = useMemo(
     () => createPlanetTexture(planet.color, Math.round(planet.angle * 10_000)),
     [planet.angle, planet.color]
   );
+  const cloudTexture = useMemo(
+    () => createCloudTexture(Math.round(planet.angle * 17_000)),
+    [planet.angle]
+  );
   const moonTexture = useMemo(() => createMoonTexture(Math.round(planet.angle * 20_000)), [planet.angle]);
+  const satelliteCount = Math.min(6, Math.max(1, planet.taskCount));
   const moons = useMemo(
     () =>
-      Array.from({ length: Math.min(6, planet.taskCount) }, (_, index) => {
-        const angle = (index / Math.min(6, planet.taskCount)) * Math.PI * 2;
+      Array.from({ length: satelliteCount }, (_, index) => {
+        const angle = (index / satelliteCount) * Math.PI * 2;
         const blocked = index < planet.blockedTaskCount;
         return {
           position: [
-            Math.cos(angle) * planet.size * 3.4,
+            Math.cos(angle) * planet.size * 3.65,
             Math.sin(angle * 2) * planet.size * 0.65,
-            Math.sin(angle) * planet.size * 3.4
+            Math.sin(angle) * planet.size * 3.65
           ] as [number, number, number],
-          color: blocked ? "#fb7185" : index / Math.min(6, planet.taskCount) < planet.progress / 100 ? "#4ade80" : "#94a3b8"
+          color: blocked ? "#fb7185" : index / satelliteCount < planet.progress / 100 ? "#4ade80" : "#94a3b8"
         };
       }),
-    [planet.blockedTaskCount, planet.progress, planet.size, planet.taskCount]
+    [planet.blockedTaskCount, planet.progress, planet.size, satelliteCount]
   );
-  const visibleMoons = moons.slice(0, selected ? 6 : systemSelected ? 3 : 0);
+  const visibleMoons = moons.slice(0, selected ? 6 : systemSelected ? 4 : 2);
   const hasRings = Math.round(planet.angle * 100) % 2 === 0;
 
   useEffect(
     () => () => {
+      cloudTexture.dispose();
       surfaceTexture.dispose();
       moonTexture.dispose();
     },
-    [moonTexture, surfaceTexture]
+    [cloudTexture, moonTexture, surfaceTexture]
   );
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     const elapsed = clock.getElapsedTime();
+    if (group.current) {
+      const worldPosition = new THREE.Vector3();
+      group.current.getWorldPosition(worldPosition);
+      const distanceScale = THREE.MathUtils.clamp(camera.position.distanceTo(worldPosition) / 5.4, 1, 1.55);
+      const modeScale = selected ? 1.48 : systemSelected ? 1.14 : 1.06;
+      group.current.scale.setScalar(modeScale * distanceScale);
+    }
     if (mesh.current) {
       mesh.current.rotation.y = elapsed * 0.8 + planet.angle;
     }
     if (glow.current) {
       glow.current.scale.setScalar(1.35 + Math.sin(elapsed * 2 + planet.angle) * 0.12);
     }
+    if (clouds.current) {
+      clouds.current.rotation.y = elapsed * 0.34 + planet.angle * 0.5;
+    }
   });
 
   return (
     <group
+      ref={group}
       position={planet.position}
-      scale={selected ? 1.45 : 1}
       onClick={(event) => {
         event.stopPropagation();
         onSelect?.();
@@ -267,12 +285,27 @@ function FeaturePlanetMesh({
         <sphereGeometry args={[planet.size, 48, 48]} />
         <meshStandardMaterial
           map={surfaceTexture}
+          bumpMap={surfaceTexture}
+          bumpScale={planet.size * 0.08}
           color="#ffffff"
           emissive={color}
           emissiveMap={surfaceTexture}
-          emissiveIntensity={selected ? 0.62 : planet.blockedTaskCount > 0 ? 0.38 : 0.24}
-          roughness={0.72}
-          metalness={0.04}
+          emissiveIntensity={selected ? 0.72 : planet.blockedTaskCount > 0 ? 0.48 : 0.34}
+          roughness={0.68}
+          metalness={0.08}
+        />
+      </mesh>
+      <mesh ref={clouds}>
+        <sphereGeometry args={[planet.size * 1.025, 32, 32]} />
+        <meshStandardMaterial
+          map={cloudTexture}
+          color="#ffffff"
+          transparent
+          opacity={selected ? 0.36 : 0.2}
+          emissive="#dff8ff"
+          emissiveIntensity={0.12}
+          roughness={0.9}
+          depthWrite={false}
         />
       </mesh>
       <mesh ref={glow}>
@@ -280,7 +313,7 @@ function FeaturePlanetMesh({
         <meshBasicMaterial
           color={selected ? "#ffffff" : color}
           transparent
-          opacity={selected ? 0.16 : 0.07}
+          opacity={selected ? 0.2 : 0.12}
           depthWrite={false}
           side={THREE.BackSide}
           blending={THREE.AdditiveBlending}
@@ -310,18 +343,6 @@ function FeaturePlanetMesh({
             <torusGeometry args={[planet.size * 3.4, 0.0012, 8, 72]} />
             <meshBasicMaterial color="#dff8ff" transparent opacity={0.28} />
           </mesh>
-          {visibleMoons.map((moon, index) => (
-            <mesh key={`${planet.id}-moon-${index}`} position={moon.position}>
-              <sphereGeometry args={[Math.max(0.012, planet.size * 0.2), 22, 22]} />
-              <meshStandardMaterial
-                map={moonTexture}
-                color={moon.color}
-                emissive={moon.color}
-                emissiveIntensity={selected ? 0.34 : 0.18}
-                roughness={0.94}
-              />
-            </mesh>
-          ))}
           {selected ? (
             <Billboard position={[0, planet.size * 2.8, 0]}>
               <Text
@@ -337,6 +358,77 @@ function FeaturePlanetMesh({
           ) : null}
         </>
       ) : null}
+      {!systemSelected ? (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[planet.size * 3.65, 0.001, 8, 72]} />
+          <meshBasicMaterial color="#dff8ff" transparent opacity={0.12} />
+        </mesh>
+      ) : null}
+      {visibleMoons.map((moon, index) => (
+        <mesh key={`${planet.id}-moon-${index}`} position={moon.position}>
+          <sphereGeometry args={[Math.max(0.012, planet.size * (systemSelected ? 0.2 : 0.16)), 22, 22]} />
+          <meshStandardMaterial
+            map={moonTexture}
+            color={moon.color}
+            emissive={moon.color}
+            emissiveIntensity={selected ? 0.34 : 0.2}
+            roughness={0.94}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function ProjectLink({
+  relationship,
+  source,
+  target
+}: {
+  relationship: ProjectRelationship;
+  source: ProjectSummary;
+  target: ProjectSummary;
+}) {
+  const pulse = useRef<THREE.Mesh>(null);
+  const color = relationshipColor[relationship.type];
+  const curvePoints = useMemo(() => {
+    const sourcePoint = new THREE.Vector3(...source.coordinates);
+    const targetPoint = new THREE.Vector3(...target.coordinates);
+    const midpoint = sourcePoint.clone().lerp(targetPoint, 0.5);
+    midpoint.y += 0.28 + relationship.strength * 0.36;
+    const curve = new THREE.QuadraticBezierCurve3(sourcePoint, midpoint, targetPoint);
+    return curve.getPoints(28);
+  }, [relationship.strength, source.coordinates, target.coordinates]);
+  const labelPoint = curvePoints[Math.floor(curvePoints.length / 2)].clone().add(new THREE.Vector3(0, 0.13, 0));
+
+  useFrame(({ clock }) => {
+    if (!pulse.current) return;
+    const phase = (clock.getElapsedTime() * (0.16 + relationship.strength * 0.18)) % 1;
+    const scaled = phase * (curvePoints.length - 1);
+    const index = Math.floor(scaled);
+    const nextIndex = Math.min(index + 1, curvePoints.length - 1);
+    pulse.current.position.copy(curvePoints[index].clone().lerp(curvePoints[nextIndex], scaled - index));
+    pulse.current.scale.setScalar(0.018 + relationship.strength * 0.03);
+  });
+
+  return (
+    <group>
+      <Line
+        points={curvePoints}
+        color={color}
+        lineWidth={Math.max(1.25, relationship.strength * 3.4)}
+        transparent
+        opacity={0.34 + relationship.strength * 0.36}
+      />
+      <mesh ref={pulse}>
+        <sphereGeometry args={[1, 16, 16]} />
+        <meshBasicMaterial color={color} transparent opacity={0.92} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <Billboard position={labelPoint.toArray()}>
+        <Text fontSize={0.045} color={color} anchorX="center" anchorY="middle" maxWidth={1.4}>
+          {relationship.type.replace("-", " ")}
+        </Text>
+      </Billboard>
     </group>
   );
 }
@@ -348,10 +440,7 @@ function ProjectLinks({
   projects: ProjectSummary[];
   relationships: ProjectRelationship[];
 }) {
-  const projectMap = useMemo(
-    () => new Map(projects.map((project) => [project.id, project])),
-    [projects]
-  );
+  const projectMap = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
 
   return (
     <>
@@ -363,31 +452,7 @@ function ProjectLinks({
           return null;
         }
 
-        const sourcePoint = new THREE.Vector3(...source.coordinates);
-        const targetPoint = new THREE.Vector3(...target.coordinates);
-        const midpoint = sourcePoint.clone().lerp(targetPoint, 0.5);
-        const color = relationshipColor[relationship.type];
-
-        return (
-          <group key={relationship.id}>
-            <Line
-              points={[sourcePoint, targetPoint]}
-              color={color}
-              lineWidth={Math.max(1, relationship.strength * 3)}
-              transparent
-              opacity={0.2 + relationship.strength * 0.38}
-            />
-            <mesh position={midpoint.toArray()}>
-              <sphereGeometry args={[0.018 + relationship.strength * 0.018, 16, 16]} />
-              <meshBasicMaterial color={color} transparent opacity={0.86} />
-            </mesh>
-            <Billboard position={midpoint.add(new THREE.Vector3(0, 0.12, 0)).toArray()}>
-              <Text fontSize={0.045} color={color} anchorX="center" anchorY="middle" maxWidth={1.4}>
-                {relationship.type.replace("-", " ")}
-              </Text>
-            </Billboard>
-          </group>
-        );
+        return <ProjectLink key={relationship.id} relationship={relationship} source={source} target={target} />;
       })}
     </>
   );
@@ -417,11 +482,12 @@ export function GalaxyScene({
       onPointerMissed={() => onSelectProject?.("")}
     >
       <color attach="background" args={["#02040a"]} />
-      <fog attach="fog" args={["#02040a", 10, 24]} />
-      <ambientLight intensity={1.15} />
-      <pointLight position={[2.2, 2.4, 2.8]} intensity={3.2} color="#48e5ff" />
-      <pointLight position={[-2.8, -1.4, 2.2]} intensity={1.8} color="#8d67ff" />
-      <Stars radius={80} depth={40} count={2400} factor={3.4} saturation={0.3} fade speed={0.38} />
+      <fog attach="fog" args={["#02040a", 18, 34]} />
+      <ambientLight intensity={1.28} />
+      <pointLight position={[2.2, 2.4, 2.8]} intensity={3.8} color="#48e5ff" />
+      <pointLight position={[-2.8, -1.4, 2.2]} intensity={2.2} color="#8d67ff" />
+      <directionalLight position={[0.4, 2.6, 3.2]} intensity={1.8} color="#eef9ff" />
+      <Stars radius={80} depth={40} count={2600} factor={3.6} saturation={0.35} fade speed={0.38} />
       <ProjectLinks projects={projects} relationships={relationships} />
       {projects.map((project, index) => (
         <ProjectStar
@@ -516,6 +582,61 @@ function createMoonTexture(seed: number): THREE.CanvasTexture {
     context.arc(x, y, radius, 0, Math.PI * 2);
     context.fill();
   }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.anisotropy = 4;
+  return texture;
+}
+
+function createCloudTexture(seed: number): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  if (!context) return new THREE.CanvasTexture(canvas);
+  const random = seededRandom(seed);
+  context.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let bandIndex = 0; bandIndex < 12; bandIndex += 1) {
+    const y = random() * canvas.height;
+    const height = 5 + random() * 14;
+    const gradient = context.createLinearGradient(0, y, canvas.width, y + height);
+    gradient.addColorStop(0, "rgba(255,255,255,0)");
+    gradient.addColorStop(0.18, "rgba(223,248,255,0.34)");
+    gradient.addColorStop(0.5, "rgba(255,255,255,0.58)");
+    gradient.addColorStop(0.82, "rgba(223,248,255,0.24)");
+    gradient.addColorStop(1, "rgba(255,255,255,0)");
+    context.fillStyle = gradient;
+    context.globalAlpha = 0.34 + random() * 0.32;
+    context.beginPath();
+    context.ellipse(
+      canvas.width * (0.18 + random() * 0.64),
+      y,
+      canvas.width * (0.18 + random() * 0.32),
+      height,
+      random() * 0.22,
+      0,
+      Math.PI * 2
+    );
+    context.fill();
+  }
+
+  for (let index = 0; index < 64; index += 1) {
+    const x = random() * canvas.width;
+    const y = random() * canvas.height;
+    const radius = 4 + random() * 18;
+    const puff = context.createRadialGradient(x, y, 0, x, y, radius);
+    puff.addColorStop(0, "rgba(255,255,255,0.62)");
+    puff.addColorStop(1, "rgba(255,255,255,0)");
+    context.globalAlpha = 0.18 + random() * 0.28;
+    context.fillStyle = puff;
+    context.beginPath();
+    context.arc(x, y, radius, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  context.globalAlpha = 1;
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.RepeatWrapping;
