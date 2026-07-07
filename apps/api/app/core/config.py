@@ -1,4 +1,5 @@
 from functools import lru_cache
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import AnyHttpUrl, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -32,14 +33,7 @@ class Settings(BaseSettings):
             raise ValueError("Production JWT_SECRET_KEY must contain at least 32 characters")
         if self.auth_backend not in {"local", "database"}:
             raise ValueError("NEXUS_AUTH_BACKEND must be local or database")
-        if self.database_url.startswith("postgres://"):
-            self.database_url = self.database_url.replace(
-                "postgres://", "postgresql+asyncpg://", 1
-            )
-        elif self.database_url.startswith("postgresql://"):
-            self.database_url = self.database_url.replace(
-                "postgresql://", "postgresql+asyncpg://", 1
-            )
+        self.database_url = normalize_database_url(self.database_url)
         return self
 
     @property
@@ -60,6 +54,34 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def normalize_database_url(database_url: str) -> str:
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    if not database_url.startswith("postgresql+asyncpg://"):
+        return database_url
+
+    parsed = urlsplit(database_url)
+    query_items = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    sslmode = query_items.pop("sslmode", None)
+    query_items.pop("channel_binding", None)
+
+    if sslmode and "ssl" not in query_items:
+        query_items["ssl"] = sslmode
+
+    return urlunsplit(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            urlencode(query_items),
+            parsed.fragment,
+        )
+    )
 
 
 settings = get_settings()

@@ -60,3 +60,14 @@ def test_access_token_is_bound_to_nexus_audience_and_issuer() -> None:
 def test_production_rejects_default_or_short_jwt_secret() -> None:
     with pytest.raises(ValidationError, match="at least 32 characters"):
         Settings(NEXUS_ENV="production", JWT_SECRET_KEY="too-short")
+
+
+def test_neon_database_url_is_normalized_for_asyncpg() -> None:
+    settings = Settings(
+        database_url=(
+            "postgresql://nexus:secret@example.neon.tech/nexus"
+            "?sslmode=require&channel_binding=require"
+        )
+    )
+
+    assert settings.database_url == "postgresql+asyncpg://nexus:secret@example.neon.tech/nexus?ssl=require"
