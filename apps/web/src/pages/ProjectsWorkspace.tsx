@@ -157,6 +157,10 @@ export function ProjectsView({ session }: { session: NexusSession }) {
             <ProjectOverview
               projectId={workspace.selectedProject.id}
               projectName={workspace.selectedProject.name}
+              projectProgress={workspace.selectedProject.progress}
+              healthScore={workspace.selectedProject.healthScore}
+              features={workspace.features}
+              tasks={workspace.tasks}
             />
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
