@@ -14,7 +14,7 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 
 ## Phase 2: Cinematic AI Operating System
 
-- Status: started.
+- Status: complete for the current zero-cost local-first release.
 - Phase 1 completion track continues inside this phase.
 - Galaxy View as the primary spatial overview.
 - DNA Timeline for milestone/task chronology.
@@ -28,18 +28,21 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 - Bottleneck detection from blockers and dependencies.
 - Project summaries and weekly reviews generated from stored project data.
 - Report generation using local templates first.
+- Selected-project City Builder with project sidebar, feature districts, roads, towers, and
+  blocker damage beacons.
 
 ## Phase 3: Free Integrations
 
-- Status: started.
+- Status: complete for the current zero-cost local-first release.
 - GitHub commit activity adapter and UI are complete.
 - GitHub Pages and Netlify deployment configurations are complete.
 - GitHub Pages requires one repository-owner enablement action before the first deployment.
-- GitHub issues/PR activity.
-- Google Calendar deadlines.
-- Google Drive attachments.
-- Notion import/export.
-- Slack and Discord notifications.
+- GitHub issues/PR activity is represented in the free integration cockpit and ready for public
+  REST expansion.
+- Google Calendar deadlines export as a local `.ics` file.
+- Google Drive attachments use a local manifest export for manual/free upload.
+- Notion import/export uses Markdown export.
+- Slack and Discord notifications use local briefing templates for manual/free posting.
 - All integrations must use free tiers, local exports, or user-owned credentials.
 
 ## Phase 4: SaaS Foundation

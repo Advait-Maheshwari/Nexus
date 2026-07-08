@@ -27,7 +27,7 @@ migrations remain launch hardening work rather than Phase 1 product work.
 
 ## Phase 2: Cinematic AI Operating System
 
-Status: active.
+Status: complete for the current zero-cost local-first release.
 
 Started:
 
@@ -43,9 +43,37 @@ Started:
 - Scroll-driven 3D DNA timeline with selectable status nodes.
 - Functional project Calendar, Ideas, and Journal workspaces.
 - Local AI recommendations tied to project graph signals.
+- Local daily command briefing generated from project data.
+- Rule-based next task recommendation.
+- Delay risk and bottleneck detection from deadlines, blocker counts, and priority.
+- Template-generated local report export.
+- Weekly review summary generated without paid AI calls.
+- Rebuilt City Builder as a selected project city with project sidebar, feature districts, roads,
+  towers, damage beacons, and mobile-safe stacking.
 - Phase 1 completion track running in parallel.
 
-Next: real 3D DNA timeline, live-data cinematic views, and local daily briefing.
+Launch hardening left after this phase: deeper live-data parity for every 3D scene and visual
+polish passes as real project volume grows.
+
+## Phase 3: Free Integrations
+
+Status: complete for the current zero-cost local-first release.
+
+Completed:
+
+- GitHub commit activity adapter and UI.
+- GitHub public-repository fallback without credentials.
+- GitHub private-repository path through user-owned local token.
+- Google Calendar deadline export through local `.ics` file.
+- Google Drive attachment planning through local manifest export.
+- Notion import/export through Markdown export.
+- Slack briefing template copy.
+- Discord briefing template copy.
+- All integration paths avoid paid services and default to local files, public APIs, or
+  user-owned credentials.
+
+Launch hardening left after this phase: full OAuth setup screens, live PR/issue sync, webhook
+delivery, and file upload automation.
 
 ## Phase 4 and 5 Checkpoint
 

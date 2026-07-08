@@ -1,17 +1,27 @@
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import gsap from "gsap";
-import { ArrowUpRight, BrainCircuit, CheckCircle2, CircleDot, Radar } from "lucide-react";
+import {
+  ArrowDownToLine,
+  ArrowUpRight,
+  BrainCircuit,
+  CheckCircle2,
+  CircleDot,
+  Radar,
+  ScanSearch
+} from "lucide-react";
 
 import { MetricTile } from "@/components/MetricTile";
 import { ProjectOrbitCard } from "@/components/ProjectOrbitCard";
 import { Button } from "@/components/ui/Button";
+import { createLocalBriefing, downloadTextFile } from "@/lib/localAi";
 import type { MissionData } from "@/types/domain";
 
 const GalaxyScene = lazy(() => import("@/scenes/GalaxyScene"));
 
 export function MissionControl({ data }: { data: MissionData }) {
   const commandRef = useRef<HTMLDivElement>(null);
+  const briefing = useMemo(() => createLocalBriefing(data), [data]);
 
   useEffect(() => {
     if (!commandRef.current) {
@@ -79,6 +89,30 @@ export function MissionControl({ data }: { data: MissionData }) {
               </div>
             </motion.aside>
           </div>
+
+          <section className="glass-panel rounded-lg p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">
+                  Local AI
+                </p>
+                <h2 className="mt-1 text-lg font-semibold text-white">Daily Command Briefing</h2>
+              </div>
+              <Button
+                variant="ghost"
+                icon={<ArrowDownToLine size={15} />}
+                onClick={() => downloadTextFile("nexus-local-report.md", briefing.report, "text/markdown")}
+              >
+                Export Report
+              </Button>
+            </div>
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              <BriefingCard title="Portfolio Signal" body={briefing.headline} />
+              <BriefingCard title="Focus" body={briefing.focus} />
+              <BriefingCard title="Next Task" body={briefing.nextTask} />
+              <BriefingCard title="Weekly Review" body={briefing.weeklyReview} />
+            </div>
+          </section>
         </div>
 
         <div ref={commandRef} className="space-y-4 xl:pt-[42vh]">
@@ -120,6 +154,22 @@ export function MissionControl({ data }: { data: MissionData }) {
           <section className="glass-panel rounded-lg p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
+                <p className="font-mono text-xs uppercase tracking-[0.24em] text-risk">
+                  Risk AI
+                </p>
+                <h2 className="mt-1 text-lg font-semibold text-white">Delay & Bottlenecks</h2>
+              </div>
+              <ScanSearch className="text-risk" size={21} />
+            </div>
+            <div className="mt-4 space-y-3">
+              <BriefingCard title="Delay risk" body={briefing.delayRisk} compact />
+              <BriefingCard title="Bottleneck" body={briefing.bottleneck} compact />
+            </div>
+          </section>
+
+          <section className="glass-panel rounded-lg p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
                 <p className="font-mono text-xs uppercase tracking-[0.24em] text-solar">
                   Activity
                 </p>
@@ -139,5 +189,24 @@ export function MissionControl({ data }: { data: MissionData }) {
         </div>
       </section>
     </div>
+  );
+}
+
+function BriefingCard({
+  title,
+  body,
+  compact = false
+}: {
+  title: string;
+  body: string;
+  compact?: boolean;
+}) {
+  return (
+    <article className="rounded-md border border-white/10 bg-white/[0.045] p-3">
+      <h3 className="text-sm font-semibold text-white">{title}</h3>
+      <p className={`mt-2 text-sm text-slate-300 ${compact ? "leading-5" : "leading-6"}`}>
+        {body}
+      </p>
+    </article>
   );
 }
