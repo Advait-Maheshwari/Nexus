@@ -4,11 +4,10 @@ import { AppShell, type ViewKey } from "@/components/AppShell";
 import { useMissionData } from "@/hooks/useMissionData";
 import { signOutFirebase } from "@/lib/firebase";
 import { AuthView } from "@/pages/AuthView";
-import { ProfileView, SettingsView } from "@/pages/AccountViews";
+import { ControlCenterView } from "@/pages/AccountViews";
 import { CityBuilderView } from "@/pages/CityBuilder";
-import { IntegrationsView } from "@/pages/IntegrationsView";
 import { MissionControl } from "@/pages/MissionControl";
-import { CalendarView, IdeasView, JournalView } from "@/pages/PlanningViews";
+import { CalendarView } from "@/pages/PlanningViews";
 import { ProjectsView } from "@/pages/ProjectsWorkspace";
 import {
   AnalyticsView,
@@ -54,11 +53,7 @@ function App() {
       {activeView === "analytics" ? <AnalyticsView data={missionData} /> : null}
       {activeView === "city" ? <CityBuilderView data={missionData} /> : null}
       {activeView === "calendar" ? <CalendarView session={session} /> : null}
-      {activeView === "ideas" ? <IdeasView session={session} /> : null}
-      {activeView === "journal" ? <JournalView session={session} /> : null}
-      {activeView === "integrations" ? <IntegrationsView /> : null}
-      {activeView === "settings" ? <SettingsView /> : null}
-      {activeView === "profile" ? <ProfileView session={session} /> : null}
+      {activeView === "control" ? <ControlCenterView session={session} /> : null}
     </AppShell>
   );
 }

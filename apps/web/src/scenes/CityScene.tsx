@@ -13,6 +13,7 @@ interface TowerPlan {
   z: number;
   height: number;
   width: number;
+  kind: "spire" | "terrace" | "dome" | "slab";
   completed: boolean;
   blocked: boolean;
 }
@@ -26,6 +27,7 @@ function ProjectCity({ project, mode }: { project: ProjectSummary; mode: CityVie
     <group>
       <CityBase accent={project.accent} />
       <RoadNetwork accent={project.accent} />
+      <ElevatedLoop accent={project.accent} />
       <TransitLines districts={districts} accent={project.accent} mode={mode} />
 
       <group position={[0, 0, 0]}>
@@ -128,6 +130,9 @@ function FeatureDistrict({
         <meshBasicMaterial color={featureColor} transparent opacity={0.5} side={THREE.DoubleSide} />
       </mesh>
 
+      <DistrictPark accent={featureColor} progress={feature.progress} />
+      <Skybridges towers={towers} accent={featureColor} />
+
       {towers.map((tower) => (
         <CityTower key={tower.id} accent={featureColor} tower={tower} />
       ))}
@@ -161,6 +166,50 @@ function FeatureDistrict({
       >
         {feature.name}
       </Text>
+    </group>
+  );
+}
+
+function DistrictPark({ accent, progress }: { accent: string; progress: number }) {
+  const opacity = 0.18 + Math.min(0.42, progress / 180);
+  return (
+    <group position={[-0.28, 0.092, 0.26]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.16, 28]} />
+        <meshBasicMaterial color="#4ade80" transparent opacity={opacity} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 0.035, 0]}>
+        <coneGeometry args={[0.045, 0.09, 7]} />
+        <meshStandardMaterial color="#4ade80" emissive={accent} emissiveIntensity={0.18} />
+      </mesh>
+      <mesh position={[0.11, 0.025, -0.02]}>
+        <coneGeometry args={[0.035, 0.07, 7]} />
+        <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={0.15} />
+      </mesh>
+    </group>
+  );
+}
+
+function Skybridges({ towers, accent }: { towers: TowerPlan[]; accent: string }) {
+  const completed = towers.filter((tower) => tower.completed && !tower.blocked).slice(0, 4);
+  if (completed.length < 2) return null;
+
+  return (
+    <group>
+      {completed.slice(1).map((tower, index) => {
+        const previous = completed[index];
+        const y = Math.min(previous.height, tower.height) * 0.72 + 0.1;
+        return (
+          <Line
+            key={`bridge-${tower.id}`}
+            points={[[previous.x, y, previous.z], [tower.x, y, tower.z]]}
+            color={accent}
+            lineWidth={2}
+            transparent
+            opacity={0.38}
+          />
+        );
+      })}
     </group>
   );
 }
@@ -250,26 +299,8 @@ function CityTower({ accent, tower }: { accent: string; tower: TowerPlan }) {
 
   return (
     <group position={[tower.x, 0, tower.z]}>
-      <mesh position={[0, tower.height / 2 + 0.08, 0]} castShadow>
-        <boxGeometry args={[tower.width, tower.height, tower.width]} />
-        <meshStandardMaterial
-          color={bodyColor}
-          emissive={tower.completed || tower.blocked ? bodyColor : "#02040a"}
-          emissiveIntensity={tower.completed ? 0.32 : tower.blocked ? 0.7 : 0.02}
-          metalness={0.2}
-          roughness={0.44}
-          transparent={!tower.completed && !tower.blocked}
-          opacity={opacity}
-        />
-      </mesh>
-      <mesh position={[0, tower.height + 0.16, 0]} castShadow>
-        {tower.blocked ? (
-          <boxGeometry args={[tower.width * 1.1, 0.08, tower.width * 0.7]} />
-        ) : (
-          <coneGeometry args={[tower.width * 0.72, 0.18, 4]} />
-        )}
-        <meshStandardMaterial color={topColor} emissive={topColor} emissiveIntensity={tower.completed ? 0.55 : 0.22} />
-      </mesh>
+      <TowerBody tower={tower} bodyColor={bodyColor} opacity={opacity} />
+      <TowerCrown tower={tower} color={topColor} glow={tower.completed ? 0.55 : 0.22} />
       <WindowStrips height={tower.height} width={tower.width} color={tower.blocked ? "#fb7185" : "#7dd3fc"} />
       {tower.blocked ? (
         <group>
@@ -284,6 +315,91 @@ function CityTower({ accent, tower }: { accent: string; tower: TowerPlan }) {
         </group>
       ) : null}
     </group>
+  );
+}
+
+function TowerBody({
+  tower,
+  bodyColor,
+  opacity
+}: {
+  tower: TowerPlan;
+  bodyColor: string;
+  opacity: number;
+}) {
+  const material = (
+    <meshStandardMaterial
+      color={bodyColor}
+      emissive={tower.completed || tower.blocked ? bodyColor : "#02040a"}
+      emissiveIntensity={tower.completed ? 0.32 : tower.blocked ? 0.7 : 0.02}
+      metalness={0.24}
+      roughness={0.42}
+      transparent={!tower.completed && !tower.blocked}
+      opacity={opacity}
+    />
+  );
+
+  if (tower.kind === "spire") {
+    return (
+      <mesh position={[0, tower.height / 2 + 0.08, 0]} castShadow>
+        <cylinderGeometry args={[tower.width * 0.42, tower.width * 0.62, tower.height, 8]} />
+        {material}
+      </mesh>
+    );
+  }
+
+  if (tower.kind === "dome") {
+    return (
+      <group>
+        <mesh position={[0, tower.height / 2 + 0.08, 0]} castShadow>
+          <cylinderGeometry args={[tower.width * 0.64, tower.width * 0.7, tower.height * 0.82, 12]} />
+          {material}
+        </mesh>
+        <mesh position={[0, tower.height * 0.88 + 0.08, 0]} castShadow>
+          <sphereGeometry args={[tower.width * 0.72, 16, 10]} />
+          {material}
+        </mesh>
+      </group>
+    );
+  }
+
+  if (tower.kind === "terrace") {
+    return (
+      <group>
+        <mesh position={[0, tower.height * 0.28 + 0.08, 0]} castShadow>
+          <boxGeometry args={[tower.width * 1.25, tower.height * 0.56, tower.width * 1.25]} />
+          {material}
+        </mesh>
+        <mesh position={[0.018, tower.height * 0.72 + 0.08, -0.012]} castShadow>
+          <boxGeometry args={[tower.width, tower.height * 0.52, tower.width]} />
+          {material}
+        </mesh>
+      </group>
+    );
+  }
+
+  return (
+    <mesh position={[0, tower.height / 2 + 0.08, 0]} castShadow>
+      <boxGeometry args={[tower.width * 1.7, tower.height, tower.width * 0.72]} />
+      {material}
+    </mesh>
+  );
+}
+
+function TowerCrown({ tower, color, glow }: { tower: TowerPlan; color: string; glow: number }) {
+  return (
+    <mesh position={[0, tower.height + 0.16, 0]} castShadow>
+      {tower.blocked ? (
+        <boxGeometry args={[tower.width * 1.1, 0.08, tower.width * 0.7]} />
+      ) : tower.kind === "dome" ? (
+        <sphereGeometry args={[tower.width * 0.38, 12, 8]} />
+      ) : tower.kind === "slab" ? (
+        <boxGeometry args={[tower.width * 1.4, 0.06, tower.width * 0.9]} />
+      ) : (
+        <coneGeometry args={[tower.width * 0.72, 0.18, tower.kind === "spire" ? 8 : 4]} />
+      )}
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={glow} />
+    </mesh>
   );
 }
 
@@ -320,6 +436,28 @@ function CityBase({ accent }: { accent: string }) {
       <mesh position={[0, 0.018, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[2.15, 2.19, 80]} />
         <meshBasicMaterial color={accent} transparent opacity={0.24} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
+function ElevatedLoop({ accent }: { accent: string }) {
+  const pulse = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    if (!pulse.current) return;
+    const angle = clock.getElapsedTime() * 0.42;
+    pulse.current.position.set(Math.cos(angle) * 1.84, 0.18, Math.sin(angle) * 1.84);
+  });
+
+  return (
+    <group>
+      <mesh position={[0, 0.16, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.84, 0.012, 8, 120]} />
+        <meshBasicMaterial color={accent} transparent opacity={0.28} />
+      </mesh>
+      <mesh ref={pulse}>
+        <sphereGeometry args={[0.035, 12, 12]} />
+        <meshBasicMaterial color="#dff8ff" transparent opacity={0.9} />
       </mesh>
     </group>
   );
@@ -393,12 +531,14 @@ function buildTowers(feature: FeaturePlanet): TowerPlan[] {
     const completed = index < completedCount;
     const blocked = index >= count - blockedCount;
     const width = 0.13 + ((index + feature.id.length) % 3) * 0.018;
+    const kinds: TowerPlan["kind"][] = ["spire", "terrace", "dome", "slab"];
     return {
       id: `${feature.id}-${index}`,
       x: column * 0.22 - ((columns - 1) * 0.22) / 2,
       z: row * 0.22 - ((Math.ceil(count / columns) - 1) * 0.22) / 2,
       height: blocked ? 0.18 + (index % 2) * 0.08 : completed ? 0.38 + ((index * 5) % 6) * 0.09 : 0.16,
       width,
+      kind: kinds[(index + feature.name.length) % kinds.length],
       completed,
       blocked
     };

@@ -40,7 +40,7 @@ Started:
 - Functional Settings and Profile views.
 - Firebase Hosting deployment and optional Google identity session.
 - Textured planetary surfaces, star coronas, rings, task moons, and zoom visibility compensation.
-- Scroll-driven 3D DNA timeline with selectable status nodes.
+- Scroll-driven 3D Time Tunnel with selectable status nodes.
 - Functional project Calendar, Ideas, and Journal workspaces.
 - Local AI recommendations tied to project graph signals.
 - Local daily command briefing generated from project data.
@@ -52,8 +52,11 @@ Started:
   towers, damage beacons, and mobile-safe stacking.
 - Added City Builder overview, street, and risk-scan modes with energy routes, construction
   cranes, scanner pulses, and low-progress risk rings.
-- Upgraded DNA Timeline into a project genome with sequence, risk scan, and AI path modes,
-  dependency arcs, risk fractures, energy particles, node-type shapes, and a timeline ruler.
+- Replaced the DNA concept with a Time Tunnel designed around project management: completed
+  work behind, the current checkpoint centered, future deadlines ahead, plus mission, risk,
+  and forecast modes.
+- Upgraded City Builder with project sidebar selection, varied district architecture, skyline
+  towers, district parks, skybridges, transit pulses, construction zones, and risk diagnostics.
 - Added Galaxy solar diagnostics, star flares, planet classes, and planet readouts so project
   systems communicate health, velocity, gravity, blockers, and next action more clearly.
 - Phase 1 completion track running in parallel.

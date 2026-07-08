@@ -1,25 +1,23 @@
 import { lazy, Suspense, useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import {
   BarChart3,
   CalendarDays,
-  CheckCircle2,
-  Dna,
   Factory,
   Lightbulb,
   NotebookPen,
   Orbit,
   Settings,
-  UserCircle
+  UserCircle,
+  Waypoints
 } from "lucide-react";
 
 import { ProjectOrbitCard } from "@/components/ProjectOrbitCard";
 import { StatusPill } from "@/components/StatusPill";
 import type { MissionData, TimelineNode } from "@/types/domain";
-import type { GenomeMode } from "@/scenes/DnaScene";
+import type { TimeTunnelMode } from "@/scenes/TimeTunnelScene";
 
 const GalaxyScene = lazy(() => import("@/scenes/GalaxyScene"));
-const DnaScene = lazy(() => import("@/scenes/DnaScene"));
+const TimeTunnelScene = lazy(() => import("@/scenes/TimeTunnelScene"));
 
 export function GalaxyView({ data }: { data: MissionData }) {
   const [selectedProjectId, setSelectedProjectId] = useState(data.projects[0]?.id ?? "");
@@ -234,7 +232,7 @@ function PlanetMetric({ label, value }: { label: string; value: string | number 
 
 export function TimelineView({ data }: { data: MissionData }) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [mode, setMode] = useState<GenomeMode>("sequence");
+  const [mode, setMode] = useState<TimeTunnelMode>("mission");
   const activeNode = data.timeline[activeIndex];
   const nextAction = useMemo(() => {
     const candidate =
@@ -246,6 +244,8 @@ export function TimelineView({ data }: { data: MissionData }) {
   const riskCount = data.timeline.filter(
     (node) => node.status === "blocked" || (mode === "risk" && node.status !== "done")
   ).length;
+  const completedCount = data.timeline.filter((node) => node.status === "done").length;
+  const futureCount = data.timeline.filter((_, index) => index > activeIndex).length;
 
   return (
     <section
@@ -259,32 +259,32 @@ export function TimelineView({ data }: { data: MissionData }) {
     >
       <div className="relative min-h-[560px] overflow-hidden rounded-lg border border-white/10 bg-void">
         <Suspense fallback={<div className="h-full bg-void" />}>
-          <DnaScene nodes={data.timeline} activeIndex={activeIndex} mode={mode} onSelect={setActiveIndex} />
+          <TimeTunnelScene nodes={data.timeline} activeIndex={activeIndex} mode={mode} onSelect={setActiveIndex} />
         </Suspense>
         <div className="pointer-events-none absolute left-4 top-4">
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-violet">DNA Timeline</p>
-          <h2 className="mt-1 text-2xl font-semibold text-white">Project Genome</h2>
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">Time Tunnel</p>
+          <h2 className="mt-1 text-2xl font-semibold text-white">Project Time Corridor</h2>
           <p className="mt-2 max-w-md text-sm text-slate-400">
-            Nodes are milestones, tasks, features, and events. Fractures show risk.
+            Completed work recedes behind you. Today stays centered. Deadlines and risks appear ahead.
           </p>
         </div>
         <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
-          <GenomeModeButton active={mode === "sequence"} onClick={() => setMode("sequence")}>
-            Sequence
-          </GenomeModeButton>
-          <GenomeModeButton active={mode === "risk"} onClick={() => setMode("risk")}>
+          <TunnelModeButton active={mode === "mission"} onClick={() => setMode("mission")}>
+            Mission
+          </TunnelModeButton>
+          <TunnelModeButton active={mode === "risk"} onClick={() => setMode("risk")}>
             Risk Scan
-          </GenomeModeButton>
-          <GenomeModeButton active={mode === "next"} onClick={() => setMode("next")}>
-            AI Path
-          </GenomeModeButton>
+          </TunnelModeButton>
+          <TunnelModeButton active={mode === "forecast"} onClick={() => setMode("forecast")}>
+            Forecast
+          </TunnelModeButton>
         </div>
       </div>
       <aside className="space-y-3">
         {activeNode ? (
           <section className="glass-panel rounded-lg p-5">
             <div className="flex items-start justify-between gap-3">
-              <Dna className="text-violet" size={24} />
+              <Waypoints className="text-cyan" size={24} />
               <StatusPill status={activeNode.status} />
             </div>
             <p className="mt-5 font-mono text-xs uppercase tracking-[0.18em] text-cyan">
@@ -293,7 +293,7 @@ export function TimelineView({ data }: { data: MissionData }) {
             <h3 className="mt-2 text-xl font-semibold text-white">{activeNode.label}</h3>
             <p className="mt-2 text-sm capitalize text-slate-400">{activeNode.type}</p>
             <p className="mt-4 rounded-md border border-white/10 bg-white/[0.04] p-3 text-sm leading-6 text-slate-300">
-              {describeGenomeNode(activeNode, activeIndex, data.timeline.length)}
+              {describeTunnelNode(activeNode, activeIndex, data.timeline.length)}
             </p>
             <div className="mt-5 flex gap-2">
               <button
@@ -318,24 +318,31 @@ export function TimelineView({ data }: { data: MissionData }) {
           </section>
         ) : null}
         <section className="glass-panel rounded-lg p-4">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan">Genome Signal</p>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan">Tunnel Signal</p>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <PlanetMetric label="Nodes" value={data.timeline.length} />
+            <PlanetMetric label="Done" value={completedCount} />
             <PlanetMetric label="Risks" value={riskCount} />
-            <PlanetMetric label="Mode" value={mode === "next" ? "AI" : mode} />
+            <PlanetMetric label="Ahead" value={futureCount} />
           </div>
           {nextAction ? (
             <div className="mt-3 rounded-md border border-solar/20 bg-solar/10 p-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-solar">
-                Recommended Sequence
+                AI Next Move
               </p>
               <p className="mt-2 text-sm font-semibold text-white">{nextAction.label}</p>
               <p className="mt-1 text-xs text-slate-400">{nextAction.date}</p>
+              <p className="mt-2 text-xs leading-5 text-slate-400">
+                {mode === "risk"
+                  ? "Clear blockers before adding new future commitments."
+                  : mode === "forecast"
+                    ? "Keep future items visible, but only promote one near-term task at a time."
+                    : "Make this the next concrete action in today's execution lane."}
+              </p>
             </div>
           ) : null}
         </section>
         <section className="glass-panel rounded-lg p-4">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-slate-500">Sequence</p>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-slate-500">Timeline</p>
           <div className="mt-3 space-y-1">
             {data.timeline.map((node, index) => (
               <button
@@ -343,7 +350,7 @@ export function TimelineView({ data }: { data: MissionData }) {
                 type="button"
                 onClick={() => setActiveIndex(index)}
                 className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm ${
-                  index === activeIndex ? "bg-violet/15 text-white" : "text-slate-400 hover:bg-white/[0.04]"
+                  index === activeIndex ? "bg-cyan/15 text-white" : "text-slate-400 hover:bg-white/[0.04]"
                 }`}
               >
                 <span className="font-mono text-[10px] text-slate-600">{String(index + 1).padStart(2, "0")}</span>
@@ -357,7 +364,7 @@ export function TimelineView({ data }: { data: MissionData }) {
   );
 }
 
-function GenomeModeButton({
+function TunnelModeButton({
   active,
   onClick,
   children
@@ -381,48 +388,20 @@ function GenomeModeButton({
   );
 }
 
-function describeGenomeNode(node: TimelineNode, index: number, total: number) {
+function describeTunnelNode(node: TimelineNode, index: number, total: number) {
   if (node.status === "blocked") {
-    return "This node is fractured. Clear its blocker before relying on later work in the sequence.";
+    return "This point is a red hazard in the tunnel. Clear its blocker before trusting later work.";
   }
   if (node.status === "done") {
-    return "This node is stable genetic memory: completed work that later milestones can build on.";
+    return "This checkpoint is behind you and stable. It can support later milestones.";
   }
   if (node.status === "in_progress") {
-    return "This is the active execution node. Finish or explicitly block it before starting a new branch.";
+    return "This is the present execution point. Finish it or explicitly mark the blocker before moving ahead.";
   }
   if (index === total - 1) {
-    return "This is the far-future node. Keep it transparent until near-term execution is stable.";
+    return "This is the far-future checkpoint. Keep it visible, but do not over-plan it until near-term work is stable.";
   }
-  return "This node is planned work. It should become active only when the previous sequence is stable.";
-}
-
-function TimelineRow({ node, index }: { node: TimelineNode; index: number }) {
-  const done = node.status === "done";
-  return (
-    <motion.article
-      className={`relative grid gap-3 pl-12 md:grid-cols-2 md:pl-0 ${
-        index % 2 === 0 ? "" : "md:[&>*:first-child]:col-start-2"
-      }`}
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.08 }}
-    >
-      <span className="absolute left-1 top-4 flex h-7 w-7 items-center justify-center rounded-full border border-cyan/35 bg-void text-cyan md:left-[calc(50%-14px)]">
-        {done ? <CheckCircle2 size={15} /> : <span className="h-2 w-2 rounded-full bg-current" />}
-      </span>
-      <div className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-slate-500">{node.date}</p>
-        <h3 className="mt-2 text-lg font-semibold text-white">{node.label}</h3>
-        <div className="mt-3 flex items-center gap-2">
-          <StatusPill status={node.status} />
-          <span className="rounded-full border border-white/10 px-2 py-1 text-xs text-slate-400">
-            {node.type}
-          </span>
-        </div>
-      </div>
-    </motion.article>
-  );
+  return "This is planned work ahead of the present. Pull it forward only when the current checkpoint is stable.";
 }
 
 export function AnalyticsView({ data }: { data: MissionData }) {

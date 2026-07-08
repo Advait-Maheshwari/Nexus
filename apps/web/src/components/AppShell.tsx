@@ -2,17 +2,13 @@ import {
   BarChart3,
   CalendarDays,
   CircuitBoard,
-  Dna,
   Factory,
-  Github,
-  Lightbulb,
   LogOut,
-  NotebookPen,
   Orbit,
   Rocket,
   Settings,
   Sparkles,
-  UserCircle
+  Waypoints
 } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
@@ -26,11 +22,7 @@ export type ViewKey =
   | "city"
   | "analytics"
   | "calendar"
-  | "ideas"
-  | "journal"
-  | "integrations"
-  | "settings"
-  | "profile";
+  | "control";
 
 interface NavItem {
   key: ViewKey;
@@ -42,15 +34,11 @@ const navItems: NavItem[] = [
   { key: "mission", label: "Mission", icon: Rocket },
   { key: "projects", label: "Projects", icon: CircuitBoard },
   { key: "galaxy", label: "Galaxy", icon: Orbit },
-  { key: "timeline", label: "DNA", icon: Dna },
   { key: "city", label: "City", icon: Factory },
+  { key: "timeline", label: "Time Tunnel", icon: Waypoints },
   { key: "analytics", label: "Analytics", icon: BarChart3 },
   { key: "calendar", label: "Calendar", icon: CalendarDays },
-  { key: "ideas", label: "Ideas", icon: Lightbulb },
-  { key: "journal", label: "Journal", icon: NotebookPen },
-  { key: "integrations", label: "Integrations", icon: Github },
-  { key: "settings", label: "Settings", icon: Settings },
-  { key: "profile", label: "Profile", icon: UserCircle }
+  { key: "control", label: "Control Center", icon: Settings }
 ];
 
 interface AppShellProps {
