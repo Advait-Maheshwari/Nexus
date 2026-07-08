@@ -7,8 +7,7 @@ import {
   Orbit,
   Rocket,
   Settings,
-  Sparkles,
-  Waypoints
+  Sparkles
 } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
@@ -18,7 +17,6 @@ export type ViewKey =
   | "mission"
   | "projects"
   | "galaxy"
-  | "timeline"
   | "city"
   | "analytics"
   | "calendar"
@@ -35,7 +33,6 @@ const navItems: NavItem[] = [
   { key: "projects", label: "Projects", icon: CircuitBoard },
   { key: "galaxy", label: "Galaxy", icon: Orbit },
   { key: "city", label: "City", icon: Factory },
-  { key: "timeline", label: "Time Tunnel", icon: Waypoints },
   { key: "analytics", label: "Analytics", icon: BarChart3 },
   { key: "calendar", label: "Calendar", icon: CalendarDays },
   { key: "control", label: "Control Center", icon: Settings }

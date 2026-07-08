@@ -4,8 +4,10 @@ export interface LocalBriefing {
   headline: string;
   focus: string;
   nextTask: string;
+  actionPlan: string[];
   delayRisk: string;
   bottleneck: string;
+  healthNarrative: string;
   weeklyReview: string;
   report: string;
 }
@@ -16,6 +18,9 @@ export function createLocalBriefing(data: MissionData): LocalBriefing {
   const mostBlocked = [...data.projects].sort(
     (first, second) => second.blockedTaskCount - first.blockedTaskCount
   )[0];
+  const slowestHealthyProject = [...data.projects]
+    .filter((project) => project.healthScore >= 70)
+    .sort((first, second) => first.velocity - second.velocity)[0];
   const soonestDeadline = [...data.projects]
     .filter((project) => project.deadline)
     .sort((first, second) => dateScore(first.deadline) - dateScore(second.deadline))[0];
@@ -33,25 +38,44 @@ export function createLocalBriefing(data: MissionData): LocalBriefing {
     (total, project) => total + project.blockedTaskCount,
     0
   );
+  const averageHealth =
+    data.projects.length === 0
+      ? 0
+      : Math.round(data.projects.reduce((total, project) => total + project.healthScore, 0) / data.projects.length);
+  const actionPlan = buildActionPlan({
+    highestPriority,
+    mostBlocked,
+    soonestDeadline,
+    weakestFeature,
+    slowestHealthyProject
+  });
 
   return {
-    headline: `${averageProgress}% portfolio progress with ${totalBlocked} blocked task signals.`,
+    headline: `${averageProgress}% portfolio progress, ${averageHealth}/100 health, and ${totalBlocked} blocked task signal${totalBlocked === 1 ? "" : "s"}.`,
     focus: highestPriority
-      ? `Focus on ${highestPriority.name}. It is ${highestPriority.priority} priority and ${highestPriority.progress}% complete.`
+      ? `Focus on ${highestPriority.name}. It is ${highestPriority.priority} priority, ${highestPriority.progress}% complete, and carrying ${highestPriority.blockedTaskCount} blocker${highestPriority.blockedTaskCount === 1 ? "" : "s"}.`
       : "Create a project before planning the next mission.",
     nextTask:
       highestPriority && weakestFeature
-        ? `Move ${weakestFeature.name} forward with one small task; it is at ${weakestFeature.progress}% and drives ${highestPriority.name}.`
+        ? `Move ${weakestFeature.name} forward with one concrete task; it is at ${weakestFeature.progress}% and drives ${highestPriority.name}.`
         : "Pick the smallest unfinished task and finish it before adding more scope.",
+    actionPlan,
     delayRisk: soonestDeadline
-      ? `${soonestDeadline.name} has the closest deadline (${soonestDeadline.deadline}) at ${soonestDeadline.progress}% completion.`
+      ? `${soonestDeadline.name} has the closest deadline (${soonestDeadline.deadline}) at ${soonestDeadline.progress}% completion. Keep scope tight until it crosses 60%.`
       : "No hard deadline is visible yet. Add one if the project needs time pressure.",
     bottleneck:
       mostBlocked && mostBlocked.blockedTaskCount > 0
         ? `${mostBlocked.name} has ${mostBlocked.blockedTaskCount} blocker${mostBlocked.blockedTaskCount === 1 ? "" : "s"}; resolve that before expanding the roadmap.`
         : "No major blocker cluster detected from the current project graph.",
-    weeklyReview: `This week should protect the zero-cost policy, close visible blockers, and move the highest-priority project through one complete project-feature-task loop.`,
-    report: buildReport(data, averageProgress, totalBlocked)
+    healthNarrative:
+      averageHealth >= 80
+        ? "Portfolio health is strong. The best move is focused execution, not adding new systems."
+        : averageHealth >= 68
+          ? "Portfolio health is usable but uneven. Clear blockers and stabilize low-progress features."
+          : "Portfolio health is under pressure. Reduce scope and recover one project before expanding.",
+    weeklyReview:
+      "This week should protect the zero-cost policy, close visible blockers, and move one project through a complete project-feature-task loop.",
+    report: buildReport(data, averageProgress, averageHealth, totalBlocked, actionPlan)
   };
 }
 
@@ -133,17 +157,60 @@ export function createNotificationTemplate(data: MissionData) {
     briefing.headline,
     briefing.focus,
     briefing.nextTask,
+    ...briefing.actionPlan,
     briefing.bottleneck
   ].join("\n");
 }
 
-function buildReport(data: MissionData, averageProgress: number, totalBlocked: number) {
+function buildActionPlan({
+  highestPriority,
+  mostBlocked,
+  soonestDeadline,
+  weakestFeature,
+  slowestHealthyProject
+}: {
+  highestPriority?: ProjectSummary;
+  mostBlocked?: ProjectSummary;
+  soonestDeadline?: ProjectSummary;
+  weakestFeature?: ProjectSummary["planets"][number];
+  slowestHealthyProject?: ProjectSummary;
+}) {
+  const moves = [
+    mostBlocked && mostBlocked.blockedTaskCount > 0
+      ? `Unblock ${mostBlocked.name}: remove ${mostBlocked.blockedTaskCount} blocker${mostBlocked.blockedTaskCount === 1 ? "" : "s"} before creating new tasks.`
+      : undefined,
+    highestPriority && weakestFeature
+      ? `Advance ${highestPriority.name}: complete one task inside ${weakestFeature.name}.`
+      : undefined,
+    soonestDeadline
+      ? `Protect ${soonestDeadline.name}: review deadline scope for ${soonestDeadline.deadline}.`
+      : undefined,
+    slowestHealthyProject
+      ? `Use spare focus on ${slowestHealthyProject.name}: health is stable, but velocity is only ${slowestHealthyProject.velocity.toFixed(1)}.`
+      : undefined
+  ].filter(Boolean) as string[];
+
+  return moves.slice(0, 3);
+}
+
+function buildReport(
+  data: MissionData,
+  averageProgress: number,
+  averageHealth: number,
+  totalBlocked: number,
+  actionPlan: string[]
+) {
   return [
     "# Nexus Local Report",
     "",
     `Generated: ${new Date().toLocaleString()}`,
     `Average progress: ${averageProgress}%`,
+    `Average health: ${averageHealth}/100`,
     `Blocked tasks: ${totalBlocked}`,
+    "",
+    "## Next Moves",
+    "",
+    ...actionPlan.map((move, index) => `${index + 1}. ${move}`),
     "",
     "## Projects",
     "",

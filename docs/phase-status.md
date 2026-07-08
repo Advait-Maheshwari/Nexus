@@ -40,7 +40,7 @@ Started:
 - Functional Settings and Profile views.
 - Firebase Hosting deployment and optional Google identity session.
 - Textured planetary surfaces, star coronas, rings, task moons, and zoom visibility compensation.
-- Scroll-driven 3D Time Tunnel with selectable status nodes.
+- Portfolio Analytics dashboard with health, risk, time, velocity, and feature heatmap signals.
 - Functional project Calendar, Ideas, and Journal workspaces.
 - Local AI recommendations tied to project graph signals.
 - Local daily command briefing generated from project data.
@@ -52,13 +52,14 @@ Started:
   towers, damage beacons, and mobile-safe stacking.
 - Added City Builder overview, street, and risk-scan modes with energy routes, construction
   cranes, scanner pulses, and low-progress risk rings.
-- Replaced the DNA concept with a Time Tunnel designed around project management: completed
-  work behind, the current checkpoint centered, future deadlines ahead, plus mission, risk,
-  and forecast modes.
-- Upgraded City Builder with project sidebar selection, varied district architecture, skyline
-  towers, district parks, skybridges, transit pulses, construction zones, and risk diagnostics.
-- Added Galaxy solar diagnostics, star flares, planet classes, and planet readouts so project
-  systems communicate health, velocity, gravity, blockers, and next action more clearly.
+- Removed the experimental Time Tunnel surface because it did not meet the product bar.
+- Upgraded City Builder with denser project-specific cities, feature districts, street grids,
+  micro-buildings, skyline towers, parks, skybridges, transit loops, construction zones, risk
+  damage, and unrestricted orbit controls.
+- Added Galaxy semantic mapping so stars are projects, planets are features, moons are tasks,
+  and red moons/blocker signals communicate project risk instead of pure decoration.
+- Improved the free local AI briefing with portfolio health, next three moves, deadline pressure,
+  blocker focus, and exportable zero-cost reports.
 - Phase 1 completion track running in parallel.
 
 Launch hardening left after this phase: deeper live-data parity for every 3D scene and visual

@@ -17,8 +17,8 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 - Status: complete for the current zero-cost local-first release.
 - Phase 1 completion track continues inside this phase.
 - Galaxy View as the primary spatial overview.
-- Time Tunnel for milestone/task chronology.
-- 3D Time Tunnel with scroll/step navigation, risk scan, and forecast modes.
+- Timeline data remains in the domain model for future planning surfaces.
+- Analytics Command Dashboard for portfolio progress, blockers, velocity, time, and feature health.
 - City Builder for project health and completion (interactive first version complete).
 - Textured star/planet/moon Galaxy hierarchy with distance-safe rendering.
 - Smooth transitions between 3D exploration and 2D editing.

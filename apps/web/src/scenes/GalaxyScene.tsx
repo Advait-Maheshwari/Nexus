@@ -177,7 +177,7 @@ function ProjectStar({
             anchorY="middle"
             maxWidth={1.2}
           >
-            {project.planets.length} planets / {project.progress}% complete
+            project star / {project.planets.length} feature planets
           </Text>
         </Billboard>
       </Float>
@@ -403,6 +403,16 @@ function FeaturePlanetMesh({
               >
                 {planet.name}
               </Text>
+              <Text
+                position={[0, -Math.max(0.05, planet.size * 0.58), 0]}
+                fontSize={Math.max(0.026, planet.size * 0.28)}
+                color={planet.blockedTaskCount > 0 ? "#fecdd3" : "#94a3b8"}
+                anchorX="center"
+                anchorY="middle"
+                maxWidth={0.9}
+              >
+                feature / {planet.taskCount} task moons / {planet.progress}%
+              </Text>
             </Billboard>
           ) : null}
         </>
@@ -414,16 +424,31 @@ function FeaturePlanetMesh({
         </mesh>
       ) : null}
       {visibleMoons.map((moon, index) => (
-        <mesh key={`${planet.id}-moon-${index}`} position={moon.position}>
-          <sphereGeometry args={[Math.max(0.012, planet.size * (systemSelected ? 0.2 : 0.16)), 22, 22]} />
-          <meshStandardMaterial
-            map={moonTexture}
-            color={moon.color}
-            emissive={moon.color}
-            emissiveIntensity={selected ? 0.34 : 0.2}
-            roughness={0.94}
-          />
-        </mesh>
+        <group key={`${planet.id}-moon-${index}`} position={moon.position}>
+          <mesh>
+            <sphereGeometry args={[Math.max(0.012, planet.size * (systemSelected ? 0.2 : 0.16)), 22, 22]} />
+            <meshStandardMaterial
+              map={moonTexture}
+              color={moon.color}
+              emissive={moon.color}
+              emissiveIntensity={selected ? 0.34 : 0.2}
+              roughness={0.94}
+            />
+          </mesh>
+          {selected && index < 3 ? (
+            <Billboard position={[0, planet.size * 0.42, 0]}>
+              <Text
+                fontSize={Math.max(0.018, planet.size * 0.16)}
+                color={moon.color}
+                anchorX="center"
+                anchorY="middle"
+                maxWidth={0.35}
+              >
+                task
+              </Text>
+            </Billboard>
+          ) : null}
+        </group>
       ))}
     </group>
   );

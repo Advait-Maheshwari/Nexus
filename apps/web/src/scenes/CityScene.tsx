@@ -1,11 +1,21 @@
-import { Grid, Line, OrbitControls, Text } from "@react-three/drei";
+import { Billboard, Grid, Line, OrbitControls, Text } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 
 import type { FeaturePlanet, ProjectSummary } from "@/types/domain";
 
 export type CityViewMode = "overview" | "street" | "risk";
+
+interface CityStyle {
+  name: string;
+  baseColor: string;
+  accent: string;
+  secondary: string;
+  parkColor: string;
+  density: number;
+  coreShape: "spire" | "reactor" | "citadel";
+}
 
 interface TowerPlan {
   id: string;
@@ -13,192 +23,414 @@ interface TowerPlan {
   z: number;
   height: number;
   width: number;
-  kind: "spire" | "terrace" | "dome" | "slab";
+  depth: number;
+  kind: "spire" | "terrace" | "dome" | "slab" | "needle";
   completed: boolean;
   blocked: boolean;
 }
 
+interface MicroBuildingPlan {
+  id: string;
+  x: number;
+  z: number;
+  height: number;
+  width: number;
+  color: string;
+}
+
+interface DistrictPlan {
+  feature: FeaturePlanet;
+  position: [number, number, number];
+  rotation: number;
+  towers: TowerPlan[];
+  microBuildings: MicroBuildingPlan[];
+}
+
 function ProjectCity({ project, mode }: { project: ProjectSummary; mode: CityViewMode }) {
-  const districts = useMemo(() => buildDistricts(project), [project]);
-  const completedRatio = project.progress / 100;
-  const coreHeight = 0.9 + completedRatio * 1.2;
+  const style = useMemo(() => getCityStyle(project), [project]);
+  const districts = useMemo(() => buildDistricts(project, style), [project, style]);
 
   return (
-    <group>
-      <CityBase accent={project.accent} />
-      <RoadNetwork accent={project.accent} />
-      <ElevatedLoop accent={project.accent} />
-      <TransitLines districts={districts} accent={project.accent} mode={mode} />
-
-      <group position={[0, 0, 0]}>
-        <mesh position={[0, 0.045, 0]} receiveShadow>
-          <cylinderGeometry args={[0.52, 0.62, 0.09, 10]} />
-          <meshStandardMaterial
-            color="#0c1727"
-            emissive={project.accent}
-            emissiveIntensity={0.12}
-            roughness={0.6}
-          />
-        </mesh>
-        <mesh position={[0, coreHeight / 2 + 0.09, 0]} castShadow>
-          <cylinderGeometry args={[0.16, 0.24, coreHeight, 8]} />
-          <meshStandardMaterial
-            color={project.accent}
-            emissive={project.accent}
-            emissiveIntensity={0.42}
-            metalness={0.25}
-            roughness={0.38}
-          />
-        </mesh>
-        <mesh position={[0, coreHeight + 0.24, 0]} castShadow>
-          <coneGeometry args={[0.24, 0.34, 8]} />
-          <meshStandardMaterial
-            color="#dff8ff"
-            emissive={project.accent}
-            emissiveIntensity={0.6}
-            metalness={0.2}
-            roughness={0.28}
-          />
-        </mesh>
-        <mesh position={[0, coreHeight + 0.42, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.32, 0.01, 8, 32]} />
-          <meshStandardMaterial color={project.accent} emissive={project.accent} emissiveIntensity={1} />
-        </mesh>
-      </group>
+    <group scale={1.18}>
+      <CityBase style={style} mode={mode} />
+      <RoadNetwork style={style} />
+      <ElevatedLoop style={style} />
+      <TransitLines districts={districts} style={style} mode={mode} />
+      <CentralCore project={project} style={style} />
 
       {districts.map((district, index) => (
         <FeatureDistrict
           key={district.feature.id}
-          accent={project.accent}
-          feature={district.feature}
+          district={district}
           index={index}
-          position={district.position}
-          towers={district.towers}
+          style={style}
           mode={mode}
         />
       ))}
 
-      {project.blockedTaskCount > 0 ? (
-        <WarningBeacon count={project.blockedTaskCount} accent="#fb7185" />
-      ) : null}
-      {mode === "street" ? <StreetScanner accent={project.accent} /> : null}
+      <OuterCityDetails style={style} blockedCount={project.blockedTaskCount} />
 
-      <Text
-        position={[0, 0.08, 2.45]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={0.16}
-        color="#ffffff"
-        anchorX="center"
-      >
-        {project.codename} CITY
-      </Text>
+      {mode === "street" ? <StreetScanner accent={style.accent} /> : null}
+
+      <Billboard position={[0, 0.18, 2.85]}>
+        <Text fontSize={0.14} color="#ffffff" anchorX="center" anchorY="middle" maxWidth={2.4}>
+          {project.codename} PROJECT CITY
+        </Text>
+        <Text
+          position={[0, -0.16, 0]}
+          fontSize={0.07}
+          color="#94a3b8"
+          anchorX="center"
+          anchorY="middle"
+          maxWidth={2.8}
+        >
+          {style.name} / districts are features / towers are tasks
+        </Text>
+      </Billboard>
+    </group>
+  );
+}
+
+function CentralCore({ project, style }: { project: ProjectSummary; style: CityStyle }) {
+  const completedRatio = project.progress / 100;
+  const coreHeight = 0.92 + completedRatio * 1.55 + (project.priority === "critical" ? 0.32 : 0);
+  const core = useRef<THREE.Group>(null);
+
+  useFrame(({ clock }) => {
+    if (!core.current) return;
+    core.current.rotation.y = Math.sin(clock.getElapsedTime() * 0.18) * 0.05;
+  });
+
+  return (
+    <group ref={core}>
+      <mesh position={[0, 0.04, 0]} receiveShadow>
+        <cylinderGeometry args={[0.56, 0.7, 0.08, 10]} />
+        <meshStandardMaterial color={style.baseColor} emissive={style.accent} emissiveIntensity={0.12} />
+      </mesh>
+      <mesh position={[0, coreHeight / 2 + 0.08, 0]} castShadow>
+        {style.coreShape === "reactor" ? (
+          <cylinderGeometry args={[0.22, 0.3, coreHeight, 12]} />
+        ) : style.coreShape === "citadel" ? (
+          <boxGeometry args={[0.42, coreHeight, 0.42]} />
+        ) : (
+          <cylinderGeometry args={[0.12, 0.28, coreHeight, 8]} />
+        )}
+        <meshStandardMaterial
+          color={style.accent}
+          emissive={style.accent}
+          emissiveIntensity={0.5}
+          metalness={0.28}
+          roughness={0.34}
+        />
+      </mesh>
+      <mesh position={[0, coreHeight + 0.2, 0]} castShadow>
+        <coneGeometry args={[0.28, 0.36, 8]} />
+        <meshStandardMaterial color="#dff8ff" emissive={style.accent} emissiveIntensity={0.72} />
+      </mesh>
+      <mesh position={[0, coreHeight + 0.42, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.36, 0.012, 8, 72]} />
+        <meshBasicMaterial color={style.secondary} transparent opacity={0.74} />
+      </mesh>
+      <HologramNeedles accent={style.secondary} count={project.featureCount} radius={0.72} />
     </group>
   );
 }
 
 function FeatureDistrict({
-  feature,
-  accent,
+  district,
   index,
-  position,
-  towers
-  ,
+  style,
   mode
 }: {
-  feature: FeaturePlanet;
-  accent: string;
+  district: DistrictPlan;
   index: number;
-  position: [number, number, number];
-  towers: TowerPlan[];
+  style: CityStyle;
   mode: CityViewMode;
 }) {
-  const featureColor = feature.blockedTaskCount > 0 ? "#fb7185" : feature.progress >= 70 ? "#4ade80" : accent;
+  const { feature, towers, microBuildings } = district;
+  const featureColor =
+    feature.blockedTaskCount > 0 ? "#fb7185" : feature.progress >= 70 ? style.parkColor : style.accent;
 
   return (
-    <group position={position}>
-      <mesh position={[0, 0.035, 0]} receiveShadow>
-        <cylinderGeometry args={[0.64, 0.7, 0.07, 6]} />
-        <meshStandardMaterial
-          color="#081322"
-          emissive={featureColor}
-          emissiveIntensity={0.14}
-          roughness={0.72}
-        />
-      </mesh>
-      <mesh position={[0, 0.078, 0]} rotation={[Math.PI / 2, 0, index * 0.4]}>
-        <ringGeometry args={[0.5, 0.53, 40]} />
-        <meshBasicMaterial color={featureColor} transparent opacity={0.5} side={THREE.DoubleSide} />
-      </mesh>
-
-      <DistrictPark accent={featureColor} progress={feature.progress} />
+    <group position={district.position} rotation={[0, district.rotation, 0]}>
+      <DistrictPlate color={featureColor} mode={mode} blocked={feature.blockedTaskCount > 0} />
+      <DistrictStreetGrid color={featureColor} />
+      <DistrictPark color={style.parkColor} progress={feature.progress} />
       <Skybridges towers={towers} accent={featureColor} />
+
+      {microBuildings.map((building) => (
+        <MicroBuilding key={building.id} building={building} />
+      ))}
 
       {towers.map((tower) => (
         <CityTower key={tower.id} accent={featureColor} tower={tower} />
       ))}
 
-      {feature.blockedTaskCount > 0 ? (
-        <group position={[0.38, 0.2, -0.38]}>
-          <mesh castShadow>
-            <cylinderGeometry args={[0.055, 0.08, 0.34, 8]} />
-            <meshStandardMaterial color="#fb7185" emissive="#fb7185" emissiveIntensity={1.2} />
-          </mesh>
-          <pointLight intensity={1.2} color="#fb7185" distance={1.4} />
-        </group>
-      ) : null}
-      {feature.status === "in_progress" ? (
-        <ConstructionCrane accent={featureColor} progress={feature.progress} />
-      ) : null}
-      {mode === "risk" && feature.progress < 40 ? (
-        <mesh position={[0, 0.11, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.66, 0.7, 48]} />
-          <meshBasicMaterial color="#fb7185" transparent opacity={0.45} side={THREE.DoubleSide} />
-        </mesh>
-      ) : null}
+      <TransitStop accent={featureColor} index={index} />
 
-      <Text
-        position={[0, 0.09, 0.72]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        fontSize={0.085}
-        color={feature.blockedTaskCount > 0 ? "#fecdd3" : "#cbd5e1"}
-        anchorX="center"
-        maxWidth={1.1}
-      >
-        {feature.name}
-      </Text>
+      {feature.blockedTaskCount > 0 ? <DamageCluster accent="#fb7185" count={feature.blockedTaskCount} /> : null}
+      {feature.status === "in_progress" ? <ConstructionCrane accent={featureColor} progress={feature.progress} /> : null}
+      {mode === "risk" ? <RiskHalo feature={feature} /> : null}
+
+      <Billboard position={[0, 0.42, 0.86]}>
+        <Text
+          fontSize={0.075}
+          color={feature.blockedTaskCount > 0 ? "#fecdd3" : "#dff8ff"}
+          anchorX="center"
+          anchorY="middle"
+          maxWidth={1.24}
+        >
+          {feature.name}
+        </Text>
+        <Text
+          position={[0, -0.1, 0]}
+          fontSize={0.045}
+          color="#94a3b8"
+          anchorX="center"
+          anchorY="middle"
+          maxWidth={1.24}
+        >
+          feature district / {feature.taskCount} tasks / {feature.progress}%
+        </Text>
+      </Billboard>
     </group>
   );
 }
 
-function DistrictPark({ accent, progress }: { accent: string; progress: number }) {
+function DistrictPlate({ color, mode, blocked }: { color: string; mode: CityViewMode; blocked: boolean }) {
+  return (
+    <group>
+      <mesh position={[0, 0.035, 0]} receiveShadow>
+        <cylinderGeometry args={[0.78, 0.88, 0.07, 8]} />
+        <meshStandardMaterial
+          color={blocked ? "#210817" : "#081322"}
+          emissive={mode === "risk" || blocked ? color : "#02040a"}
+          emissiveIntensity={blocked ? 0.28 : 0.12}
+          roughness={0.78}
+        />
+      </mesh>
+      <mesh position={[0, 0.081, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.62, 0.66, 64]} />
+        <meshBasicMaterial color={color} transparent opacity={mode === "risk" ? 0.62 : 0.36} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
+function DistrictStreetGrid({ color }: { color: string }) {
+  const roads = [
+    { scale: [1.2, 1, 0.04], position: [0, 0.092, 0] },
+    { scale: [0.04, 1, 1.2], position: [0, 0.094, 0] },
+    { scale: [0.72, 1, 0.028], position: [0, 0.096, 0.32] },
+    { scale: [0.72, 1, 0.028], position: [0, 0.098, -0.32] },
+    { scale: [0.028, 1, 0.72], position: [0.32, 0.1, 0] },
+    { scale: [0.028, 1, 0.72], position: [-0.32, 0.102, 0] }
+  ] as const;
+
+  return (
+    <group>
+      {roads.map((road, index) => (
+        <mesh key={`district-road-${index}`} position={road.position} rotation={[-Math.PI / 2, 0, 0]} scale={road.scale}>
+          <planeGeometry args={[1, 1]} />
+          <meshBasicMaterial color="#030712" transparent opacity={0.9} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+      {[-0.42, 0, 0.42].map((x) => (
+        <Line key={`lane-x-${x}`} points={[[x, 0.108, -0.54], [x, 0.108, 0.54]]} color={color} transparent opacity={0.14} />
+      ))}
+    </group>
+  );
+}
+
+function DistrictPark({ color, progress }: { color: string; progress: number }) {
   const opacity = 0.18 + Math.min(0.42, progress / 180);
   return (
-    <group position={[-0.28, 0.092, 0.26]}>
+    <group position={[-0.42, 0.108, 0.42]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.16, 28]} />
-        <meshBasicMaterial color="#4ade80" transparent opacity={opacity} side={THREE.DoubleSide} />
+        <circleGeometry args={[0.18, 32]} />
+        <meshBasicMaterial color={color} transparent opacity={opacity} side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[0, 0.035, 0]}>
-        <coneGeometry args={[0.045, 0.09, 7]} />
-        <meshStandardMaterial color="#4ade80" emissive={accent} emissiveIntensity={0.18} />
+      {[-0.08, 0.02, 0.1].map((x, index) => (
+        <mesh key={`park-spire-${index}`} position={[x, 0.04 + index * 0.01, index * -0.045]}>
+          <coneGeometry args={[0.034, 0.08 + index * 0.025, 7]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.2} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function MicroBuilding({ building }: { building: MicroBuildingPlan }) {
+  return (
+    <group position={[building.x, 0, building.z]}>
+      <mesh position={[0, building.height / 2 + 0.09, 0]} castShadow>
+        <boxGeometry args={[building.width, building.height, building.width * 0.82]} />
+        <meshStandardMaterial
+          color={building.color}
+          emissive={building.color}
+          emissiveIntensity={0.08}
+          metalness={0.12}
+          roughness={0.58}
+        />
       </mesh>
-      <mesh position={[0.11, 0.025, -0.02]}>
-        <coneGeometry args={[0.035, 0.07, 7]} />
-        <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={0.15} />
+      <mesh position={[0, building.height + 0.105, 0]}>
+        <boxGeometry args={[building.width * 0.68, 0.018, building.width * 0.62]} />
+        <meshBasicMaterial color="#dff8ff" transparent opacity={0.42} />
+      </mesh>
+    </group>
+  );
+}
+
+function CityTower({ accent, tower }: { accent: string; tower: TowerPlan }) {
+  const bodyColor = tower.blocked ? "#35111e" : tower.completed ? accent : "#1c293b";
+  const topColor = tower.blocked ? "#fb7185" : tower.completed ? "#dff8ff" : "#64748b";
+  const opacity = tower.completed || tower.blocked ? 1 : 0.66;
+
+  return (
+    <group position={[tower.x, 0, tower.z]}>
+      <TowerBody tower={tower} bodyColor={bodyColor} opacity={opacity} />
+      <TowerCrown tower={tower} color={topColor} glow={tower.completed ? 0.58 : 0.22} />
+      <WindowGrid tower={tower} color={tower.blocked ? "#fb7185" : "#7dd3fc"} />
+      <RooftopDetails tower={tower} color={topColor} />
+      {tower.blocked ? <BrokenDebris width={tower.width} /> : null}
+    </group>
+  );
+}
+
+function TowerBody({ tower, bodyColor, opacity }: { tower: TowerPlan; bodyColor: string; opacity: number }) {
+  const material = (
+    <meshStandardMaterial
+      color={bodyColor}
+      emissive={tower.completed || tower.blocked ? bodyColor : "#02040a"}
+      emissiveIntensity={tower.completed ? 0.32 : tower.blocked ? 0.74 : 0.03}
+      metalness={0.22}
+      roughness={0.42}
+      transparent={!tower.completed && !tower.blocked}
+      opacity={opacity}
+    />
+  );
+
+  if (tower.kind === "spire" || tower.kind === "needle") {
+    return (
+      <mesh position={[0, tower.height / 2 + 0.09, 0]} castShadow>
+        <cylinderGeometry args={[tower.width * 0.42, tower.width * 0.72, tower.height, tower.kind === "needle" ? 6 : 9]} />
+        {material}
+      </mesh>
+    );
+  }
+
+  if (tower.kind === "dome") {
+    return (
+      <group>
+        <mesh position={[0, tower.height / 2 + 0.09, 0]} castShadow>
+          <cylinderGeometry args={[tower.width * 0.72, tower.width * 0.78, tower.height * 0.78, 12]} />
+          {material}
+        </mesh>
+        <mesh position={[0, tower.height * 0.84 + 0.1, 0]} castShadow>
+          <sphereGeometry args={[tower.width * 0.76, 18, 10]} />
+          {material}
+        </mesh>
+      </group>
+    );
+  }
+
+  if (tower.kind === "terrace") {
+    return (
+      <group>
+        <mesh position={[0, tower.height * 0.25 + 0.09, 0]} castShadow>
+          <boxGeometry args={[tower.width * 1.28, tower.height * 0.5, tower.depth * 1.28]} />
+          {material}
+        </mesh>
+        <mesh position={[0.025, tower.height * 0.66 + 0.09, -0.018]} castShadow>
+          <boxGeometry args={[tower.width, tower.height * 0.46, tower.depth]} />
+          {material}
+        </mesh>
+      </group>
+    );
+  }
+
+  return (
+    <mesh position={[0, tower.height / 2 + 0.09, 0]} castShadow>
+      <boxGeometry args={[tower.width * 1.55, tower.height, tower.depth]} />
+      {material}
+    </mesh>
+  );
+}
+
+function TowerCrown({ tower, color, glow }: { tower: TowerPlan; color: string; glow: number }) {
+  return (
+    <mesh position={[0, tower.height + 0.16, 0]} castShadow>
+      {tower.blocked ? (
+        <boxGeometry args={[tower.width * 1.12, 0.075, tower.depth * 0.78]} />
+      ) : tower.kind === "dome" ? (
+        <sphereGeometry args={[tower.width * 0.38, 14, 8]} />
+      ) : tower.kind === "slab" ? (
+        <boxGeometry args={[tower.width * 1.35, 0.055, tower.depth * 0.9]} />
+      ) : (
+        <coneGeometry args={[tower.width * 0.65, 0.18, tower.kind === "needle" ? 6 : 8]} />
+      )}
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={glow} />
+    </mesh>
+  );
+}
+
+function WindowGrid({ tower, color }: { tower: TowerPlan; color: string }) {
+  const rows = Math.max(3, Math.min(9, Math.floor(tower.height / 0.11)));
+  const cols = tower.kind === "slab" ? 3 : 2;
+  return (
+    <>
+      {Array.from({ length: rows }, (_, row) =>
+        Array.from({ length: cols }, (_, col) => {
+          const y = 0.18 + row * (tower.height / (rows + 1));
+          const x = (col - (cols - 1) / 2) * tower.width * 0.32;
+          return (
+            <mesh key={`window-${row}-${col}`} position={[x, y, tower.depth / 2 + 0.003]}>
+              <boxGeometry args={[tower.width * 0.16, 0.012, 0.004]} />
+              <meshBasicMaterial color={color} transparent opacity={tower.completed ? 0.62 : 0.38} />
+            </mesh>
+          );
+        })
+      )}
+    </>
+  );
+}
+
+function RooftopDetails({ tower, color }: { tower: TowerPlan; color: string }) {
+  return (
+    <group position={[0, tower.height + 0.2, 0]}>
+      <mesh position={[tower.width * 0.32, 0.015, 0]}>
+        <boxGeometry args={[0.026, 0.03, 0.026]} />
+        <meshBasicMaterial color={color} transparent opacity={0.72} />
+      </mesh>
+      <Line points={[[0, 0.02, 0], [0, 0.16, 0]]} color={color} transparent opacity={0.56} />
+    </group>
+  );
+}
+
+function BrokenDebris({ width }: { width: number }) {
+  return (
+    <group>
+      <mesh position={[width * 0.86, 0.12, width * 0.45]} rotation={[0, 0.4, 0]} castShadow>
+        <boxGeometry args={[0.08, 0.08, 0.08]} />
+        <meshStandardMaterial color="#fb7185" emissive="#fb7185" emissiveIntensity={0.8} />
+      </mesh>
+      <mesh position={[-width * 0.74, 0.08, -width * 0.55]} rotation={[0.2, 0.6, 0.1]} castShadow>
+        <boxGeometry args={[0.1, 0.06, 0.08]} />
+        <meshStandardMaterial color="#7f1d1d" emissive="#fb7185" emissiveIntensity={0.25} />
       </mesh>
     </group>
   );
 }
 
 function Skybridges({ towers, accent }: { towers: TowerPlan[]; accent: string }) {
-  const completed = towers.filter((tower) => tower.completed && !tower.blocked).slice(0, 4);
+  const completed = towers.filter((tower) => tower.completed && !tower.blocked).slice(0, 6);
   if (completed.length < 2) return null;
 
   return (
     <group>
       {completed.slice(1).map((tower, index) => {
         const previous = completed[index];
-        const y = Math.min(previous.height, tower.height) * 0.72 + 0.1;
+        const y = Math.min(previous.height, tower.height) * 0.68 + 0.16;
         return (
           <Line
             key={`bridge-${tower.id}`}
@@ -206,7 +438,7 @@ function Skybridges({ towers, accent }: { towers: TowerPlan[]; accent: string })
             color={accent}
             lineWidth={2}
             transparent
-            opacity={0.38}
+            opacity={0.42}
           />
         );
       })}
@@ -214,62 +446,103 @@ function Skybridges({ towers, accent }: { towers: TowerPlan[]; accent: string })
   );
 }
 
-function ConstructionCrane({ accent, progress }: { accent: string; progress: number }) {
-  const group = useRef<THREE.Group>(null);
-  useFrame(({ clock }) => {
-    if (!group.current) return;
-    group.current.rotation.y = Math.sin(clock.getElapsedTime() * 0.5) * 0.16;
-  });
+function TransitStop({ accent, index }: { accent: string; index: number }) {
   return (
-    <group ref={group} position={[-0.42, 0.12 + progress / 500, 0.4]}>
-      <mesh position={[0, 0.18, 0]}>
-        <boxGeometry args={[0.035, 0.36, 0.035]} />
-        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.3} />
+    <group position={[0.54, 0.13, -0.46]} rotation={[0, index * 0.4, 0]}>
+      <mesh>
+        <cylinderGeometry args={[0.045, 0.055, 0.13, 8]} />
+        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.55} />
       </mesh>
-      <mesh position={[0.17, 0.36, 0]}>
-        <boxGeometry args={[0.36, 0.025, 0.025]} />
-        <meshStandardMaterial color="#dff8ff" emissive={accent} emissiveIntensity={0.25} />
+      <mesh position={[0, 0.1, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.075, 0.005, 8, 32]} />
+        <meshBasicMaterial color="#dff8ff" transparent opacity={0.76} />
       </mesh>
-      <Line points={[[0.32, 0.35, 0], [0.32, 0.12, 0]]} color="#f5c451" lineWidth={1} transparent opacity={0.7} />
     </group>
   );
 }
 
-function TransitLines({
-  districts,
-  accent,
-  mode
-}: {
-  districts: Array<{ position: [number, number, number]; feature: FeaturePlanet; towers: TowerPlan[] }>;
-  accent: string;
-  mode: CityViewMode;
-}) {
+function DamageCluster({ accent, count }: { accent: string; count: number }) {
+  return (
+    <group position={[0.42, 0.16, -0.46]}>
+      {Array.from({ length: Math.min(5, count + 1) }, (_, index) => (
+        <mesh key={`damage-${index}`} position={[index * 0.045 - 0.08, index * 0.025, (index % 2) * 0.05]} castShadow>
+          <boxGeometry args={[0.055, 0.055, 0.055]} />
+          <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.45} />
+        </mesh>
+      ))}
+      <pointLight intensity={1.25} color={accent} distance={1.4} />
+    </group>
+  );
+}
+
+function RiskHalo({ feature }: { feature: FeaturePlanet }) {
+  const danger = feature.blockedTaskCount > 0 || feature.progress < 35;
+  return (
+    <mesh position={[0, 0.13, 0]} rotation={[Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[0.76, 0.82, 72]} />
+      <meshBasicMaterial
+        color={danger ? "#fb7185" : "#48e5ff"}
+        transparent
+        opacity={danger ? 0.46 : 0.2}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
+}
+
+function ConstructionCrane({ accent, progress }: { accent: string; progress: number }) {
+  const group = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    if (!group.current) return;
+    group.current.rotation.y = Math.sin(clock.getElapsedTime() * 0.52) * 0.2;
+  });
+  return (
+    <group ref={group} position={[-0.55, 0.16 + progress / 520, 0.48]}>
+      <mesh position={[0, 0.2, 0]}>
+        <boxGeometry args={[0.035, 0.4, 0.035]} />
+        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.32} />
+      </mesh>
+      <mesh position={[0.18, 0.4, 0]}>
+        <boxGeometry args={[0.4, 0.026, 0.026]} />
+        <meshStandardMaterial color="#dff8ff" emissive={accent} emissiveIntensity={0.25} />
+      </mesh>
+      <Line points={[[0.36, 0.39, 0], [0.36, 0.16, 0]]} color="#f5c451" lineWidth={1} transparent opacity={0.75} />
+    </group>
+  );
+}
+
+function TransitLines({ districts, style, mode }: { districts: DistrictPlan[]; style: CityStyle; mode: CityViewMode }) {
   const pulse = useRef<THREE.Group>(null);
   useFrame(({ clock }) => {
     if (!pulse.current) return;
     pulse.current.children.forEach((child, index) => {
       const district = districts[index % districts.length];
-      const phase = (clock.getElapsedTime() * 0.55 + index * 0.23) % 1;
-      child.position.set(district.position[0] * phase, 0.08, district.position[2] * phase);
+      const phase = (clock.getElapsedTime() * 0.42 + index * 0.19) % 1;
+      child.position.set(district.position[0] * phase, 0.1, district.position[2] * phase);
     });
   });
+
   return (
     <group>
       {districts.map((district) => (
         <Line
           key={`transit-${district.feature.id}`}
-          points={[[0, 0.07, 0], [district.position[0], 0.07, district.position[2]]]}
-          color={mode === "risk" && district.feature.blockedTaskCount > 0 ? "#fb7185" : accent}
-          lineWidth={mode === "street" ? 2 : 1.2}
+          points={[[0, 0.09, 0], [district.position[0], 0.09, district.position[2]]]}
+          color={mode === "risk" && district.feature.blockedTaskCount > 0 ? "#fb7185" : style.secondary}
+          lineWidth={mode === "street" ? 2.4 : 1.4}
           transparent
-          opacity={mode === "risk" ? 0.48 : 0.3}
+          opacity={mode === "risk" ? 0.54 : 0.34}
         />
       ))}
       <group ref={pulse}>
         {districts.map((district) => (
           <mesh key={`transit-pulse-${district.feature.id}`}>
-            <sphereGeometry args={[0.026, 12, 12]} />
-            <meshBasicMaterial color={district.feature.blockedTaskCount > 0 ? "#fb7185" : "#48e5ff"} transparent opacity={0.85} />
+            <sphereGeometry args={[0.03, 12, 12]} />
+            <meshBasicMaterial
+              color={district.feature.blockedTaskCount > 0 ? "#fb7185" : "#48e5ff"}
+              transparent
+              opacity={0.86}
+            />
           </mesh>
         ))}
       </group>
@@ -281,194 +554,67 @@ function StreetScanner({ accent }: { accent: string }) {
   const ring = useRef<THREE.Mesh>(null);
   useFrame(({ clock }) => {
     if (!ring.current) return;
-    const scale = 0.8 + (clock.getElapsedTime() % 2.4) * 0.62;
+    const scale = 0.8 + (clock.getElapsedTime() % 2.4) * 0.7;
     ring.current.scale.setScalar(scale);
   });
   return (
-    <mesh ref={ring} position={[0, 0.09, 0]} rotation={[Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[0.72, 0.74, 72]} />
+    <mesh ref={ring} position={[0, 0.12, 0]} rotation={[Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[0.72, 0.75, 72]} />
       <meshBasicMaterial color={accent} transparent opacity={0.36} side={THREE.DoubleSide} />
     </mesh>
   );
 }
 
-function CityTower({ accent, tower }: { accent: string; tower: TowerPlan }) {
-  const bodyColor = tower.blocked ? "#33121e" : tower.completed ? accent : "#1c293b";
-  const topColor = tower.blocked ? "#fb7185" : tower.completed ? "#dff8ff" : "#52617a";
-  const opacity = tower.completed || tower.blocked ? 1 : 0.62;
-
-  return (
-    <group position={[tower.x, 0, tower.z]}>
-      <TowerBody tower={tower} bodyColor={bodyColor} opacity={opacity} />
-      <TowerCrown tower={tower} color={topColor} glow={tower.completed ? 0.55 : 0.22} />
-      <WindowStrips height={tower.height} width={tower.width} color={tower.blocked ? "#fb7185" : "#7dd3fc"} />
-      {tower.blocked ? (
-        <group>
-          <mesh position={[tower.width * 0.92, 0.1, tower.width * 0.4]} rotation={[0, 0.4, 0]} castShadow>
-            <boxGeometry args={[0.08, 0.08, 0.08]} />
-            <meshStandardMaterial color="#fb7185" emissive="#fb7185" emissiveIntensity={0.8} />
-          </mesh>
-          <mesh position={[-tower.width * 0.82, 0.08, -tower.width * 0.55]} rotation={[0.2, 0.6, 0.1]} castShadow>
-            <boxGeometry args={[0.1, 0.06, 0.08]} />
-            <meshStandardMaterial color="#7f1d1d" emissive="#fb7185" emissiveIntensity={0.25} />
-          </mesh>
-        </group>
-      ) : null}
-    </group>
-  );
-}
-
-function TowerBody({
-  tower,
-  bodyColor,
-  opacity
-}: {
-  tower: TowerPlan;
-  bodyColor: string;
-  opacity: number;
-}) {
-  const material = (
-    <meshStandardMaterial
-      color={bodyColor}
-      emissive={tower.completed || tower.blocked ? bodyColor : "#02040a"}
-      emissiveIntensity={tower.completed ? 0.32 : tower.blocked ? 0.7 : 0.02}
-      metalness={0.24}
-      roughness={0.42}
-      transparent={!tower.completed && !tower.blocked}
-      opacity={opacity}
-    />
-  );
-
-  if (tower.kind === "spire") {
-    return (
-      <mesh position={[0, tower.height / 2 + 0.08, 0]} castShadow>
-        <cylinderGeometry args={[tower.width * 0.42, tower.width * 0.62, tower.height, 8]} />
-        {material}
-      </mesh>
-    );
-  }
-
-  if (tower.kind === "dome") {
-    return (
-      <group>
-        <mesh position={[0, tower.height / 2 + 0.08, 0]} castShadow>
-          <cylinderGeometry args={[tower.width * 0.64, tower.width * 0.7, tower.height * 0.82, 12]} />
-          {material}
-        </mesh>
-        <mesh position={[0, tower.height * 0.88 + 0.08, 0]} castShadow>
-          <sphereGeometry args={[tower.width * 0.72, 16, 10]} />
-          {material}
-        </mesh>
-      </group>
-    );
-  }
-
-  if (tower.kind === "terrace") {
-    return (
-      <group>
-        <mesh position={[0, tower.height * 0.28 + 0.08, 0]} castShadow>
-          <boxGeometry args={[tower.width * 1.25, tower.height * 0.56, tower.width * 1.25]} />
-          {material}
-        </mesh>
-        <mesh position={[0.018, tower.height * 0.72 + 0.08, -0.012]} castShadow>
-          <boxGeometry args={[tower.width, tower.height * 0.52, tower.width]} />
-          {material}
-        </mesh>
-      </group>
-    );
-  }
-
-  return (
-    <mesh position={[0, tower.height / 2 + 0.08, 0]} castShadow>
-      <boxGeometry args={[tower.width * 1.7, tower.height, tower.width * 0.72]} />
-      {material}
-    </mesh>
-  );
-}
-
-function TowerCrown({ tower, color, glow }: { tower: TowerPlan; color: string; glow: number }) {
-  return (
-    <mesh position={[0, tower.height + 0.16, 0]} castShadow>
-      {tower.blocked ? (
-        <boxGeometry args={[tower.width * 1.1, 0.08, tower.width * 0.7]} />
-      ) : tower.kind === "dome" ? (
-        <sphereGeometry args={[tower.width * 0.38, 12, 8]} />
-      ) : tower.kind === "slab" ? (
-        <boxGeometry args={[tower.width * 1.4, 0.06, tower.width * 0.9]} />
-      ) : (
-        <coneGeometry args={[tower.width * 0.72, 0.18, tower.kind === "spire" ? 8 : 4]} />
-      )}
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={glow} />
-    </mesh>
-  );
-}
-
-function WindowStrips({ height, width, color }: { height: number; width: number; color: string }) {
-  const rows = Math.max(2, Math.min(7, Math.floor(height / 0.13)));
-  return (
-    <>
-      {Array.from({ length: rows }, (_, row) => {
-        const y = 0.18 + row * (height / (rows + 1));
-        return (
-          <group key={`windows-${row}`}>
-            <mesh position={[0, y, width / 2 + 0.002]}>
-              <boxGeometry args={[width * 0.58, 0.012, 0.004]} />
-              <meshBasicMaterial color={color} transparent opacity={0.55} />
-            </mesh>
-            <mesh position={[width / 2 + 0.002, y, 0]} rotation={[0, Math.PI / 2, 0]}>
-              <boxGeometry args={[width * 0.58, 0.012, 0.004]} />
-              <meshBasicMaterial color={color} transparent opacity={0.38} />
-            </mesh>
-          </group>
-        );
-      })}
-    </>
-  );
-}
-
-function CityBase({ accent }: { accent: string }) {
+function CityBase({ style, mode }: { style: CityStyle; mode: CityViewMode }) {
   return (
     <group>
       <mesh position={[0, 0.005, 0]} receiveShadow>
-        <cylinderGeometry args={[2.58, 2.76, 0.02, 80]} />
-        <meshStandardMaterial color="#030712" emissive={accent} emissiveIntensity={0.04} roughness={0.82} />
+        <cylinderGeometry args={[2.82, 3.02, 0.024, 96]} />
+        <meshStandardMaterial color="#030712" emissive={style.accent} emissiveIntensity={0.05} roughness={0.82} />
       </mesh>
-      <mesh position={[0, 0.018, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[2.15, 2.19, 80]} />
-        <meshBasicMaterial color={accent} transparent opacity={0.24} side={THREE.DoubleSide} />
-      </mesh>
+      {[0.92, 1.62, 2.24, 2.68].map((radius, index) => (
+        <mesh key={`base-ring-${radius}`} position={[0, 0.02 + index * 0.004, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[radius, radius + 0.018, 96]} />
+          <meshBasicMaterial
+            color={index % 2 === 0 ? style.accent : style.secondary}
+            transparent
+            opacity={mode === "risk" ? 0.32 : 0.2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
     </group>
   );
 }
 
-function ElevatedLoop({ accent }: { accent: string }) {
+function ElevatedLoop({ style }: { style: CityStyle }) {
   const pulse = useRef<THREE.Mesh>(null);
   useFrame(({ clock }) => {
     if (!pulse.current) return;
-    const angle = clock.getElapsedTime() * 0.42;
-    pulse.current.position.set(Math.cos(angle) * 1.84, 0.18, Math.sin(angle) * 1.84);
+    const angle = clock.getElapsedTime() * 0.38;
+    pulse.current.position.set(Math.cos(angle) * 2.02, 0.23, Math.sin(angle) * 2.02);
   });
 
   return (
     <group>
-      <mesh position={[0, 0.16, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.84, 0.012, 8, 120]} />
-        <meshBasicMaterial color={accent} transparent opacity={0.28} />
+      <mesh position={[0, 0.22, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[2.02, 0.014, 8, 140]} />
+        <meshBasicMaterial color={style.secondary} transparent opacity={0.32} />
       </mesh>
       <mesh ref={pulse}>
-        <sphereGeometry args={[0.035, 12, 12]} />
+        <sphereGeometry args={[0.038, 12, 12]} />
         <meshBasicMaterial color="#dff8ff" transparent opacity={0.9} />
       </mesh>
     </group>
   );
 }
 
-function RoadNetwork({ accent }: { accent: string }) {
+function RoadNetwork({ style }: { style: CityStyle }) {
   const roads = [
-    { position: [0, 0.032, 0] as [number, number, number], scale: [0.1, 1, 4.8] as [number, number, number] },
-    { position: [0, 0.034, 0] as [number, number, number], scale: [4.8, 1, 0.1] as [number, number, number] },
-    { position: [0, 0.036, 0] as [number, number, number], scale: [0.06, 1, 3.7] as [number, number, number], rotation: Math.PI / 4 },
-    { position: [0, 0.038, 0] as [number, number, number], scale: [0.06, 1, 3.7] as [number, number, number], rotation: -Math.PI / 4 }
+    { position: [0, 0.034, 0] as [number, number, number], scale: [0.12, 1, 5.42] as [number, number, number] },
+    { position: [0, 0.036, 0] as [number, number, number], scale: [5.42, 1, 0.12] as [number, number, number] },
+    { position: [0, 0.038, 0] as [number, number, number], scale: [0.07, 1, 4.4] as [number, number, number], rotation: Math.PI / 4 },
+    { position: [0, 0.04, 0] as [number, number, number], scale: [0.07, 1, 4.4] as [number, number, number], rotation: -Math.PI / 4 }
   ];
 
   return (
@@ -481,63 +627,99 @@ function RoadNetwork({ accent }: { accent: string }) {
           scale={road.scale}
         >
           <planeGeometry args={[1, 1]} />
-          <meshBasicMaterial color="#07111f" transparent opacity={0.88} side={THREE.DoubleSide} />
+          <meshBasicMaterial color="#07111f" transparent opacity={0.9} side={THREE.DoubleSide} />
         </mesh>
       ))}
-      <mesh position={[0, 0.041, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.72, 0.75, 48]} />
-        <meshBasicMaterial color={accent} transparent opacity={0.48} side={THREE.DoubleSide} />
+      <mesh position={[0, 0.048, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.74, 0.79, 64]} />
+        <meshBasicMaterial color={style.accent} transparent opacity={0.5} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
 }
 
-function WarningBeacon({ count, accent }: { count: number; accent: string }) {
+function HologramNeedles({ accent, count, radius }: { accent: string; count: number; radius: number }) {
+  const needles = Math.min(10, Math.max(4, count));
   return (
-    <group position={[-1.9, 0.08, 1.75]}>
-      <mesh castShadow>
-        <cylinderGeometry args={[0.09, 0.13, 0.22, 8]} />
-        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={1.1} />
-      </mesh>
-      <pointLight color={accent} intensity={1.8} distance={2.2} />
-      <Text position={[0, 0.32, 0]} fontSize={0.12} color="#fecdd3" anchorX="center">
-        {count} BLOCKED
-      </Text>
+    <group>
+      {Array.from({ length: needles }, (_, index) => {
+        const angle = (index / needles) * Math.PI * 2;
+        return (
+          <Line
+            key={`needle-${index}`}
+            points={[
+              [Math.cos(angle) * radius, 0.1, Math.sin(angle) * radius],
+              [Math.cos(angle) * radius, 0.42 + (index % 3) * 0.1, Math.sin(angle) * radius]
+            ]}
+            color={accent}
+            transparent
+            opacity={0.28}
+          />
+        );
+      })}
     </group>
   );
 }
 
-function buildDistricts(project: ProjectSummary) {
-  const radius = 1.35;
+function OuterCityDetails({ style, blockedCount }: { style: CityStyle; blockedCount: number }) {
+  return (
+    <group>
+      {Array.from({ length: 14 }, (_, index) => {
+        const angle = (index / 14) * Math.PI * 2;
+        const radius = 2.46 + (index % 2) * 0.16;
+        const color = blockedCount > 0 && index < blockedCount ? "#fb7185" : style.secondary;
+        return (
+          <group key={`outer-${index}`} position={[Math.cos(angle) * radius, 0.08, Math.sin(angle) * radius]}>
+            <mesh>
+              <boxGeometry args={[0.06, 0.12 + (index % 4) * 0.035, 0.06]} />
+              <meshStandardMaterial color="#0f172a" emissive={color} emissiveIntensity={0.22} />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+function buildDistricts(project: ProjectSummary, style: CityStyle): DistrictPlan[] {
+  const radius = 1.48;
   return project.planets.map((feature, index) => {
     const angle = (index / Math.max(1, project.planets.length)) * Math.PI * 2 + Math.PI / 4;
     return {
       feature,
       position: [Math.cos(angle) * radius, 0, Math.sin(angle) * radius] as [number, number, number],
-      towers: buildTowers(feature)
+      rotation: -angle + Math.PI / 2,
+      towers: buildTowers(feature, style),
+      microBuildings: buildMicroBuildings(feature, style)
     };
   });
 }
 
-function buildTowers(feature: FeaturePlanet): TowerPlan[] {
-  const count = Math.max(3, Math.min(9, Math.ceil(feature.taskCount / 2)));
+function buildTowers(feature: FeaturePlanet, style: CityStyle): TowerPlan[] {
+  const count = Math.max(8, Math.min(22, Math.ceil(feature.taskCount * 0.68 + style.density * 3)));
   const completedCount = Math.round(count * (feature.progress / 100));
   const blockedCount = Math.min(feature.blockedTaskCount, count);
   const columns = Math.ceil(Math.sqrt(count));
+  const kinds: TowerPlan["kind"][] = ["spire", "terrace", "dome", "slab", "needle"];
 
   return Array.from({ length: count }, (_, index) => {
     const column = index % columns;
     const row = Math.floor(index / columns);
     const completed = index < completedCount;
     const blocked = index >= count - blockedCount;
-    const width = 0.13 + ((index + feature.id.length) % 3) * 0.018;
-    const kinds: TowerPlan["kind"][] = ["spire", "terrace", "dome", "slab"];
+    const width = 0.1 + ((index + feature.id.length) % 4) * 0.014;
+    const depth = 0.1 + ((index + feature.name.length) % 3) * 0.018;
     return {
       id: `${feature.id}-${index}`,
-      x: column * 0.22 - ((columns - 1) * 0.22) / 2,
-      z: row * 0.22 - ((Math.ceil(count / columns) - 1) * 0.22) / 2,
-      height: blocked ? 0.18 + (index % 2) * 0.08 : completed ? 0.38 + ((index * 5) % 6) * 0.09 : 0.16,
+      x: column * 0.19 - ((columns - 1) * 0.19) / 2,
+      z: row * 0.19 - ((Math.ceil(count / columns) - 1) * 0.19) / 2,
+      height: blocked
+        ? 0.18 + (index % 2) * 0.08
+        : completed
+          ? 0.32 + ((index * 5 + feature.name.length) % 8) * 0.08
+          : 0.12 + (index % 3) * 0.035,
       width,
+      depth,
       kind: kinds[(index + feature.name.length) % kinds.length],
       completed,
       blocked
@@ -545,43 +727,96 @@ function buildTowers(feature: FeaturePlanet): TowerPlan[] {
   });
 }
 
+function buildMicroBuildings(feature: FeaturePlanet, style: CityStyle): MicroBuildingPlan[] {
+  const count = Math.max(8, Math.min(18, Math.ceil(feature.taskCount * 0.38 + style.density * 4)));
+  return Array.from({ length: count }, (_, index) => {
+    const angle = index * 2.399 + feature.name.length;
+    const radius = 0.2 + ((index * 17) % 42) / 100;
+    return {
+      id: `${feature.id}-micro-${index}`,
+      x: Math.cos(angle) * radius,
+      z: Math.sin(angle) * radius,
+      height: 0.08 + ((index * 11 + feature.progress) % 9) * 0.025,
+      width: 0.045 + (index % 3) * 0.012,
+      color: feature.blockedTaskCount > 0 && index % 5 === 0 ? "#3b101c" : style.baseColor
+    };
+  });
+}
+
+function getCityStyle(project: ProjectSummary): CityStyle {
+  if (project.health === "at_risk" || project.blockedTaskCount >= 3) {
+    return {
+      name: "risk industrial",
+      baseColor: "#1f1421",
+      accent: "#f5c451",
+      secondary: "#fb7185",
+      parkColor: "#65a30d",
+      density: 1.18,
+      coreShape: "reactor"
+    };
+  }
+
+  if (project.health === "excellent" || project.healthScore >= 84) {
+    return {
+      name: "crystal command",
+      baseColor: "#081827",
+      accent: project.accent,
+      secondary: "#dff8ff",
+      parkColor: "#4ade80",
+      density: 1.08,
+      coreShape: project.priority === "critical" ? "citadel" : "spire"
+    };
+  }
+
+  return {
+    name: "garden grid",
+    baseColor: "#0b1728",
+    accent: project.accent,
+    secondary: "#8d67ff",
+    parkColor: "#4ade80",
+    density: 0.96,
+    coreShape: "spire"
+  };
+}
+
 function CityCamera({ mode }: { mode: CityViewMode }) {
   const { camera } = useThree();
-  const target = useMemo(() => {
-    if (mode === "street") return new THREE.Vector3(1.35, 0.72, 2.15);
-    if (mode === "risk") return new THREE.Vector3(0, 4.4, 0.18);
-    return new THREE.Vector3(3.7, 3.15, 4.25);
-  }, [mode]);
-  const lookAt = useMemo(() => {
-    if (mode === "street") return new THREE.Vector3(0.1, 0.45, 0.05);
-    return new THREE.Vector3(0, 0.38, 0);
-  }, [mode]);
-  useFrame(() => {
-    camera.position.lerp(target, 0.06);
-    camera.lookAt(lookAt);
-  });
+
+  useEffect(() => {
+    if (mode === "street") {
+      camera.position.set(1.45, 0.84, 2.08);
+    } else if (mode === "risk") {
+      camera.position.set(0.25, 4.5, 1.1);
+    } else {
+      camera.position.set(2.95, 2.42, 3.2);
+    }
+    camera.lookAt(0, 0.34, 0);
+  }, [camera, mode]);
+
   return null;
 }
 
 export default function CityScene({ project, mode = "overview" }: { project: ProjectSummary; mode?: CityViewMode }) {
+  const style = getCityStyle(project);
+
   return (
-    <Canvas camera={{ position: [3.7, 3.15, 4.25], fov: 43 }} dpr={[1, 1.75]} shadows>
+    <Canvas camera={{ position: [2.95, 2.42, 3.2], fov: 48 }} dpr={[1, 1.75]} shadows>
       <color attach="background" args={["#02040a"]} />
-      <fog attach="fog" args={["#02040a", 5.5, 10.5]} />
-      <ambientLight intensity={0.58} />
-      <directionalLight position={[2.5, 5, 3.5]} intensity={2.4} color="#dff8ff" castShadow />
+      <fog attach="fog" args={["#02040a", 6.5, 13]} />
+      <ambientLight intensity={0.64} />
+      <directionalLight position={[2.5, 5, 3.5]} intensity={2.6} color="#dff8ff" castShadow />
       <pointLight position={[-3, 2.2, 1.6]} intensity={2.2} color="#8d67ff" />
-      <pointLight position={[2.5, 1.2, -2]} intensity={1.4} color={project.accent} />
+      <pointLight position={[2.5, 1.2, -2]} intensity={1.8} color={style.accent} />
       <Grid
         position={[0, -0.005, 0]}
-        args={[14, 14]}
+        args={[16, 16]}
         cellSize={0.25}
         cellThickness={0.28}
         cellColor="#102238"
         sectionSize={1}
         sectionThickness={0.7}
         sectionColor="#245b78"
-        fadeDistance={8.5}
+        fadeDistance={9}
         infiniteGrid
       />
       <CityCamera mode={mode} />
@@ -589,11 +824,13 @@ export default function CityScene({ project, mode = "overview" }: { project: Pro
       <OrbitControls
         makeDefault
         enablePan
-        enabled={mode !== "risk"}
-        minDistance={mode === "street" ? 1.6 : 3}
-        maxDistance={7.2}
-        maxPolarAngle={Math.PI / 2.2}
-        target={new THREE.Vector3(0, 0.38, 0)}
+        enableZoom
+        enableRotate
+        minDistance={mode === "street" ? 0.9 : 1.35}
+        maxDistance={9.2}
+        minPolarAngle={0.05}
+        maxPolarAngle={Math.PI * 0.95}
+        target={new THREE.Vector3(0, 0.34, 0)}
       />
     </Canvas>
   );

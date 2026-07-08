@@ -3,10 +3,8 @@ import { motion } from "framer-motion";
 import gsap from "gsap";
 import {
   ArrowDownToLine,
-  ArrowUpRight,
   BrainCircuit,
   CheckCircle2,
-  CircleDot,
   Radar,
   ScanSearch
 } from "lucide-react";
@@ -37,7 +35,7 @@ export function MissionControl({ data }: { data: MissionData }) {
 
   return (
     <div className="relative min-h-[calc(100vh-6rem)]">
-      <section className="absolute inset-x-0 top-0 h-[56vh] min-h-[360px] overflow-hidden rounded-lg border border-white/10 bg-void/80 shadow-violet">
+      <section className="absolute inset-x-0 top-0 h-[48vh] min-h-[320px] overflow-hidden rounded-lg border border-white/10 bg-void/80 shadow-violet">
         <Suspense fallback={<div className="h-full w-full bg-void" />}>
           <GalaxyScene projects={data.projects} relationships={data.relationships} />
         </Suspense>
@@ -52,7 +50,7 @@ export function MissionControl({ data }: { data: MissionData }) {
             ))}
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="grid gap-3 md:grid-cols-2">
               {data.projects.map((project) => (
                 <ProjectOrbitCard key={project.id} project={project} />
@@ -106,11 +104,11 @@ export function MissionControl({ data }: { data: MissionData }) {
                 Export Report
               </Button>
             </div>
-            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            <div className="mt-4 grid gap-3 xl:grid-cols-2">
               <BriefingCard title="Portfolio Signal" body={briefing.headline} />
               <BriefingCard title="Focus" body={briefing.focus} />
               <BriefingCard title="Next Task" body={briefing.nextTask} />
-              <BriefingCard title="Weekly Review" body={briefing.weeklyReview} />
+              <BriefingCard title="Health Readout" body={briefing.healthNarrative} />
             </div>
           </section>
         </div>
@@ -119,35 +117,26 @@ export function MissionControl({ data }: { data: MissionData }) {
           <section className="glass-panel rounded-lg p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">AI</p>
-                <h2 className="mt-1 text-lg font-semibold text-white">Briefing</h2>
+                <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">Free AI</p>
+                <h2 className="mt-1 text-lg font-semibold text-white">Next 3 Moves</h2>
               </div>
               <BrainCircuit className="text-cyan" size={23} />
             </div>
 
             <div className="mt-4 space-y-3">
-              {data.aiRecommendations.map((recommendation) => (
-                <article
-                  key={recommendation.title}
+              {briefing.actionPlan.map((move, index) => (
+                <div
+                  key={move}
                   data-command-item
-                  className="rounded-md border border-white/10 bg-white/[0.045] p-3"
+                  className="flex items-start gap-3 rounded-md border border-white/10 bg-white/[0.045] p-3"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-sm font-semibold text-white">{recommendation.title}</h3>
-                    <span className="font-mono text-xs text-cyan">
-                      {Math.round(recommendation.confidence * 100)}%
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">{recommendation.body}</p>
-                  <Button
-                    className="mt-3 w-full justify-between"
-                    icon={<ArrowUpRight size={15} />}
-                    variant="ghost"
-                  >
-                    {recommendation.actionLabel}
-                  </Button>
-                </article>
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-cyan/35 bg-cyan/10 font-mono text-xs text-cyan">
+                    {index + 1}
+                  </span>
+                  <p className="text-sm leading-6 text-slate-200">{move}</p>
+                </div>
               ))}
+              <BriefingCard title="Weekly Rule" body={briefing.weeklyReview} compact />
             </div>
           </section>
 
@@ -168,17 +157,11 @@ export function MissionControl({ data }: { data: MissionData }) {
           </section>
 
           <section className="glass-panel rounded-lg p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="font-mono text-xs uppercase tracking-[0.24em] text-solar">
-                  Activity
-                </p>
-                <h2 className="mt-1 text-lg font-semibold text-white">Recent Signal</h2>
-              </div>
-              <CircleDot className="text-solar" size={21} />
-            </div>
-            <div className="mt-4 space-y-3">
-              {data.activity.map((item) => (
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-solar">
+              Recent Signal
+            </p>
+            <div className="mt-4 space-y-2">
+              {data.activity.slice(0, 3).map((item) => (
                 <div key={item} className="flex items-center gap-3 text-sm text-slate-300">
                   <CheckCircle2 size={16} className="shrink-0 text-success" />
                   <span>{item}</span>

@@ -2,7 +2,7 @@
 
 ## North Star
 
-Nexus should feel cinematic, but its architecture should remain boring where it matters. Project data, permissions, analytics, and AI jobs live in explicit services and schemas. The frontend renders that same data as dashboards, galaxies, time tunnels, city builders, and calendars.
+Nexus should feel cinematic, but its architecture should remain boring where it matters. Project data, permissions, analytics, and AI jobs live in explicit services and schemas. The frontend renders that same data as dashboards, galaxies, city builders, analytics, and calendars.
 
 ## Cost Principle
 
@@ -48,7 +48,7 @@ User
 
 - `MissionControl`: primary work surface.
 - `GalaxyView`: projects as stars, features as planets, tasks as moons.
-- `TimeTunnel`: milestones/tasks as a cinematic time corridor with risk and forecast modes.
+- `Analytics`: portfolio health, risk, velocity, time allocation, and feature heatmaps.
 - `CityBuilder`: project health and completion as living city state.
 - `Analytics`: dense 2D analysis for clarity.
 - `Calendar`: deadline and time view.
@@ -76,7 +76,7 @@ The default implementation is local and free: heuristics, templates, scoring for
 Cinematic views and AI should be developed together because they share the same analytics signals:
 
 - Galaxy brightness reflects progress, health, and priority.
-- Time Tunnel checkpoints reflect milestones, tasks, delays, and AI risk flags.
+- Analytics and calendar checkpoints reflect milestones, tasks, delays, and AI risk flags.
 - City growth reflects completion, blockers, velocity, and health.
 - AI briefings explain what the 3D scenes are visually signaling.
 

@@ -11,8 +11,7 @@ import { CalendarView } from "@/pages/PlanningViews";
 import { ProjectsView } from "@/pages/ProjectsWorkspace";
 import {
   AnalyticsView,
-  GalaxyView,
-  TimelineView
+  GalaxyView
 } from "@/pages/WorkspaceViews";
 import type { NexusSession } from "@/types/auth";
 
@@ -49,7 +48,6 @@ function App() {
       {activeView === "mission" ? <MissionControl data={missionData} /> : null}
       {activeView === "projects" ? <ProjectsView session={session} /> : null}
       {activeView === "galaxy" ? <GalaxyView data={missionData} /> : null}
-      {activeView === "timeline" ? <TimelineView data={missionData} /> : null}
       {activeView === "analytics" ? <AnalyticsView data={missionData} /> : null}
       {activeView === "city" ? <CityBuilderView data={missionData} /> : null}
       {activeView === "calendar" ? <CalendarView session={session} /> : null}

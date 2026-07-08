@@ -1,23 +1,29 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import {
+  Activity,
+  AlertTriangle,
   BarChart3,
   CalendarDays,
+  Clock3,
   Factory,
+  Gauge,
   Lightbulb,
   NotebookPen,
   Orbit,
   Settings,
+  ShieldCheck,
+  Target,
+  Timer,
+  TrendingUp,
   UserCircle,
-  Waypoints
+  Zap
 } from "lucide-react";
 
 import { ProjectOrbitCard } from "@/components/ProjectOrbitCard";
 import { StatusPill } from "@/components/StatusPill";
-import type { MissionData, TimelineNode } from "@/types/domain";
-import type { TimeTunnelMode } from "@/scenes/TimeTunnelScene";
+import type { MissionData, ProjectSummary } from "@/types/domain";
 
 const GalaxyScene = lazy(() => import("@/scenes/GalaxyScene"));
-const TimeTunnelScene = lazy(() => import("@/scenes/TimeTunnelScene"));
 
 export function GalaxyView({ data }: { data: MissionData }) {
   const [selectedProjectId, setSelectedProjectId] = useState(data.projects[0]?.id ?? "");
@@ -84,6 +90,17 @@ export function GalaxyView({ data }: { data: MissionData }) {
           <>
             <ProjectOrbitCard project={selectedProject} />
             <section className="glass-panel rounded-lg p-4">
+              <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">
+                System Meaning
+              </p>
+              <div className="mt-3 grid gap-2">
+                <GalaxyLegend color={selectedProject.accent} label="Star" text="Selected project and its overall health." />
+                <GalaxyLegend color="#8d67ff" label="Planets" text="Project features, sized by completion and colored by status." />
+                <GalaxyLegend color="#4ade80" label="Moons" text="Tasks around each feature: green done, gray open, red blocked." />
+                <GalaxyLegend color="#f5c451" label="Links" text="Dependencies, shared AI, deadlines, and inspiration between projects." />
+              </div>
+            </section>
+            <section className="glass-panel rounded-lg p-4">
               <div className="mb-4 grid grid-cols-3 gap-2 text-center">
                 <PlanetMetric label="Solar health" value={selectedProject.healthScore} />
                 <PlanetMetric label="Gravity" value={selectedProject.priority} />
@@ -110,6 +127,9 @@ export function GalaxyView({ data }: { data: MissionData }) {
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
                       {planetClass(planet.progress, planet.blockedTaskCount)}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-400">
+                      Feature planet with {planet.taskCount} task moon{planet.taskCount === 1 ? "" : "s"}.
                     </p>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
                       <div
@@ -153,6 +173,9 @@ export function GalaxyView({ data }: { data: MissionData }) {
                     </p>
                     <p className="mt-2 text-sm leading-6 text-slate-300">
                       {planetReadout(selectedPlanet.progress, selectedPlanet.blockedTaskCount)}
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Moons are tasks. Red moons are blocked tasks. Stable green moons represent completed work.
                     </p>
                   </div>
                 </>
@@ -230,202 +253,294 @@ function PlanetMetric({ label, value }: { label: string; value: string | number 
   );
 }
 
-export function TimelineView({ data }: { data: MissionData }) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [mode, setMode] = useState<TimeTunnelMode>("mission");
-  const activeNode = data.timeline[activeIndex];
-  const nextAction = useMemo(() => {
-    const candidate =
-      data.timeline.find((node) => node.status === "in_progress") ??
-      data.timeline.find((node) => node.status === "ready") ??
-      data.timeline.find((node) => node.status === "backlog");
-    return candidate ?? data.timeline[data.timeline.length - 1];
-  }, [data.timeline]);
-  const riskCount = data.timeline.filter(
-    (node) => node.status === "blocked" || (mode === "risk" && node.status !== "done")
-  ).length;
-  const completedCount = data.timeline.filter((node) => node.status === "done").length;
-  const futureCount = data.timeline.filter((_, index) => index > activeIndex).length;
-
+function GalaxyLegend({ color, label, text }: { color: string; label: string; text: string }) {
   return (
-    <section
-      className="grid min-h-[calc(100vh-8rem)] gap-4 xl:grid-cols-[minmax(0,1fr)_340px]"
-      onWheel={(event) => {
-        if (Math.abs(event.deltaY) < 8) return;
-        setActiveIndex((current) =>
-          Math.max(0, Math.min(data.timeline.length - 1, current + (event.deltaY > 0 ? 1 : -1)))
-        );
-      }}
-    >
-      <div className="relative min-h-[560px] overflow-hidden rounded-lg border border-white/10 bg-void">
-        <Suspense fallback={<div className="h-full bg-void" />}>
-          <TimeTunnelScene nodes={data.timeline} activeIndex={activeIndex} mode={mode} onSelect={setActiveIndex} />
-        </Suspense>
-        <div className="pointer-events-none absolute left-4 top-4">
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">Time Tunnel</p>
-          <h2 className="mt-1 text-2xl font-semibold text-white">Project Time Corridor</h2>
-          <p className="mt-2 max-w-md text-sm text-slate-400">
-            Completed work recedes behind you. Today stays centered. Deadlines and risks appear ahead.
-          </p>
-        </div>
-        <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
-          <TunnelModeButton active={mode === "mission"} onClick={() => setMode("mission")}>
-            Mission
-          </TunnelModeButton>
-          <TunnelModeButton active={mode === "risk"} onClick={() => setMode("risk")}>
-            Risk Scan
-          </TunnelModeButton>
-          <TunnelModeButton active={mode === "forecast"} onClick={() => setMode("forecast")}>
-            Forecast
-          </TunnelModeButton>
-        </div>
-      </div>
-      <aside className="space-y-3">
-        {activeNode ? (
-          <section className="glass-panel rounded-lg p-5">
-            <div className="flex items-start justify-between gap-3">
-              <Waypoints className="text-cyan" size={24} />
-              <StatusPill status={activeNode.status} />
-            </div>
-            <p className="mt-5 font-mono text-xs uppercase tracking-[0.18em] text-cyan">
-              {activeNode.date}
-            </p>
-            <h3 className="mt-2 text-xl font-semibold text-white">{activeNode.label}</h3>
-            <p className="mt-2 text-sm capitalize text-slate-400">{activeNode.type}</p>
-            <p className="mt-4 rounded-md border border-white/10 bg-white/[0.04] p-3 text-sm leading-6 text-slate-300">
-              {describeTunnelNode(activeNode, activeIndex, data.timeline.length)}
-            </p>
-            <div className="mt-5 flex gap-2">
-              <button
-                type="button"
-                aria-label="Previous timeline node"
-                disabled={activeIndex === 0}
-                onClick={() => setActiveIndex((index) => Math.max(0, index - 1))}
-                className="h-10 flex-1 rounded-md border border-white/10 text-sm text-slate-300 disabled:opacity-30"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                aria-label="Next timeline node"
-                disabled={activeIndex === data.timeline.length - 1}
-                onClick={() => setActiveIndex((index) => Math.min(data.timeline.length - 1, index + 1))}
-                className="h-10 flex-1 rounded-md border border-cyan/25 bg-cyan/10 text-sm text-cyan disabled:opacity-30"
-              >
-                Next
-              </button>
-            </div>
-          </section>
-        ) : null}
-        <section className="glass-panel rounded-lg p-4">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan">Tunnel Signal</p>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <PlanetMetric label="Done" value={completedCount} />
-            <PlanetMetric label="Risks" value={riskCount} />
-            <PlanetMetric label="Ahead" value={futureCount} />
-          </div>
-          {nextAction ? (
-            <div className="mt-3 rounded-md border border-solar/20 bg-solar/10 p-3">
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-solar">
-                AI Next Move
-              </p>
-              <p className="mt-2 text-sm font-semibold text-white">{nextAction.label}</p>
-              <p className="mt-1 text-xs text-slate-400">{nextAction.date}</p>
-              <p className="mt-2 text-xs leading-5 text-slate-400">
-                {mode === "risk"
-                  ? "Clear blockers before adding new future commitments."
-                  : mode === "forecast"
-                    ? "Keep future items visible, but only promote one near-term task at a time."
-                    : "Make this the next concrete action in today's execution lane."}
-              </p>
-            </div>
-          ) : null}
-        </section>
-        <section className="glass-panel rounded-lg p-4">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-slate-500">Timeline</p>
-          <div className="mt-3 space-y-1">
-            {data.timeline.map((node, index) => (
-              <button
-                key={node.id}
-                type="button"
-                onClick={() => setActiveIndex(index)}
-                className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm ${
-                  index === activeIndex ? "bg-cyan/15 text-white" : "text-slate-400 hover:bg-white/[0.04]"
-                }`}
-              >
-                <span className="font-mono text-[10px] text-slate-600">{String(index + 1).padStart(2, "0")}</span>
-                <span className="truncate">{node.label}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      </aside>
-    </section>
+    <div className="flex items-start gap-3 rounded-md border border-white/10 bg-white/[0.035] p-3">
+      <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+      <span>
+        <span className="block text-sm font-semibold text-white">{label}</span>
+        <span className="mt-1 block text-xs leading-5 text-slate-400">{text}</span>
+      </span>
+    </div>
   );
-}
-
-function TunnelModeButton({
-  active,
-  onClick,
-  children
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-md border px-3 py-2 text-xs font-medium transition backdrop-blur-md ${
-        active
-          ? "border-cyan/45 bg-cyan/15 text-cyan shadow-glow"
-          : "border-white/10 bg-void/70 text-slate-300 hover:border-white/20"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function describeTunnelNode(node: TimelineNode, index: number, total: number) {
-  if (node.status === "blocked") {
-    return "This point is a red hazard in the tunnel. Clear its blocker before trusting later work.";
-  }
-  if (node.status === "done") {
-    return "This checkpoint is behind you and stable. It can support later milestones.";
-  }
-  if (node.status === "in_progress") {
-    return "This is the present execution point. Finish it or explicitly mark the blocker before moving ahead.";
-  }
-  if (index === total - 1) {
-    return "This is the far-future checkpoint. Keep it visible, but do not over-plan it until near-term work is stable.";
-  }
-  return "This is planned work ahead of the present. Pull it forward only when the current checkpoint is stable.";
 }
 
 export function AnalyticsView({ data }: { data: MissionData }) {
+  const portfolio = useMemo(() => buildPortfolioAnalytics(data.projects), [data.projects]);
+  const focusProject = portfolio.riskQueue[0] ?? portfolio.velocityLeaders[0] ?? data.projects[0];
+
   return (
-    <section className="grid gap-4 lg:grid-cols-3">
-      {data.projects.map((project) => (
-        <article key={project.id} className="glass-panel rounded-lg p-5">
-          <div className="flex items-start justify-between gap-3">
+    <section className="space-y-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="glass-panel rounded-lg p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="font-mono text-xs uppercase tracking-[0.22em] text-cyan">
-                {project.codename}
+              <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">
+                Portfolio Analytics
               </p>
-              <h2 className="mt-1 text-xl font-semibold text-white">{project.name}</h2>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Project Command Dashboard</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                Progress, risk, time, blockers, and feature health are combined into one operating view.
+              </p>
             </div>
-            <BarChart3 className="text-cyan" size={22} />
+            <div className="rounded-md border border-cyan/20 bg-cyan/10 px-4 py-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-cyan">Recommended Focus</p>
+              <p className="mt-2 text-sm font-semibold text-white">{focusProject?.name ?? "No projects"}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">
+                {focusProject ? focusReason(focusProject) : "Create a project to begin analytics."}
+              </p>
+            </div>
           </div>
-          <div className="mt-5 space-y-4">
-            <Bar label="Completion" value={project.progress} color={project.accent} />
-            <Bar label="Health" value={project.healthScore} color="#4ade80" />
-            <Bar label="Velocity" value={Math.min(100, project.velocity * 10)} color="#f5c451" />
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <AnalyticsMetric icon={<Gauge size={18} />} label="Avg Health" value={portfolio.averageHealth} suffix="/100" tone="green" />
+            <AnalyticsMetric icon={<Target size={18} />} label="Avg Progress" value={portfolio.averageProgress} suffix="%" tone="cyan" />
+            <AnalyticsMetric icon={<AlertTriangle size={18} />} label="Blocked Tasks" value={portfolio.blockedTasks} tone="red" />
+            <AnalyticsMetric icon={<Timer size={18} />} label="Focus Hours" value={portfolio.totalHours} suffix="h" tone="gold" />
           </div>
-        </article>
-      ))}
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
+            <section className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan">Portfolio Pulse</p>
+                <Activity className="text-cyan" size={18} />
+              </div>
+              <div className="mt-4 space-y-4">
+                <Bar label="Completion" value={portfolio.averageProgress} color="#48e5ff" />
+                <Bar label="Health" value={portfolio.averageHealth} color="#4ade80" />
+                <Bar label="Velocity" value={Math.min(100, portfolio.totalVelocity * 8)} color="#f5c451" />
+                <Bar label="Risk Load" value={portfolio.riskLoad} color="#fb7185" />
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-risk">Risk Radar</p>
+                <ShieldCheck className="text-risk" size={18} />
+              </div>
+              <div className="mt-4 space-y-2">
+                {portfolio.riskQueue.slice(0, 4).map((project) => (
+                  <RiskRow key={project.id} project={project} />
+                ))}
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <aside className="space-y-4">
+          <section className="glass-panel rounded-lg p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-solar">Velocity Leaders</p>
+              <TrendingUp className="text-solar" size={18} />
+            </div>
+            <div className="mt-4 space-y-3">
+              {portfolio.velocityLeaders.map((project) => (
+                <div key={project.id} className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-white">{project.name}</span>
+                    <span className="font-mono text-xs text-solar">{project.velocity.toFixed(1)}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">{project.codename} velocity index</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="glass-panel rounded-lg p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan">Time Allocation</p>
+              <Clock3 className="text-cyan" size={18} />
+            </div>
+            <div className="mt-4 space-y-3">
+              {data.projects.map((project) => (
+                <AllocationRow
+                  key={project.id}
+                  project={project}
+                  totalMinutes={portfolio.totalMinutes}
+                />
+              ))}
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
+        <div className="glass-panel rounded-lg p-4">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan">Project Comparison</p>
+          <div className="mt-4 overflow-hidden rounded-lg border border-white/10">
+            <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-3 border-b border-white/10 bg-white/[0.04] px-3 py-3 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+              <span>Project</span>
+              <span>Health</span>
+              <span>Progress</span>
+              <span>Blocked</span>
+              <span>Deadline</span>
+            </div>
+            {data.projects.map((project) => (
+              <ProjectComparisonRow key={project.id} project={project} />
+            ))}
+          </div>
+        </div>
+
+        <div className="glass-panel rounded-lg p-4">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet">Feature Heatmap</p>
+          <div className="mt-4 space-y-4">
+            {data.projects.map((project) => (
+              <FeatureHeatmap key={project.id} project={project} />
+            ))}
+          </div>
+        </div>
+      </section>
     </section>
+  );
+}
+
+function buildPortfolioAnalytics(projects: ProjectSummary[]) {
+  const totalProgress = projects.reduce((sum, project) => sum + project.progress, 0);
+  const totalHealth = projects.reduce((sum, project) => sum + project.healthScore, 0);
+  const totalMinutes = projects.reduce((sum, project) => sum + project.timeSpentMinutes, 0);
+  const blockedTasks = projects.reduce((sum, project) => sum + project.blockedTaskCount, 0);
+  const totalVelocity = projects.reduce((sum, project) => sum + project.velocity, 0);
+  const projectCount = Math.max(1, projects.length);
+  const riskQueue = [...projects].sort((first, second) => riskScore(second) - riskScore(first));
+  const velocityLeaders = [...projects].sort((first, second) => second.velocity - first.velocity).slice(0, 3);
+
+  return {
+    averageProgress: Math.round(totalProgress / projectCount),
+    averageHealth: Math.round(totalHealth / projectCount),
+    blockedTasks,
+    riskLoad: Math.min(100, Math.round((blockedTasks / Math.max(1, projects.reduce((sum, project) => sum + project.taskCount, 0))) * 240)),
+    riskQueue,
+    totalHours: Math.round(totalMinutes / 60),
+    totalMinutes,
+    totalVelocity,
+    velocityLeaders
+  };
+}
+
+function riskScore(project: ProjectSummary) {
+  const blockedWeight = project.blockedTaskCount * 18;
+  const healthWeight = Math.max(0, 90 - project.healthScore);
+  const progressWeight = project.progress < 35 ? 18 : project.progress < 55 ? 8 : 0;
+  const priorityWeight = project.priority === "critical" ? 18 : project.priority === "high" ? 10 : 4;
+  return blockedWeight + healthWeight + progressWeight + priorityWeight;
+}
+
+function focusReason(project: ProjectSummary) {
+  if (project.blockedTaskCount > 0) return `Clear ${project.blockedTaskCount} blocker${project.blockedTaskCount > 1 ? "s" : ""} before expanding scope.`;
+  if (project.healthScore < 70) return "Health is below the safe operating range.";
+  if (project.progress < 35) return "Progress is still early; define the next concrete delivery unit.";
+  return "Highest leverage project based on current velocity and priority.";
+}
+
+function AnalyticsMetric({
+  icon,
+  label,
+  value,
+  suffix = "",
+  tone
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  suffix?: string;
+  tone: "cyan" | "green" | "gold" | "red";
+}) {
+  const colorClass = {
+    cyan: "text-cyan",
+    green: "text-success",
+    gold: "text-solar",
+    red: "text-risk"
+  }[tone];
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+      <span className={colorClass}>{icon}</span>
+      <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-white">
+        {value}
+        <span className="text-sm text-slate-500">{suffix}</span>
+      </p>
+    </div>
+  );
+}
+
+function RiskRow({ project }: { project: ProjectSummary }) {
+  const score = Math.min(100, riskScore(project));
+  return (
+    <div className="rounded-md border border-white/10 bg-white/[0.04] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold text-white">{project.name}</span>
+        <span className="font-mono text-xs text-risk">{score}</span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div className="h-full rounded-full bg-risk" style={{ width: `${score}%` }} />
+      </div>
+      <p className="mt-2 text-xs text-slate-500">{focusReason(project)}</p>
+    </div>
+  );
+}
+
+function AllocationRow({ project, totalMinutes }: { project: ProjectSummary; totalMinutes: number }) {
+  const share = Math.round((project.timeSpentMinutes / Math.max(1, totalMinutes)) * 100);
+  return (
+    <div>
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-slate-300">{project.codename}</span>
+        <span className="font-mono text-slate-500">{Math.round(project.timeSpentMinutes / 60)}h</span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div className="h-full rounded-full" style={{ width: `${share}%`, background: project.accent }} />
+      </div>
+    </div>
+  );
+}
+
+function ProjectComparisonRow({ project }: { project: ProjectSummary }) {
+  return (
+    <div className="grid grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr_0.7fr] gap-3 border-b border-white/5 px-3 py-3 text-sm last:border-b-0">
+      <div className="min-w-0">
+        <p className="truncate font-semibold text-white">{project.name}</p>
+        <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">{project.codename}</p>
+      </div>
+      <StatusPill health={project.health} />
+      <span className="font-mono text-cyan">{project.progress}%</span>
+      <span className={project.blockedTaskCount > 0 ? "font-mono text-risk" : "font-mono text-success"}>
+        {project.blockedTaskCount}
+      </span>
+      <span className="truncate text-slate-400">{project.deadline ?? "Flexible"}</span>
+    </div>
+  );
+}
+
+function FeatureHeatmap({ project }: { project: ProjectSummary }) {
+  return (
+    <div className="rounded-md border border-white/10 bg-white/[0.035] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-white">{project.name}</p>
+        <span className="font-mono text-xs text-slate-500">{project.planets.length} features</span>
+      </div>
+      <div className="mt-3 grid gap-2">
+        {project.planets.map((feature) => (
+          <div key={feature.id}>
+            <div className="flex items-center justify-between text-xs">
+              <span className="truncate text-slate-400">{feature.name}</span>
+              <span className={feature.blockedTaskCount > 0 ? "font-mono text-risk" : "font-mono text-cyan"}>
+                {feature.progress}%
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${feature.progress}%`,
+                  background: feature.blockedTaskCount > 0 ? "#fb7185" : project.accent
+                }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
