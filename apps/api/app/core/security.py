@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_session
+from app.models.enums import WorkspaceRole
 from app.models.workspace import WorkspaceMember
 
 password_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -22,6 +23,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 class AuthContext:
     user_id: str
     workspace_id: str
+    role: WorkspaceRole = WorkspaceRole.owner
 
 
 def hash_password(password: str) -> str:
@@ -73,15 +75,30 @@ async def require_auth_context(
     except (JWTError, KeyError, TypeError, ValueError) as error:
         raise _unauthorized("Invalid or expired session") from error
 
-    membership = await session.scalar(
-        select(WorkspaceMember.id).where(
+    role = await session.scalar(
+        select(WorkspaceMember.role).where(
             WorkspaceMember.user_id == user_id,
             WorkspaceMember.workspace_id == workspace_id,
         )
     )
-    if membership is None:
+    if role is None:
         raise _unauthorized("Workspace access denied")
-    return AuthContext(user_id=user_id, workspace_id=workspace_id)
+    return AuthContext(user_id=user_id, workspace_id=workspace_id, role=WorkspaceRole(role))
+
+
+WORKSPACE_EDITOR_ROLES = {
+    WorkspaceRole.owner,
+    WorkspaceRole.admin,
+    WorkspaceRole.member,
+}
+
+
+def require_workspace_editor(auth: AuthContext) -> None:
+    if auth.role not in WORKSPACE_EDITOR_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Workspace viewer role cannot modify project data",
+        )
 
 
 def _unauthorized(detail: str) -> HTTPException:

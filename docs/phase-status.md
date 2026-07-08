@@ -98,5 +98,7 @@ delivery, and file upload automation.
 - Request bodies are capped at 1 MB.
 - Authentication and API requests are rate limited, mutations emit project audit events, and
   Dependabot monitors application, Python, and workflow dependencies.
+- Workspace roles now enforce database mutations: owners, admins, and members can edit project
+  data; viewers are read-only.
 - Authorization integration tests against a live PostgreSQL service remain pending.
 - SQLite-backed tenant isolation tests are complete; live PostgreSQL verification remains pending.

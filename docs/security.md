@@ -12,6 +12,8 @@
 
 - Database routes validate the bearer token and current workspace membership.
 - Project, feature, and task reads and writes include the authenticated `workspace_id`.
+- Workspace viewers are read-only; only owners, admins, and members can mutate project,
+  planning, feature, or task data.
 - Cross-workspace object IDs return `404` instead of disclosing that another tenant owns them.
 - Project deletion archives data to reduce accidental or malicious destructive loss.
 - Firebase and local browser workspaces use identity-specific storage keys to avoid device-level

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_session
-from app.core.security import AuthContext, require_auth_context
+from app.core.security import AuthContext, require_auth_context, require_workspace_editor
 from app.schemas.planning import (
     IdeaCreate,
     IdeaRead,
@@ -48,6 +48,7 @@ async def create_idea(
     auth: AuthContext = Depends(require_auth_context),
 ) -> IdeaRead:
     require_database()
+    require_workspace_editor(auth)
     return await database_planning.create_idea(session, auth, project_id, data)
 
 
@@ -58,6 +59,7 @@ async def delete_idea(
     auth: AuthContext = Depends(require_auth_context),
 ) -> Response:
     require_database()
+    require_workspace_editor(auth)
     await database_planning.delete_idea(session, auth, idea_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -84,6 +86,7 @@ async def create_journal(
     auth: AuthContext = Depends(require_auth_context),
 ) -> JournalRead:
     require_database()
+    require_workspace_editor(auth)
     return await database_planning.create_journal(session, auth, project_id, data)
 
 
@@ -94,6 +97,7 @@ async def delete_journal(
     auth: AuthContext = Depends(require_auth_context),
 ) -> Response:
     require_database()
+    require_workspace_editor(auth)
     await database_planning.delete_journal(session, auth, entry_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -120,6 +124,7 @@ async def create_milestone(
     auth: AuthContext = Depends(require_auth_context),
 ) -> MilestoneRead:
     require_database()
+    require_workspace_editor(auth)
     return await database_planning.create_milestone(session, auth, project_id, data)
 
 
@@ -131,6 +136,7 @@ async def update_milestone(
     auth: AuthContext = Depends(require_auth_context),
 ) -> MilestoneRead:
     require_database()
+    require_workspace_editor(auth)
     return await database_planning.update_milestone(session, auth, milestone_id, data)
 
 
@@ -141,5 +147,6 @@ async def delete_milestone(
     auth: AuthContext = Depends(require_auth_context),
 ) -> Response:
     require_database()
+    require_workspace_editor(auth)
     await database_planning.delete_milestone(session, auth, milestone_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

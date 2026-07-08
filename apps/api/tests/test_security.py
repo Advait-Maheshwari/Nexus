@@ -1,9 +1,11 @@
 import pytest
+from fastapi import HTTPException
 from jose import JWTError, jwt
 from pydantic import ValidationError
 
 from app.core.config import Settings, settings
-from app.core.security import create_access_token
+from app.core.security import AuthContext, create_access_token, require_workspace_editor
+from app.models.enums import WorkspaceRole
 from app.schemas.auth import RegisterRequest
 
 
@@ -55,6 +57,29 @@ def test_access_token_is_bound_to_nexus_audience_and_issuer() -> None:
             audience="another-app",
             issuer=settings.jwt_issuer,
         )
+
+
+def test_workspace_viewer_cannot_modify_project_data() -> None:
+    auth = AuthContext(
+        user_id="user-1",
+        workspace_id="workspace-1",
+        role=WorkspaceRole.viewer,
+    )
+
+    with pytest.raises(HTTPException) as error:
+        require_workspace_editor(auth)
+
+    assert error.value.status_code == 403
+
+
+def test_workspace_member_can_modify_project_data() -> None:
+    auth = AuthContext(
+        user_id="user-1",
+        workspace_id="workspace-1",
+        role=WorkspaceRole.member,
+    )
+
+    require_workspace_editor(auth)
 
 
 def test_production_rejects_default_or_short_jwt_secret() -> None:
