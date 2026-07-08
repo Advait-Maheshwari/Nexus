@@ -1,9 +1,11 @@
-import { Grid, OrbitControls, Text } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
-import { useMemo } from "react";
+import { Grid, Line, OrbitControls, Text } from "@react-three/drei";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 
 import type { FeaturePlanet, ProjectSummary } from "@/types/domain";
+
+export type CityViewMode = "overview" | "street" | "risk";
 
 interface TowerPlan {
   id: string;
@@ -15,7 +17,7 @@ interface TowerPlan {
   blocked: boolean;
 }
 
-function ProjectCity({ project }: { project: ProjectSummary }) {
+function ProjectCity({ project, mode }: { project: ProjectSummary; mode: CityViewMode }) {
   const districts = useMemo(() => buildDistricts(project), [project]);
   const completedRatio = project.progress / 100;
   const coreHeight = 0.9 + completedRatio * 1.2;
@@ -24,6 +26,7 @@ function ProjectCity({ project }: { project: ProjectSummary }) {
     <group>
       <CityBase accent={project.accent} />
       <RoadNetwork accent={project.accent} />
+      <TransitLines districts={districts} accent={project.accent} mode={mode} />
 
       <group position={[0, 0, 0]}>
         <mesh position={[0, 0.045, 0]} receiveShadow>
@@ -69,12 +72,14 @@ function ProjectCity({ project }: { project: ProjectSummary }) {
           index={index}
           position={district.position}
           towers={district.towers}
+          mode={mode}
         />
       ))}
 
       {project.blockedTaskCount > 0 ? (
         <WarningBeacon count={project.blockedTaskCount} accent="#fb7185" />
       ) : null}
+      {mode === "street" ? <StreetScanner accent={project.accent} /> : null}
 
       <Text
         position={[0, 0.08, 2.45]}
@@ -95,12 +100,15 @@ function FeatureDistrict({
   index,
   position,
   towers
+  ,
+  mode
 }: {
   feature: FeaturePlanet;
   accent: string;
   index: number;
   position: [number, number, number];
   towers: TowerPlan[];
+  mode: CityViewMode;
 }) {
   const featureColor = feature.blockedTaskCount > 0 ? "#fb7185" : feature.progress >= 70 ? "#4ade80" : accent;
 
@@ -133,6 +141,15 @@ function FeatureDistrict({
           <pointLight intensity={1.2} color="#fb7185" distance={1.4} />
         </group>
       ) : null}
+      {feature.status === "in_progress" ? (
+        <ConstructionCrane accent={featureColor} progress={feature.progress} />
+      ) : null}
+      {mode === "risk" && feature.progress < 40 ? (
+        <mesh position={[0, 0.11, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.66, 0.7, 48]} />
+          <meshBasicMaterial color="#fb7185" transparent opacity={0.45} side={THREE.DoubleSide} />
+        </mesh>
+      ) : null}
 
       <Text
         position={[0, 0.09, 0.72]}
@@ -145,6 +162,84 @@ function FeatureDistrict({
         {feature.name}
       </Text>
     </group>
+  );
+}
+
+function ConstructionCrane({ accent, progress }: { accent: string; progress: number }) {
+  const group = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    if (!group.current) return;
+    group.current.rotation.y = Math.sin(clock.getElapsedTime() * 0.5) * 0.16;
+  });
+  return (
+    <group ref={group} position={[-0.42, 0.12 + progress / 500, 0.4]}>
+      <mesh position={[0, 0.18, 0]}>
+        <boxGeometry args={[0.035, 0.36, 0.035]} />
+        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.3} />
+      </mesh>
+      <mesh position={[0.17, 0.36, 0]}>
+        <boxGeometry args={[0.36, 0.025, 0.025]} />
+        <meshStandardMaterial color="#dff8ff" emissive={accent} emissiveIntensity={0.25} />
+      </mesh>
+      <Line points={[[0.32, 0.35, 0], [0.32, 0.12, 0]]} color="#f5c451" lineWidth={1} transparent opacity={0.7} />
+    </group>
+  );
+}
+
+function TransitLines({
+  districts,
+  accent,
+  mode
+}: {
+  districts: Array<{ position: [number, number, number]; feature: FeaturePlanet; towers: TowerPlan[] }>;
+  accent: string;
+  mode: CityViewMode;
+}) {
+  const pulse = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    if (!pulse.current) return;
+    pulse.current.children.forEach((child, index) => {
+      const district = districts[index % districts.length];
+      const phase = (clock.getElapsedTime() * 0.55 + index * 0.23) % 1;
+      child.position.set(district.position[0] * phase, 0.08, district.position[2] * phase);
+    });
+  });
+  return (
+    <group>
+      {districts.map((district) => (
+        <Line
+          key={`transit-${district.feature.id}`}
+          points={[[0, 0.07, 0], [district.position[0], 0.07, district.position[2]]]}
+          color={mode === "risk" && district.feature.blockedTaskCount > 0 ? "#fb7185" : accent}
+          lineWidth={mode === "street" ? 2 : 1.2}
+          transparent
+          opacity={mode === "risk" ? 0.48 : 0.3}
+        />
+      ))}
+      <group ref={pulse}>
+        {districts.map((district) => (
+          <mesh key={`transit-pulse-${district.feature.id}`}>
+            <sphereGeometry args={[0.026, 12, 12]} />
+            <meshBasicMaterial color={district.feature.blockedTaskCount > 0 ? "#fb7185" : "#48e5ff"} transparent opacity={0.85} />
+          </mesh>
+        ))}
+      </group>
+    </group>
+  );
+}
+
+function StreetScanner({ accent }: { accent: string }) {
+  const ring = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    if (!ring.current) return;
+    const scale = 0.8 + (clock.getElapsedTime() % 2.4) * 0.62;
+    ring.current.scale.setScalar(scale);
+  });
+  return (
+    <mesh ref={ring} position={[0, 0.09, 0]} rotation={[Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[0.72, 0.74, 72]} />
+      <meshBasicMaterial color={accent} transparent opacity={0.36} side={THREE.DoubleSide} />
+    </mesh>
   );
 }
 
@@ -310,7 +405,25 @@ function buildTowers(feature: FeaturePlanet): TowerPlan[] {
   });
 }
 
-export default function CityScene({ project }: { project: ProjectSummary }) {
+function CityCamera({ mode }: { mode: CityViewMode }) {
+  const { camera } = useThree();
+  const target = useMemo(() => {
+    if (mode === "street") return new THREE.Vector3(1.35, 0.72, 2.15);
+    if (mode === "risk") return new THREE.Vector3(0, 4.4, 0.18);
+    return new THREE.Vector3(3.7, 3.15, 4.25);
+  }, [mode]);
+  const lookAt = useMemo(() => {
+    if (mode === "street") return new THREE.Vector3(0.1, 0.45, 0.05);
+    return new THREE.Vector3(0, 0.38, 0);
+  }, [mode]);
+  useFrame(() => {
+    camera.position.lerp(target, 0.06);
+    camera.lookAt(lookAt);
+  });
+  return null;
+}
+
+export default function CityScene({ project, mode = "overview" }: { project: ProjectSummary; mode?: CityViewMode }) {
   return (
     <Canvas camera={{ position: [3.7, 3.15, 4.25], fov: 43 }} dpr={[1, 1.75]} shadows>
       <color attach="background" args={["#02040a"]} />
@@ -331,11 +444,13 @@ export default function CityScene({ project }: { project: ProjectSummary }) {
         fadeDistance={8.5}
         infiniteGrid
       />
-      <ProjectCity project={project} />
+      <CityCamera mode={mode} />
+      <ProjectCity project={project} mode={mode} />
       <OrbitControls
         makeDefault
         enablePan
-        minDistance={3}
+        enabled={mode !== "risk"}
+        minDistance={mode === "street" ? 1.6 : 3}
         maxDistance={7.2}
         maxPolarAngle={Math.PI / 2.2}
         target={new THREE.Vector3(0, 0.38, 0)}

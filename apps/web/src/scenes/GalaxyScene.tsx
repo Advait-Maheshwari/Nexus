@@ -147,6 +147,7 @@ function ProjectStar({
             opacity={selected ? 0.9 : 0.42}
           />
         </mesh>
+        <SolarFlares accent={project.accent} selected={selected} healthScore={project.healthScore} />
         {planets.map((planet) => (
           <mesh key={`${project.id}-${planet.id}-orbit`} rotation={[Math.PI / 2.2, 0, 0]}>
             <torusGeometry args={[planet.orbitRadius, 0.0016, 8, 128]} />
@@ -180,6 +181,54 @@ function ProjectStar({
           </Text>
         </Billboard>
       </Float>
+    </group>
+  );
+}
+
+function SolarFlares({
+  accent,
+  selected,
+  healthScore
+}: {
+  accent: string;
+  selected: boolean;
+  healthScore: number;
+}) {
+  const group = useRef<THREE.Group>(null);
+  const flareCount = healthScore > 80 ? 12 : healthScore > 65 ? 8 : 5;
+
+  useFrame(({ clock }) => {
+    if (!group.current) return;
+    group.current.rotation.z = clock.getElapsedTime() * (selected ? 0.42 : 0.24);
+    group.current.scale.setScalar(selected ? 1.08 + Math.sin(clock.getElapsedTime() * 1.8) * 0.04 : 0.9);
+  });
+
+  return (
+    <group ref={group}>
+      {Array.from({ length: flareCount }, (_, index) => {
+        const angle = (index / flareCount) * Math.PI * 2;
+        const length = selected ? 0.34 : 0.22;
+        const start: [number, number, number] = [
+          Math.cos(angle) * 0.18,
+          Math.sin(angle) * 0.18,
+          0
+        ];
+        const end: [number, number, number] = [
+          Math.cos(angle) * (0.18 + length),
+          Math.sin(angle) * (0.18 + length),
+          0
+        ];
+        return (
+          <Line
+            key={`flare-${index}`}
+            points={[start, end]}
+            color={healthScore < 65 ? "#fb7185" : accent}
+            lineWidth={selected ? 1.4 : 0.8}
+            transparent
+            opacity={selected ? 0.55 : 0.22}
+          />
+        );
+      })}
     </group>
   );
 }

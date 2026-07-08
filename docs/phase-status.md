@@ -50,6 +50,12 @@ Started:
 - Weekly review summary generated without paid AI calls.
 - Rebuilt City Builder as a selected project city with project sidebar, feature districts, roads,
   towers, damage beacons, and mobile-safe stacking.
+- Added City Builder overview, street, and risk-scan modes with energy routes, construction
+  cranes, scanner pulses, and low-progress risk rings.
+- Upgraded DNA Timeline into a project genome with sequence, risk scan, and AI path modes,
+  dependency arcs, risk fractures, energy particles, node-type shapes, and a timeline ruler.
+- Added Galaxy solar diagnostics, star flares, planet classes, and planet readouts so project
+  systems communicate health, velocity, gravity, blockers, and next action more clearly.
 - Phase 1 completion track running in parallel.
 
 Launch hardening left after this phase: deeper live-data parity for every 3D scene and visual

@@ -16,6 +16,7 @@ import {
 import { ProjectOrbitCard } from "@/components/ProjectOrbitCard";
 import { StatusPill } from "@/components/StatusPill";
 import type { MissionData, TimelineNode } from "@/types/domain";
+import type { GenomeMode } from "@/scenes/DnaScene";
 
 const GalaxyScene = lazy(() => import("@/scenes/GalaxyScene"));
 const DnaScene = lazy(() => import("@/scenes/DnaScene"));
@@ -85,6 +86,11 @@ export function GalaxyView({ data }: { data: MissionData }) {
           <>
             <ProjectOrbitCard project={selectedProject} />
             <section className="glass-panel rounded-lg p-4">
+              <div className="mb-4 grid grid-cols-3 gap-2 text-center">
+                <PlanetMetric label="Solar health" value={selectedProject.healthScore} />
+                <PlanetMetric label="Gravity" value={selectedProject.priority} />
+                <PlanetMetric label="Velocity" value={selectedProject.velocity.toFixed(1)} />
+              </div>
               <p className="font-mono text-xs uppercase tracking-[0.24em] text-violet">
                 Feature Planets
               </p>
@@ -104,6 +110,9 @@ export function GalaxyView({ data }: { data: MissionData }) {
                       <span className="text-sm font-semibold text-white">{planet.name}</span>
                       <span className="font-mono text-xs text-cyan">{planet.progress}%</span>
                     </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {planetClass(planet.progress, planet.blockedTaskCount)}
+                    </p>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-violet to-cyan"
@@ -139,6 +148,14 @@ export function GalaxyView({ data }: { data: MissionData }) {
                         />
                       ))}
                     </div>
+                  </div>
+                  <div className="mt-3 rounded-md border border-white/10 bg-white/[0.035] p-3">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                      Planet Readout
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">
+                      {planetReadout(selectedPlanet.progress, selectedPlanet.blockedTaskCount)}
+                    </p>
                   </div>
                 </>
               ) : null}
@@ -186,6 +203,26 @@ export function GalaxyView({ data }: { data: MissionData }) {
   );
 }
 
+function planetClass(progress: number, blocked: number) {
+  if (blocked > 0) return "unstable red-zone planet";
+  if (progress >= 75) return "mature green world";
+  if (progress >= 45) return "forming ocean world";
+  return "early construction moon-world";
+}
+
+function planetReadout(progress: number, blocked: number) {
+  if (blocked > 0) {
+    return "This planet has blocked task moons. Clear damage before expanding its orbit.";
+  }
+  if (progress >= 75) {
+    return "This feature world is stable and can support polish, automation, or documentation.";
+  }
+  if (progress >= 45) {
+    return "This planet is mid-formation. Add one focused task to push it into stable orbit.";
+  }
+  return "This is an early feature world. Keep its next task small and concrete.";
+}
+
 function PlanetMetric({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-md bg-white/[0.04] px-2 py-3">
@@ -197,7 +234,18 @@ function PlanetMetric({ label, value }: { label: string; value: string | number 
 
 export function TimelineView({ data }: { data: MissionData }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [mode, setMode] = useState<GenomeMode>("sequence");
   const activeNode = data.timeline[activeIndex];
+  const nextAction = useMemo(() => {
+    const candidate =
+      data.timeline.find((node) => node.status === "in_progress") ??
+      data.timeline.find((node) => node.status === "ready") ??
+      data.timeline.find((node) => node.status === "backlog");
+    return candidate ?? data.timeline[data.timeline.length - 1];
+  }, [data.timeline]);
+  const riskCount = data.timeline.filter(
+    (node) => node.status === "blocked" || (mode === "risk" && node.status !== "done")
+  ).length;
 
   return (
     <section
@@ -211,11 +259,25 @@ export function TimelineView({ data }: { data: MissionData }) {
     >
       <div className="relative min-h-[560px] overflow-hidden rounded-lg border border-white/10 bg-void">
         <Suspense fallback={<div className="h-full bg-void" />}>
-          <DnaScene nodes={data.timeline} activeIndex={activeIndex} onSelect={setActiveIndex} />
+          <DnaScene nodes={data.timeline} activeIndex={activeIndex} mode={mode} onSelect={setActiveIndex} />
         </Suspense>
         <div className="pointer-events-none absolute left-4 top-4">
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-violet">DNA Timeline</p>
-          <h2 className="mt-1 text-2xl font-semibold text-white">Project Evolution</h2>
+          <h2 className="mt-1 text-2xl font-semibold text-white">Project Genome</h2>
+          <p className="mt-2 max-w-md text-sm text-slate-400">
+            Nodes are milestones, tasks, features, and events. Fractures show risk.
+          </p>
+        </div>
+        <div className="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2">
+          <GenomeModeButton active={mode === "sequence"} onClick={() => setMode("sequence")}>
+            Sequence
+          </GenomeModeButton>
+          <GenomeModeButton active={mode === "risk"} onClick={() => setMode("risk")}>
+            Risk Scan
+          </GenomeModeButton>
+          <GenomeModeButton active={mode === "next"} onClick={() => setMode("next")}>
+            AI Path
+          </GenomeModeButton>
         </div>
       </div>
       <aside className="space-y-3">
@@ -230,6 +292,9 @@ export function TimelineView({ data }: { data: MissionData }) {
             </p>
             <h3 className="mt-2 text-xl font-semibold text-white">{activeNode.label}</h3>
             <p className="mt-2 text-sm capitalize text-slate-400">{activeNode.type}</p>
+            <p className="mt-4 rounded-md border border-white/10 bg-white/[0.04] p-3 text-sm leading-6 text-slate-300">
+              {describeGenomeNode(activeNode, activeIndex, data.timeline.length)}
+            </p>
             <div className="mt-5 flex gap-2">
               <button
                 type="button"
@@ -253,6 +318,23 @@ export function TimelineView({ data }: { data: MissionData }) {
           </section>
         ) : null}
         <section className="glass-panel rounded-lg p-4">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan">Genome Signal</p>
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+            <PlanetMetric label="Nodes" value={data.timeline.length} />
+            <PlanetMetric label="Risks" value={riskCount} />
+            <PlanetMetric label="Mode" value={mode === "next" ? "AI" : mode} />
+          </div>
+          {nextAction ? (
+            <div className="mt-3 rounded-md border border-solar/20 bg-solar/10 p-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-solar">
+                Recommended Sequence
+              </p>
+              <p className="mt-2 text-sm font-semibold text-white">{nextAction.label}</p>
+              <p className="mt-1 text-xs text-slate-400">{nextAction.date}</p>
+            </div>
+          ) : null}
+        </section>
+        <section className="glass-panel rounded-lg p-4">
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-slate-500">Sequence</p>
           <div className="mt-3 space-y-1">
             {data.timeline.map((node, index) => (
@@ -273,6 +355,46 @@ export function TimelineView({ data }: { data: MissionData }) {
       </aside>
     </section>
   );
+}
+
+function GenomeModeButton({
+  active,
+  onClick,
+  children
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-md border px-3 py-2 text-xs font-medium transition backdrop-blur-md ${
+        active
+          ? "border-cyan/45 bg-cyan/15 text-cyan shadow-glow"
+          : "border-white/10 bg-void/70 text-slate-300 hover:border-white/20"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function describeGenomeNode(node: TimelineNode, index: number, total: number) {
+  if (node.status === "blocked") {
+    return "This node is fractured. Clear its blocker before relying on later work in the sequence.";
+  }
+  if (node.status === "done") {
+    return "This node is stable genetic memory: completed work that later milestones can build on.";
+  }
+  if (node.status === "in_progress") {
+    return "This is the active execution node. Finish or explicitly block it before starting a new branch.";
+  }
+  if (index === total - 1) {
+    return "This is the far-future node. Keep it transparent until near-term execution is stable.";
+  }
+  return "This node is planned work. It should become active only when the previous sequence is stable.";
 }
 
 function TimelineRow({ node, index }: { node: TimelineNode; index: number }) {

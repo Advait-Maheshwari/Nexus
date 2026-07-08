@@ -4,12 +4,20 @@ import { Building2, Clock3, Factory, RadioTower, ShieldAlert, Zap } from "lucide
 import { StatusPill } from "@/components/StatusPill";
 import { cn } from "@/lib/utils";
 import type { MissionData } from "@/types/domain";
+import type { CityViewMode } from "@/scenes/CityScene";
 
 const CityScene = lazy(() => import("@/scenes/CityScene"));
 
 export function CityBuilderView({ data }: { data: MissionData }) {
   const [selectedId, setSelectedId] = useState(data.projects[0]?.id ?? "");
+  const [mode, setMode] = useState<CityViewMode>("overview");
+  const [sort, setSort] = useState<"health" | "progress" | "risk">("risk");
   const selected = data.projects.find((project) => project.id === selectedId);
+  const sortedProjects = [...data.projects].sort((first, second) => {
+    if (sort === "health") return second.healthScore - first.healthScore;
+    if (sort === "progress") return second.progress - first.progress;
+    return second.blockedTaskCount - first.blockedTaskCount || second.priority.localeCompare(first.priority);
+  });
 
   return (
     <section className="grid min-h-[calc(100vh-8rem)] gap-4 xl:grid-cols-[280px_minmax(0,1fr)_330px]">
@@ -23,9 +31,24 @@ export function CityBuilderView({ data }: { data: MissionData }) {
           </div>
           <Factory className="text-solar" size={22} />
         </div>
+        <div className="mt-3 grid grid-cols-3 gap-1 rounded-md border border-white/10 bg-white/[0.035] p-1">
+          {(["risk", "health", "progress"] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setSort(item)}
+              className={cn(
+                "h-8 rounded text-[10px] uppercase tracking-[0.12em] transition",
+                sort === item ? "bg-solar/15 text-solar" : "text-slate-500 hover:text-white"
+              )}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
 
         <div className="mt-3 space-y-2">
-          {data.projects.map((project) => (
+          {sortedProjects.map((project) => (
             <button
               key={project.id}
               type="button"
@@ -57,7 +80,7 @@ export function CityBuilderView({ data }: { data: MissionData }) {
       <div className="relative min-h-[560px] overflow-hidden rounded-lg border border-white/10 bg-void">
         {selected ? (
           <Suspense fallback={<div className="h-full bg-void" />}>
-            <CityScene project={selected} />
+            <CityScene project={selected} mode={mode} />
           </Suspense>
         ) : null}
         <div className="pointer-events-none absolute left-4 top-4">
@@ -68,6 +91,17 @@ export function CityBuilderView({ data }: { data: MissionData }) {
           <p className="mt-2 max-w-md text-sm text-slate-400">
             Features become districts. Tasks become towers. Blockers become visible damage.
           </p>
+        </div>
+        <div className="absolute bottom-4 right-4 flex flex-wrap justify-end gap-2">
+          <CityModeButton active={mode === "overview"} onClick={() => setMode("overview")}>
+            Overview
+          </CityModeButton>
+          <CityModeButton active={mode === "street"} onClick={() => setMode("street")}>
+            Street
+          </CityModeButton>
+          <CityModeButton active={mode === "risk"} onClick={() => setMode("risk")}>
+            Risk Scan
+          </CityModeButton>
         </div>
         <div className="pointer-events-none absolute bottom-4 left-4 rounded-md border border-white/10 bg-void/80 px-3 py-2 backdrop-blur-md">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
@@ -88,6 +122,13 @@ export function CityBuilderView({ data }: { data: MissionData }) {
                 <h3 className="mt-2 text-xl font-semibold text-white">{selected.name}</h3>
               </div>
               <StatusPill status={selected.status} />
+            </div>
+            <div className="mt-4 rounded-md border border-white/10 bg-white/[0.04] p-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                Active View
+              </p>
+              <p className="mt-1 text-sm font-semibold capitalize text-white">{mode.replace("-", " ")}</p>
+              <p className="mt-2 text-xs leading-5 text-slate-400">{cityModeDescription(mode)}</p>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-2">
               <CityMetric icon={<Building2 size={16} />} label="Towers" value={selected.featureCount} />
@@ -142,6 +183,41 @@ export function CityBuilderView({ data }: { data: MissionData }) {
       ) : null}
     </section>
   );
+}
+
+function CityModeButton({
+  active,
+  onClick,
+  children
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-md border px-3 py-2 text-xs font-medium transition backdrop-blur-md",
+        active
+          ? "border-solar/45 bg-solar/15 text-solar shadow-glow"
+          : "border-white/10 bg-void/75 text-slate-300 hover:border-white/20"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function cityModeDescription(mode: CityViewMode) {
+  if (mode === "street") {
+    return "Low-angle command view with a scanner pulse and stronger energy routes.";
+  }
+  if (mode === "risk") {
+    return "Top-down diagnostic view that highlights blockers and low-progress districts.";
+  }
+  return "Balanced orbit view for inspecting the whole selected project city.";
 }
 
 function MiniCityMetric({ label, value }: { label: string; value: string | number }) {
