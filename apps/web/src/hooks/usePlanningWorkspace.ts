@@ -30,31 +30,60 @@ const initialState: PlanningState = {
   projects: [{ id: "local-nexus", name: "Nexus", codename: "ORION" }],
   ideas: [
     {
-      id: "idea-spatial-review",
+      id: "idea-zero-cost-ai",
       projectId: "local-nexus",
-      title: "Spatial weekly review",
-      body: "Turn the weekly report into a guided flight through project systems.",
-      score: 86,
-      source: "Product",
+      title: "Zero-cost AI briefing engine",
+      body: "Keep the AI briefing useful through local rules: next task, delay risk, bottlenecks, health, weekly review, and exportable reports without paid API calls.",
+      score: 92,
+      source: "Nexus roadmap",
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: "idea-saas-control-center",
+      projectId: "local-nexus",
+      title: "SaaS readiness control center",
+      body: "Show deployment health, account mode, database sync, security status, backup readiness, and launch blockers in one place.",
+      score: 88,
+      source: "Phase 5",
       createdAt: new Date().toISOString()
     }
   ],
-  journal: [],
+  journal: [
+    {
+      id: "journal-real-roadmap",
+      projectId: "local-nexus",
+      title: "Nexus roadmap reset",
+      body: "Removed placeholder portfolio concepts and made Nexus itself the source project. The app should now manage the real build plan: Phase 4 cloud/security first, then Phase 5 SaaS launch readiness.",
+      summary:
+        "Nexus project manager now tracks the actual Nexus build plan and launch roadmap.",
+      mood: "focused",
+      createdAt: new Date().toISOString()
+    }
+  ],
   milestones: [
     {
-      id: "milestone-secure-launch",
+      id: "milestone-phase-4",
       projectId: "local-nexus",
-      title: "Secure cloud launch",
-      description: "Identity exchange, database deployment, and isolation tests.",
+      title: "Phase 4 cloud and security complete",
+      description: "Render, Neon, Firebase, session validation, account/profile, role safety, and live database verification are complete.",
       status: "in_progress",
       dueDate: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: "milestone-phase-5",
+      projectId: "local-nexus",
+      title: "Phase 5 SaaS launch readiness complete",
+      description: "Collaboration polish, onboarding, monitoring, backup/restore, responsive QA, and final launch checklist are complete.",
+      status: "backlog",
+      dueDate: new Date(Date.now() + 28 * 86_400_000).toISOString(),
       createdAt: new Date().toISOString()
     }
   ]
 };
 
 export function usePlanningWorkspace(session: NexusSession) {
-  const storageKey = `nexus.planning.v1.${session.workspaceId}`;
+  const storageKey = `nexus.planning.v2.${session.workspaceId}`;
   const [state, setState] = useState<PlanningState>(() => load(storageKey));
   const [selectedProjectId, setSelectedProjectId] = useState(state.projects[0]?.id ?? "");
   const [mode, setMode] = useState<"api" | "local">(session.mode === "api" ? "api" : "local");

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import type { ProjectBlueprint } from "@/types/blueprint";
 
-const STORAGE_KEY = "nexus.blueprints.v1";
+const STORAGE_KEY = "nexus.blueprints.v2";
 
 export function useProjectBlueprint(projectId: string, projectName: string) {
   const [blueprint, setBlueprint] = useState<ProjectBlueprint>(() =>
@@ -39,6 +39,10 @@ function loadBlueprintMap(): Record<string, ProjectBlueprint> {
 }
 
 function createDefaultBlueprint(projectId: string, projectName: string): ProjectBlueprint {
+  if (projectName.trim().toLowerCase() === "nexus") {
+    return createNexusBlueprint(projectId);
+  }
+
   return {
     projectId,
     vision: `Deliver ${projectName} as a reliable, polished product that solves its core user problem.`,
@@ -99,6 +103,94 @@ function createDefaultBlueprint(projectId: string, projectName: string): Project
         guidance: "Deploy, verify login and sync, review the product against the final vision, then plan the next cycle.",
         status: "pending",
         priority: "high"
+      }
+    ],
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function createNexusBlueprint(projectId: string): ProjectBlueprint {
+  return {
+    projectId,
+    vision:
+      "Build Nexus into a zero-cost, production-grade, futuristic 3D AI-powered project management system for personal use first, with an architecture ready to become a SaaS product without a major rewrite.",
+    definitionOfDone:
+      "Nexus is done when a user can securely sign up, manage real projects through project-feature-task-milestone loops, understand progress through Mission Control, Galaxy, City Builder, Analytics, Calendar, Ideas, and Journal, receive useful zero-cost AI-style guidance, and use the deployed app on desktop and phone.",
+    strategy:
+      "Finish the product in disciplined phases: lock the core spine, polish the cinematic 3D operating system, keep integrations free, harden cloud auth and security, then complete SaaS readiness with collaboration, monitoring, backup, and launch QA.",
+    constraints: [
+      "Total project cost must stay $0 from Phase 1 through the final phase",
+      "Desktop and laptop quality is primary; phone support remains clean and usable",
+      "Use local/free AI heuristics by default and only support paid providers through future user-owned keys",
+      "Keep the codebase production-grade, secure, modular, and ready for SaaS expansion",
+      "Do not add decorative features unless they explain project progress, health, risk, or next action"
+    ],
+    goals: [
+      {
+        id: crypto.randomUUID(),
+        title: "Ship the personal Nexus command center",
+        measure: "Mission Control, Projects, Galaxy, City Builder, Analytics, Calendar, Ideas, Journal, Profile, and Control Center work against the same Nexus project model.",
+        completed: false
+      },
+      {
+        id: crypto.randomUUID(),
+        title: "Make Nexus secure enough for cloud use",
+        measure: "Render, Neon, Firebase, JWT auth, role permissions, CORS, headers, validation, and live database sync are verified.",
+        completed: false
+      },
+      {
+        id: crypto.randomUUID(),
+        title: "Keep every default workflow zero-cost",
+        measure: "The hosted app, database, auth path, integrations, reports, and AI-style recommendations run on free tiers or local logic.",
+        completed: false
+      },
+      {
+        id: crypto.randomUUID(),
+        title: "Prepare SaaS expansion without rewrites",
+        measure: "Workspace roles, account management, deployment configuration, test coverage, monitoring plan, and launch checklist are in place.",
+        completed: false
+      }
+    ],
+    steps: [
+      {
+        id: crypto.randomUUID(),
+        title: "Phase 1: Core Spine",
+        guidance:
+          "Maintain the monorepo, data model, auth base, CRUD services, local fallback, PostgreSQL path, and zero-cost policy as the stable foundation.",
+        status: "done",
+        priority: "critical"
+      },
+      {
+        id: crypto.randomUUID(),
+        title: "Phase 2: Cinematic 3D OS",
+        guidance:
+          "Keep Mission Control, Galaxy/Solar, City Builder, and Analytics meaningful: every visual object must explain project health, progress, risk, or next work.",
+        status: "done",
+        priority: "critical"
+      },
+      {
+        id: crypto.randomUUID(),
+        title: "Phase 3: Free Integrations",
+        guidance:
+          "Use GitHub public activity, local calendar files, local reports, Markdown exports, and copyable Slack/Discord briefings without paid services.",
+        status: "done",
+        priority: "high"
+      },
+      {
+        id: crypto.randomUUID(),
+        title: "Phase 4: Cloud, Auth, and Security",
+        guidance:
+          "Finish live Render/Neon/Firebase verification, session validation, account/profile management, password recovery design, role enforcement, and live PostgreSQL test coverage.",
+        status: "active",
+        priority: "critical"
+      },
+      {
+        id: crypto.randomUUID(),
+        title: "Phase 5: SaaS Launch Readiness",
+        guidance:
+          "Add workspace collaboration polish, onboarding, monitoring, backup/restore planning, final responsive QA, launch checklist, and external security review preparation.",
+        status: "pending",
+        priority: "critical"
       }
     ],
     updatedAt: new Date().toISOString()
