@@ -56,7 +56,7 @@ function ProjectStar({
         1,
         1.72
       );
-      const focusScale = selected ? 0.78 : focusMode ? 0.54 : 0.42;
+      const focusScale = selected ? 0.62 : focusMode ? 0.5 : 0.42;
       group.current.scale.setScalar(focusScale * Math.min(distanceScale, focusMode ? 1.26 : 1.08));
     }
     if (orbit.current) {
@@ -73,8 +73,9 @@ function ProjectStar({
     () =>
       project.planets.map((planet, planetIndex) => {
         const angle = (planetIndex / project.planets.length) * Math.PI * 2;
-        const radius = planet.orbitRadius;
-        const progressScale = 0.076 + planet.progress / 1450 + Math.min(planet.taskCount, 18) / 1800;
+        const radiusMultiplier = selected ? 1.72 : focusMode ? 1.24 : 1;
+        const radius = planet.orbitRadius * radiusMultiplier;
+        const progressScale = 0.058 + planet.progress / 1900 + Math.min(planet.taskCount, 18) / 2600;
         const completedTaskCount = Math.round(planet.taskCount * (planet.progress / 100));
         const openTaskCount = Math.max(0, planet.taskCount - completedTaskCount - planet.blockedTaskCount);
         return {
@@ -85,6 +86,7 @@ function ProjectStar({
             Math.sin(angle * 1.7) * 0.18,
             Math.sin(angle) * radius
           ] as [number, number, number],
+          orbitRadius: radius,
           size: progressScale,
           color: planet.blockedTaskCount > 0 ? "#fb7185" : statusColor[planet.status],
           completedTaskCount,
@@ -302,8 +304,10 @@ function FeaturePlanetMesh({
       }),
     [planet.blockedTaskCount, planet.completedTaskCount, planet.size, satelliteCount]
   );
-  const visibleMoons = moons.slice(0, selected ? 6 : systemSelected ? 4 : overview ? 1 : 2);
+  const visibleMoons = moons.slice(0, selected ? 6 : systemSelected ? 2 : overview ? 1 : 2);
   const hasRings = Math.round(planet.angle * 100) % 2 === 0;
+  const showFullDetail = selected && systemSelected && !overview;
+  const showRiskMarker = !showFullDetail && planet.blockedTaskCount > 0;
   const progressAngle = (planet.progress / 100) * Math.PI * 2 + planet.angle;
   const progressMarkerPosition: [number, number, number] = [
     Math.cos(progressAngle) * planet.size * 2.26,
@@ -326,7 +330,7 @@ function FeaturePlanetMesh({
       const worldPosition = new THREE.Vector3();
       group.current.getWorldPosition(worldPosition);
       const distanceScale = THREE.MathUtils.clamp(camera.position.distanceTo(worldPosition) / 4.5, 1, 1.9);
-      const modeScale = selected ? 1.16 : systemSelected ? 0.88 : overview ? 0.5 : 0.72;
+      const modeScale = selected ? 0.92 : systemSelected ? 0.68 : overview ? 0.5 : 0.72;
       group.current.scale.setScalar(modeScale * distanceScale);
     }
     if (mesh.current) {
@@ -394,7 +398,7 @@ function FeaturePlanetMesh({
           blending={THREE.AdditiveBlending}
         />
       </mesh>
-      {!overview ? (
+      {showFullDetail ? (
         <>
           <PlanetMeridians size={planet.size} color={selected ? "#dff8ff" : planet.color} selected={selected} />
           <mesh rotation={[Math.PI / 2, 0, 0]}>
@@ -430,13 +434,13 @@ function FeaturePlanetMesh({
           />
         </mesh>
       ) : null}
-      {planet.blockedTaskCount > 0 ? (
+      {showRiskMarker ? (
         <mesh position={[planet.size * 2.6, 0.02, 0]}>
           <sphereGeometry args={[0.012, 12, 12]} />
           <meshBasicMaterial color="#fb7185" />
         </mesh>
       ) : null}
-      {systemSelected ? (
+      {showFullDetail ? (
         <>
           <mesh rotation={[Math.PI / 2, 0, 0]}>
             <torusGeometry args={[planet.size * 3.4, 0.0012, 8, 72]} />
@@ -666,7 +670,7 @@ export function GalaxyScene({
 
   return (
     <Canvas
-      camera={{ position: [0, 0.65, 9.2], fov: 60 }}
+      camera={{ position: [0, 0.45, 9.8], fov: 61 }}
       dpr={[1, 1.8]}
     >
       <color attach="background" args={["#02040a"]} />
@@ -698,10 +702,10 @@ export function GalaxyScene({
           selectedProject
             ? [
                 selectedProject.coordinates[0],
-                selectedProject.coordinates[1] - 2.05,
+                selectedProject.coordinates[1] - 2.75,
                 selectedProject.coordinates[2]
               ]
-            : [0, -1.3, 0]
+            : [0, -1.85, 0]
         }
         autoRotate={!selectedProjectId}
         autoRotateSpeed={0.32}
