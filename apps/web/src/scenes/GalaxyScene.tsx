@@ -52,12 +52,12 @@ function ProjectStar({
       group.current.rotation.y = elapsed * (0.12 + index * 0.03);
       group.current.position.y = project.coordinates[1] + Math.sin(elapsed + index) * 0.08;
       const distanceScale = THREE.MathUtils.clamp(
-        camera.position.distanceTo(group.current.position) / 4.2,
+        camera.position.distanceTo(group.current.position) / 3.9,
         1,
-        1.42
+        1.72
       );
-      const focusScale = selected ? 1.06 : focusMode ? 0.72 : 0.9;
-      group.current.scale.setScalar(focusScale * Math.min(distanceScale, 1.22));
+      const focusScale = selected ? 1.12 : focusMode ? 0.78 : 0.96;
+      group.current.scale.setScalar(focusScale * Math.min(distanceScale, 1.42));
     }
     if (orbit.current) {
       orbit.current.rotation.y = elapsed * (0.35 + index * 0.08);
@@ -74,7 +74,9 @@ function ProjectStar({
       project.planets.map((planet, planetIndex) => {
         const angle = (planetIndex / project.planets.length) * Math.PI * 2;
         const radius = planet.orbitRadius;
-        const progressScale = 0.06 + planet.progress / 1700;
+        const progressScale = 0.076 + planet.progress / 1450 + Math.min(planet.taskCount, 18) / 1800;
+        const completedTaskCount = Math.round(planet.taskCount * (planet.progress / 100));
+        const openTaskCount = Math.max(0, planet.taskCount - completedTaskCount - planet.blockedTaskCount);
         return {
           ...planet,
           angle,
@@ -84,7 +86,10 @@ function ProjectStar({
             Math.sin(angle) * radius
           ] as [number, number, number],
           size: progressScale,
-          color: planet.blockedTaskCount > 0 ? "#fb7185" : statusColor[planet.status]
+          color: planet.blockedTaskCount > 0 ? "#fb7185" : statusColor[planet.status],
+          completedTaskCount,
+          openTaskCount,
+          signalLabel: buildPlanetSignal(planet.progress, planet.blockedTaskCount)
         };
       }),
     [project.planets]
@@ -236,7 +241,10 @@ function SolarFlares({
 type SceneFeaturePlanet = FeaturePlanet & {
   angle: number;
   color: string;
+  completedTaskCount: number;
+  openTaskCount: number;
   position: [number, number, number];
+  signalLabel: string;
   size: number;
 };
 
@@ -271,19 +279,28 @@ function FeaturePlanetMesh({
       Array.from({ length: satelliteCount }, (_, index) => {
         const angle = (index / satelliteCount) * Math.PI * 2;
         const blocked = index < planet.blockedTaskCount;
+        const completed = !blocked && index < planet.completedTaskCount;
+        const kind = blocked ? "blocked" : completed ? "done" : "open";
         return {
           position: [
             Math.cos(angle) * planet.size * 3.65,
             Math.sin(angle * 2) * planet.size * 0.65,
             Math.sin(angle) * planet.size * 3.65
           ] as [number, number, number],
-          color: blocked ? "#fb7185" : index / satelliteCount < planet.progress / 100 ? "#4ade80" : "#94a3b8"
+          color: blocked ? "#fb7185" : completed ? "#4ade80" : "#94a3b8",
+          kind
         };
       }),
-    [planet.blockedTaskCount, planet.progress, planet.size, satelliteCount]
+    [planet.blockedTaskCount, planet.completedTaskCount, planet.size, satelliteCount]
   );
   const visibleMoons = moons.slice(0, selected ? 6 : systemSelected ? 4 : 2);
   const hasRings = Math.round(planet.angle * 100) % 2 === 0;
+  const progressAngle = (planet.progress / 100) * Math.PI * 2 + planet.angle;
+  const progressMarkerPosition: [number, number, number] = [
+    Math.cos(progressAngle) * planet.size * 2.26,
+    0.006,
+    Math.sin(progressAngle) * planet.size * 2.26
+  ];
 
   useEffect(
     () => () => {
@@ -299,8 +316,8 @@ function FeaturePlanetMesh({
     if (group.current) {
       const worldPosition = new THREE.Vector3();
       group.current.getWorldPosition(worldPosition);
-      const distanceScale = THREE.MathUtils.clamp(camera.position.distanceTo(worldPosition) / 5.4, 1, 1.55);
-      const modeScale = selected ? 1.48 : systemSelected ? 1.14 : 1.06;
+      const distanceScale = THREE.MathUtils.clamp(camera.position.distanceTo(worldPosition) / 4.5, 1, 1.9);
+      const modeScale = selected ? 1.58 : systemSelected ? 1.22 : 1.1;
       group.current.scale.setScalar(modeScale * distanceScale);
     }
     if (mesh.current) {
@@ -368,6 +385,26 @@ function FeaturePlanetMesh({
           blending={THREE.AdditiveBlending}
         />
       </mesh>
+      <PlanetMeridians size={planet.size} color={selected ? "#dff8ff" : planet.color} selected={selected} />
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[planet.size * 2.26, planet.size * 0.018, 10, 96]} />
+        <meshBasicMaterial
+          color={planet.blockedTaskCount > 0 ? "#fb7185" : "#4ade80"}
+          transparent
+          opacity={selected ? 0.48 : systemSelected ? 0.32 : 0.16}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh position={progressMarkerPosition}>
+        <sphereGeometry args={[Math.max(0.012, planet.size * 0.16), 18, 18]} />
+        <meshBasicMaterial
+          color={planet.blockedTaskCount > 0 ? "#fb7185" : "#4ade80"}
+          transparent
+          opacity={0.95}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+      <PlanetStatusBeacon planet={planet} selected={selected} />
       {hasRings ? (
         <mesh rotation={[Math.PI / 2.25, 0.18, 0]}>
           <ringGeometry args={[planet.size * 1.42, planet.size * 2.12, 72]} />
@@ -392,29 +429,27 @@ function FeaturePlanetMesh({
             <torusGeometry args={[planet.size * 3.4, 0.0012, 8, 72]} />
             <meshBasicMaterial color="#dff8ff" transparent opacity={0.28} />
           </mesh>
-          {selected ? (
-            <Billboard position={[0, planet.size * 2.8, 0]}>
-              <Text
-                fontSize={Math.max(0.035, planet.size * 0.44)}
-                color="#dff8ff"
-                anchorX="center"
-                anchorY="middle"
-                maxWidth={0.7}
-              >
-                {planet.name}
-              </Text>
-              <Text
-                position={[0, -Math.max(0.05, planet.size * 0.58), 0]}
-                fontSize={Math.max(0.026, planet.size * 0.28)}
-                color={planet.blockedTaskCount > 0 ? "#fecdd3" : "#94a3b8"}
-                anchorX="center"
-                anchorY="middle"
-                maxWidth={0.9}
-              >
-                feature / {planet.taskCount} task moons / {planet.progress}%
-              </Text>
-            </Billboard>
-          ) : null}
+          <Billboard position={[0, planet.size * (selected ? 2.65 : 2.7), 0]}>
+            <Text
+              fontSize={selected ? Math.max(0.017, planet.size * 0.18) : Math.max(0.011, planet.size * 0.1)}
+              color="#dff8ff"
+              anchorX="center"
+              anchorY="middle"
+              maxWidth={0.42}
+            >
+              {planet.name}
+            </Text>
+            <Text
+              position={[0, -Math.max(0.024, planet.size * 0.22), 0]}
+              fontSize={selected ? Math.max(0.01, planet.size * 0.1) : Math.max(0.007, planet.size * 0.065)}
+              color={planet.blockedTaskCount > 0 ? "#fecdd3" : "#94a3b8"}
+              anchorX="center"
+              anchorY="middle"
+              maxWidth={0.52}
+            >
+              {selected ? `${planet.signalLabel} / ${planet.taskCount} moons` : `${planet.progress}% / ${planet.taskCount} moons`}
+            </Text>
+          </Billboard>
         </>
       ) : null}
       {!systemSelected ? (
@@ -435,21 +470,88 @@ function FeaturePlanetMesh({
               roughness={0.94}
             />
           </mesh>
-          {selected && index < 3 ? (
+          {selected && index < 2 ? (
             <Billboard position={[0, planet.size * 0.42, 0]}>
               <Text
-                fontSize={Math.max(0.018, planet.size * 0.16)}
+                fontSize={Math.max(0.006, planet.size * 0.05)}
                 color={moon.color}
                 anchorX="center"
                 anchorY="middle"
-                maxWidth={0.35}
+                maxWidth={0.16}
               >
-                task
+                {moon.kind}
               </Text>
             </Billboard>
           ) : null}
         </group>
       ))}
+    </group>
+  );
+}
+
+function PlanetMeridians({
+  size,
+  color,
+  selected
+}: {
+  size: number;
+  color: string;
+  selected: boolean;
+}) {
+  const opacity = selected ? 0.36 : 0.18;
+
+  return (
+    <>
+      {[0, Math.PI / 3, (Math.PI / 3) * 2].map((rotation) => (
+        <mesh key={`meridian-${rotation}`} rotation={[Math.PI / 2, rotation, 0]}>
+          <torusGeometry args={[size * 1.035, size * 0.0045, 8, 72]} />
+          <meshBasicMaterial color={color} transparent opacity={opacity} depthWrite={false} />
+        </mesh>
+      ))}
+      <mesh rotation={[0, Math.PI / 2, 0]}>
+        <torusGeometry args={[size * 1.045, size * 0.0038, 8, 72]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={selected ? 0.18 : 0.09} depthWrite={false} />
+      </mesh>
+    </>
+  );
+}
+
+function PlanetStatusBeacon({
+  planet,
+  selected
+}: {
+  planet: SceneFeaturePlanet;
+  selected: boolean;
+}) {
+  const beaconColor = planet.blockedTaskCount > 0 ? "#fb7185" : planet.progress >= 70 ? "#4ade80" : planet.color;
+  const height = planet.size * (planet.blockedTaskCount > 0 ? 1.5 : 1.08);
+
+  return (
+    <group position={[planet.size * 1.38, planet.size * 1.05, planet.size * 0.18]}>
+      <mesh position={[0, height / 2, 0]}>
+        <cylinderGeometry args={[planet.size * 0.012, planet.size * 0.018, height, 10]} />
+        <meshBasicMaterial color={beaconColor} transparent opacity={selected ? 0.72 : 0.44} />
+      </mesh>
+      <mesh position={[0, height + planet.size * 0.08, 0]}>
+        <sphereGeometry args={[planet.size * 0.13, 18, 18]} />
+        <meshBasicMaterial
+          color={beaconColor}
+          transparent
+          opacity={0.9}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+      <Billboard position={[0, height + planet.size * 0.48, 0]}>
+        <Text
+          fontSize={Math.max(0.008, planet.size * 0.075)}
+          color={beaconColor}
+          anchorX="center"
+          anchorY="middle"
+          maxWidth={0.22}
+        >
+          {planet.progress}%
+        </Text>
+      </Billboard>
     </group>
   );
 }
@@ -499,7 +601,7 @@ function ProjectLink({
         <meshBasicMaterial color={color} transparent opacity={0.92} blending={THREE.AdditiveBlending} />
       </mesh>
       <Billboard position={labelPoint.toArray()}>
-        <Text fontSize={0.045} color={color} anchorX="center" anchorY="middle" maxWidth={1.4}>
+        <Text fontSize={0.022} color={color} anchorX="center" anchorY="middle" maxWidth={0.8}>
           {relationship.type.replace("-", " ")}
         </Text>
       </Billboard>
@@ -556,11 +658,11 @@ export function GalaxyScene({
       onPointerMissed={() => onSelectProject?.("")}
     >
       <color attach="background" args={["#02040a"]} />
-      <fog attach="fog" args={["#02040a", 18, 34]} />
-      <ambientLight intensity={1.28} />
+      <fog attach="fog" args={["#02040a", 24, 46]} />
+      <ambientLight intensity={1.48} />
       <pointLight position={[2.2, 2.4, 2.8]} intensity={3.8} color="#48e5ff" />
       <pointLight position={[-2.8, -1.4, 2.2]} intensity={2.2} color="#8d67ff" />
-      <directionalLight position={[0.4, 2.6, 3.2]} intensity={1.8} color="#eef9ff" />
+      <directionalLight position={[0.4, 2.6, 3.2]} intensity={2.15} color="#eef9ff" />
       <Stars radius={80} depth={40} count={2600} factor={3.6} saturation={0.35} fade speed={0.38} />
       <ProjectLinks projects={projects} relationships={relationships} />
       {projects.map((project, index) => (
@@ -576,23 +678,23 @@ export function GalaxyScene({
         />
       ))}
       <OrbitControls
-        enablePan={false}
+        enablePan
         enableZoom
-        minDistance={2.4}
-        maxDistance={8.2}
+        minDistance={1.8}
+        maxDistance={10.5}
         target={
           selectedProject
             ? [
                 selectedProject.coordinates[0],
-                selectedProject.coordinates[1] - 0.58,
+                selectedProject.coordinates[1] - 1.05,
                 selectedProject.coordinates[2]
               ]
-            : [0, -0.35, 0]
+            : [0, -0.55, 0]
         }
         autoRotate={!selectedProjectId}
         autoRotateSpeed={0.32}
-        maxPolarAngle={Math.PI / 1.65}
-        minPolarAngle={Math.PI / 3.2}
+        maxPolarAngle={Math.PI - 0.08}
+        minPolarAngle={0.08}
       />
     </Canvas>
   );
@@ -716,6 +818,19 @@ function createCloudTexture(seed: number): THREE.CanvasTexture {
   texture.wrapS = THREE.RepeatWrapping;
   texture.anisotropy = 4;
   return texture;
+}
+
+function buildPlanetSignal(progress: number, blockedTaskCount: number): string {
+  if (blockedTaskCount > 0) {
+    return `${blockedTaskCount} blocked`;
+  }
+  if (progress >= 75) {
+    return "stable feature";
+  }
+  if (progress >= 45) {
+    return "forming feature";
+  }
+  return "early feature";
 }
 
 function seededRandom(initialSeed: number): () => number {
