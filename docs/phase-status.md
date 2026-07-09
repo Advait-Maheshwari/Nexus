@@ -91,6 +91,8 @@ delivery, and file upload automation.
 - JWTs are bound to Nexus issuer/audience and checked against live membership.
 - Firebase ID tokens are validated by signature, issuer, audience, expiry, and verified email,
   then exchanged for Nexus workspace JWTs.
+- Production Google sign-in no longer silently falls back to a local Firebase-only workspace if
+  the Nexus API token exchange fails.
 - Every database project, feature, and task query is filtered by workspace.
 - Full names accept letters and spaces only; passwords require letters and numbers.
 - Production rejects short/default JWT secrets.

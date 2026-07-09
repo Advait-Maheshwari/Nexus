@@ -25,6 +25,8 @@
 - Authentication responses use `Cache-Control: no-store`.
 - Firebase ID tokens require RS256 signatures, known Google key IDs, the Nexus Firebase audience,
   the expected issuer, expiry validity, and a verified email.
+- Production Google sign-in must exchange the Firebase ID token for a Nexus API JWT before opening
+  the workspace; local Firebase-only fallback is limited to development builds.
 - API responses deny framing, MIME sniffing, sensitive permissions, and cross-origin opener access.
 - Production responses enable HSTS.
 - Request bodies above 1 MB are rejected.
@@ -40,5 +42,5 @@
 - Run the existing tenant-isolation suite against live PostgreSQL in CI.
 - Add audit events, encrypted backups, restore drills, and dependency scanning.
 - Complete an external security review before public SaaS launch.
-- Exchange Firebase ID tokens for Nexus API sessions before treating Google users as
-  PostgreSQL-synchronized SaaS accounts.
+- Add refresh-token rotation, session revocation, and account recovery flows for long-lived
+  SaaS usage.
