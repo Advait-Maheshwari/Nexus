@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     jwt_issuer: str = Field(default="nexus-api", alias="JWT_ISSUER")
     jwt_audience: str = Field(default="nexus-web", alias="JWT_AUDIENCE")
     access_token_expire_minutes: int = Field(default=60, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+    refresh_token_expire_days: int = Field(default=14, alias="REFRESH_TOKEN_EXPIRE_DAYS")
+    refresh_cookie_name: str = Field(default="nexus_refresh", alias="REFRESH_COOKIE_NAME")
     auth_backend: str = Field(default="local", alias="NEXUS_AUTH_BACKEND")
     firebase_project_id: str = Field(default="nexus-advait-pm", alias="FIREBASE_PROJECT_ID")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
@@ -33,6 +35,10 @@ class Settings(BaseSettings):
             raise ValueError("Production JWT_SECRET_KEY must contain at least 32 characters")
         if self.auth_backend not in {"local", "database"}:
             raise ValueError("NEXUS_AUTH_BACKEND must be local or database")
+        if self.access_token_expire_minutes < 5 or self.access_token_expire_minutes > 120:
+            raise ValueError("ACCESS_TOKEN_EXPIRE_MINUTES must be between 5 and 120")
+        if self.refresh_token_expire_days < 1 or self.refresh_token_expire_days > 30:
+            raise ValueError("REFRESH_TOKEN_EXPIRE_DAYS must be between 1 and 30")
         self.database_url = normalize_database_url(self.database_url)
         return self
 

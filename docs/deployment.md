@@ -62,6 +62,34 @@ The repository includes `render.yaml` for a free Render FastAPI service.
 The API Docker image runs `alembic upgrade head` before starting Uvicorn. Standard hosted
 `postgresql://` URLs are normalized automatically to SQLAlchemy's asyncpg driver.
 
+Render uses `/api/v1/ready` for health checks, so a deployment is considered ready only after the
+Neon connection succeeds. The production Blueprint also fixes access tokens at 15 minutes and
+refresh sessions at 14 days.
+
+## Session Boundary
+
+- Access tokens stay in browser `sessionStorage` and are validated against `/api/v1/auth/me`.
+- Rotating refresh tokens are stored only as SHA-256 hashes in PostgreSQL.
+- The raw refresh token uses an HTTP-only, secure, `SameSite=None` cookie in production.
+- Firebase-to-Render requests must use `credentials: include`; CORS must contain the exact Firebase
+  origin.
+- Privacy-focused browsers may block cross-site cookies. A future same-site custom domain removes
+  that limitation, but purchasing a domain is outside the locked zero-cost baseline.
+- Password changes revoke every other active session. "Revoke all sessions" invalidates every
+  access and refresh session for the account.
+
+## Database Verification
+
+GitHub Actions starts PostgreSQL 16 and runs the tenant-isolation suite against it using
+`NEXUS_TEST_DATABASE_URL`. Local runs skip that one test unless the variable is provided. SQLite
+tests still run for fast feedback.
+
+## Zero-Cost Workspace Limits
+
+The `personal_free` plan is enforced server-side: 25 active projects, 2,500 tasks, and 5 members
+per workspace. These limits protect the shared free Render and Neon resources; no billing call or
+paid upgrade is triggered.
+
 Render's free web service sleeps after inactivity. Its own free PostgreSQL expires after 30 days,
 so Nexus intentionally uses a separate persistent free database provider.
 

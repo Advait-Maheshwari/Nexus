@@ -29,7 +29,13 @@ class SecurityHeadersMiddleware:
                         ),
                     ]
                 )
-                if scope.get("path", "").startswith("/api/v1/auth"):
+                path = scope.get("path", "")
+                request_headers = dict(scope.get("headers", []))
+                if (
+                    path.startswith("/api/v1/auth")
+                    or path.startswith("/api/v1/workspaces")
+                    or b"authorization" in request_headers
+                ):
                     headers.append((b"cache-control", b"no-store"))
                 if settings.env.lower() == "production":
                     headers.append(

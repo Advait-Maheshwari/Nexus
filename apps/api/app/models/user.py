@@ -9,6 +9,7 @@ from app.models.base import Base, IdMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.project import Project
+    from app.models.user_session import UserSession
     from app.models.workspace import WorkspaceMember
 
 
@@ -23,4 +24,7 @@ class User(IdMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     memberships: Mapped[list["WorkspaceMember"]] = relationship(back_populates="user")
+    sessions: Mapped[list["UserSession"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     owned_projects: Mapped[list["Project"]] = relationship(back_populates="owner")

@@ -9,7 +9,8 @@ from app.models.project import Project
 from app.models.task import Task, TaskDependency
 from app.models.time_entry import TimeEntry
 from app.models.user import User
-from app.models.workspace import Workspace, WorkspaceMember
+from app.models.user_session import UserSession
+from app.models.workspace import Workspace, WorkspaceInvitation, WorkspaceMember
 
 __all__ = [
     "AIInsight",
@@ -24,7 +25,8 @@ __all__ = [
     "TaskDependency",
     "TimeEntry",
     "User",
+    "UserSession",
     "Workspace",
+    "WorkspaceInvitation",
     "WorkspaceMember",
 ]
-

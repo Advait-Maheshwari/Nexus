@@ -102,5 +102,17 @@ delivery, and file upload automation.
   Dependabot monitors application, Python, and workflow dependencies.
 - Workspace roles now enforce database mutations: owners, admins, and members can edit project
   data; viewers are read-only.
-- Authorization integration tests against a live PostgreSQL service remain pending.
-- SQLite-backed tenant isolation tests are complete; live PostgreSQL verification remains pending.
+- Database sessions now support live validation, refresh rotation, replay rejection, logout,
+  all-device revocation, profile editing, and password changes.
+- Workspace invitations, member roles, workspace switching, and server-enforced `personal_free`
+  limits are implemented without a paid email provider.
+- Mission Control and Galaxy feature systems now load tenant-scoped projects and features instead
+  of global demo portfolio data for cloud accounts.
+- GitHub Actions now runs tenant isolation against PostgreSQL 16 in addition to the fast SQLite
+  suite.
+- Render readiness checks include the Neon database, and request correlation logs provide a
+  zero-cost observability baseline.
+
+Remaining launch work is Phase 5: verified-email/password-reset delivery, backup and restore
+drills, same-site production domain planning, final responsive browser QA, and external security
+review.

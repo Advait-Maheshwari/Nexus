@@ -9,10 +9,12 @@ from app.models.feature import Feature
 from app.models.enums import ActivityAction
 from app.models.project import Project
 from app.models.task import Task, TaskDependency
+from app.models.workspace import Workspace
 from app.schemas.feature import FeatureCreate, FeatureRead, FeatureUpdate
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
 from app.services.audit import record_activity
+from app.services.plans import limits_for, require_capacity
 
 
 class DatabaseWorkspace:
@@ -31,6 +33,15 @@ class DatabaseWorkspace:
     async def create_project(
         self, session: AsyncSession, auth: AuthContext, data: ProjectCreate
     ) -> ProjectRead:
+        workspace = await session.get(Workspace, auth.workspace_id)
+        project_count = await session.scalar(
+            select(func.count(Project.id)).where(
+                Project.workspace_id == auth.workspace_id,
+                Project.archived_at.is_(None),
+            )
+        )
+        limits = limits_for(workspace.plan_code if workspace else "personal_free")
+        require_capacity("projects", project_count or 0, limits.projects)
         project = Project(
             workspace_id=auth.workspace_id,
             owner_id=auth.user_id,
@@ -217,6 +228,12 @@ class DatabaseWorkspace:
         data: TaskCreate,
     ) -> TaskRead:
         await self._project(session, auth, project_id)
+        workspace = await session.get(Workspace, auth.workspace_id)
+        task_count = await session.scalar(
+            select(func.count(Task.id)).where(Task.workspace_id == auth.workspace_id)
+        )
+        limits = limits_for(workspace.plan_code if workspace else "personal_free")
+        require_capacity("tasks", task_count or 0, limits.tasks)
         if data.feature_id:
             feature = await self._feature(session, auth, data.feature_id)
             if feature.project_id != project_id:

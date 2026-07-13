@@ -1,6 +1,14 @@
 import { missionData } from "@/data/nexusSeed";
 import type { MissionData, ProjectSummary } from "@/types/domain";
-import type { NexusSession } from "@/types/auth";
+import type {
+  NexusAccount,
+  NexusRole,
+  NexusSession,
+  NexusWorkspace,
+  WorkspaceInvitation,
+  WorkspaceMember,
+  WorkspaceUsage
+} from "@/types/auth";
 import type { GitHubRepositoryActivity } from "@/types/integrations";
 import type { WorkspaceFeature, WorkspaceProject, WorkspaceTask } from "@/types/workspace";
 import type {
@@ -17,6 +25,7 @@ export async function authenticate(
 ): Promise<NexusSession> {
   const response = await fetch(`${API_URL}/api/v1/auth/${mode}`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       email: input.email,
@@ -28,38 +37,235 @@ export async function authenticate(
     throw new Error(await apiError(response, "Authentication failed"));
   }
 
-  const payload = (await response.json()) as {
-    access_token: string;
-    user_id: string;
-    workspace_id: string;
-  };
-  return {
-    accessToken: payload.access_token,
-    userId: payload.user_id,
-    workspaceId: payload.workspace_id,
-    mode: "api"
-  };
+  return sessionFromPayload(await response.json(), "password");
 }
 
 export async function exchangeFirebaseToken(idToken: string): Promise<NexusSession> {
   const response = await fetch(`${API_URL}/api/v1/auth/firebase`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id_token: idToken })
   });
   if (!response.ok) {
     throw new Error(await apiError(response, "Cloud synchronization is unavailable"));
   }
+  return sessionFromPayload(await response.json(), "google");
+}
+
+export async function validateSession(session: NexusSession): Promise<NexusSession> {
+  if (session.mode !== "api") return session;
+
+  let accessToken = session.accessToken;
+  let response = await fetch(`${API_URL}/api/v1/auth/me`, {
+    headers: authHeaders(accessToken),
+    credentials: "include"
+  });
+  if (response.status === 401) {
+    const refreshed = await refreshSession();
+    accessToken = refreshed.accessToken;
+    response = await fetch(`${API_URL}/api/v1/auth/me`, {
+      headers: authHeaders(accessToken),
+      credentials: "include"
+    });
+  }
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Session validation failed"));
+  }
+  const account = mapAccount(await response.json());
+  return mergeAccount(
+    { ...session, accessToken, userId: account.userId, workspaceId: account.workspaceId },
+    account
+  );
+}
+
+export async function refreshSession(): Promise<NexusSession> {
+  const response = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "X-Nexus-Session": "refresh" }
+  });
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Session refresh failed"));
+  }
+  return sessionFromPayload(await response.json());
+}
+
+export async function logoutSession(): Promise<void> {
+  await fetch(`${API_URL}/api/v1/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "X-Nexus-Session": "logout" }
+  });
+}
+
+export async function logoutAllSessions(accessToken: string): Promise<void> {
+  const response = await fetch(`${API_URL}/api/v1/auth/logout-all`, {
+    method: "POST",
+    credentials: "include",
+    headers: authHeaders(accessToken)
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Session revocation failed"));
+}
+
+export async function fetchAccount(accessToken: string): Promise<NexusAccount> {
+  const response = await fetch(`${API_URL}/api/v1/auth/me`, {
+    credentials: "include",
+    headers: authHeaders(accessToken)
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Account loading failed"));
+  return mapAccount(await response.json());
+}
+
+export async function updateAccount(
+  accessToken: string,
+  fullName: string
+): Promise<NexusAccount> {
+  const response = await fetch(`${API_URL}/api/v1/auth/me`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify({ full_name: fullName })
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Profile update failed"));
+  return mapAccount(await response.json());
+}
+
+export async function changeAccountPassword(
+  accessToken: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  const response = await fetch(`${API_URL}/api/v1/auth/password`, {
+    method: "POST",
+    credentials: "include",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword
+    })
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Password update failed"));
+}
+
+export async function listWorkspaces(accessToken: string): Promise<NexusWorkspace[]> {
+  const response = await fetch(`${API_URL}/api/v1/workspaces`, {
+    headers: authHeaders(accessToken)
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Workspace loading failed"));
+  return ((await response.json()) as ApiWorkspace[]).map(mapWorkspace);
+}
+
+export async function switchWorkspace(
+  accessToken: string,
+  workspaceId: string
+): Promise<NexusSession> {
+  const response = await fetch(`${API_URL}/api/v1/workspaces/switch`, {
+    method: "POST",
+    credentials: "include",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify({ workspace_id: workspaceId })
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Workspace switch failed"));
+  return sessionFromPayload(await response.json());
+}
+
+export async function fetchWorkspaceUsage(accessToken: string): Promise<WorkspaceUsage> {
+  const response = await fetch(`${API_URL}/api/v1/workspaces/usage`, {
+    headers: authHeaders(accessToken)
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Usage loading failed"));
   const payload = (await response.json()) as {
-    access_token: string;
-    user_id: string;
-    workspace_id: string;
+    plan_code: string;
+    projects: number;
+    project_limit: number;
+    tasks: number;
+    task_limit: number;
+    members: number;
+    member_limit: number;
   };
   return {
-    accessToken: payload.access_token,
-    userId: payload.user_id,
-    workspaceId: payload.workspace_id,
-    mode: "api"
+    planCode: payload.plan_code,
+    projects: payload.projects,
+    projectLimit: payload.project_limit,
+    tasks: payload.tasks,
+    taskLimit: payload.task_limit,
+    members: payload.members,
+    memberLimit: payload.member_limit
+  };
+}
+
+export async function listWorkspaceMembers(accessToken: string): Promise<WorkspaceMember[]> {
+  const response = await fetch(`${API_URL}/api/v1/workspaces/members`, {
+    headers: authHeaders(accessToken)
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Member loading failed"));
+  return ((await response.json()) as Array<{
+    user_id: string;
+    full_name: string;
+    email: string;
+    role: NexusRole;
+    joined_at: string;
+  }>).map((member) => ({
+    userId: member.user_id,
+    fullName: member.full_name,
+    email: member.email,
+    role: member.role,
+    joinedAt: member.joined_at
+  }));
+}
+
+export async function createWorkspaceInvitation(
+  accessToken: string,
+  email: string,
+  role: Exclude<NexusRole, "owner">
+): Promise<WorkspaceInvitation> {
+  const response = await fetch(`${API_URL}/api/v1/workspaces/invitations`, {
+    method: "POST",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify({ email, role })
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Invitation creation failed"));
+  return mapInvitation(await response.json());
+}
+
+export async function acceptWorkspaceInvitation(
+  accessToken: string,
+  inviteToken: string
+): Promise<NexusWorkspace> {
+  const response = await fetch(`${API_URL}/api/v1/workspaces/invitations/accept`, {
+    method: "POST",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify({ invite_token: inviteToken })
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Invitation acceptance failed"));
+  return mapWorkspace(await response.json());
+}
+
+export async function updateWorkspaceMemberRole(
+  accessToken: string,
+  userId: string,
+  role: Exclude<NexusRole, "owner">
+): Promise<WorkspaceMember> {
+  const response = await fetch(`${API_URL}/api/v1/workspaces/members/${encodeURIComponent(userId)}`, {
+    method: "PATCH",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify({ role })
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Role update failed"));
+  const member = (await response.json()) as {
+    user_id: string;
+    full_name: string;
+    email: string;
+    role: NexusRole;
+    joined_at: string;
+  };
+  return {
+    userId: member.user_id,
+    fullName: member.full_name,
+    email: member.email,
+    role: member.role,
+    joinedAt: member.joined_at
   };
 }
 
@@ -95,15 +301,23 @@ interface ApiMissionControl {
   activity: string[];
 }
 
-export async function fetchMissionControl(): Promise<MissionData> {
-  const response = await fetch(`${API_URL}/api/v1/mission-control`);
+export async function fetchMissionControl(accessToken?: string): Promise<MissionData> {
+  const response = await fetch(`${API_URL}/api/v1/mission-control`, {
+    headers: accessToken ? authHeaders(accessToken) : undefined
+  });
 
   if (!response.ok) {
     throw new Error(`Mission Control API failed with ${response.status}`);
   }
 
   const payload = (await response.json()) as ApiMissionControl;
-  const projects = payload.projects.map((project, index) => mergeProject(project, index));
+  const projects = await Promise.all(
+    payload.projects.map(async (project, index) => {
+      if (!accessToken) return mergeProject(project, index);
+      const features = await listWorkspaceFeatures(project.id, accessToken).catch(() => []);
+      return mergeProject(project, index, features);
+    })
+  );
 
   return {
     ...missionData,
@@ -536,6 +750,105 @@ function authHeaders(accessToken: string, json = false): HeadersInit {
   };
 }
 
+interface ApiTokenPayload {
+  access_token: string;
+  user_id: string;
+  workspace_id: string;
+  full_name?: string | null;
+  email?: string | null;
+  role?: NexusSession["role"] | null;
+}
+
+interface ApiAccountPayload {
+  user_id: string;
+  workspace_id: string;
+  full_name: string;
+  email: string;
+  avatar_url?: string | null;
+  role: NexusAccount["role"];
+  workspace_name: string;
+  password_enabled: boolean;
+}
+
+interface ApiWorkspace {
+  id: string;
+  name: string;
+  role: NexusRole;
+  plan_code: string;
+}
+
+interface ApiInvitation {
+  id: string;
+  email: string;
+  role: Exclude<NexusRole, "owner">;
+  expires_at: string;
+  accepted_at?: string | null;
+  revoked_at?: string | null;
+  invite_token?: string | null;
+}
+
+function sessionFromPayload(
+  payload: ApiTokenPayload,
+  identityProvider?: NexusSession["identityProvider"]
+): NexusSession {
+  return {
+    accessToken: payload.access_token,
+    userId: payload.user_id,
+    workspaceId: payload.workspace_id,
+    mode: "api",
+    identityProvider,
+    role: payload.role ?? undefined,
+    displayName: payload.full_name ?? undefined,
+    email: payload.email ?? undefined
+  };
+}
+
+function mapAccount(payload: ApiAccountPayload): NexusAccount {
+  return {
+    userId: payload.user_id,
+    workspaceId: payload.workspace_id,
+    displayName: payload.full_name,
+    email: payload.email,
+    photoUrl: payload.avatar_url ?? undefined,
+    role: payload.role,
+    workspaceName: payload.workspace_name,
+    passwordEnabled: payload.password_enabled
+  };
+}
+
+function mapWorkspace(payload: ApiWorkspace): NexusWorkspace {
+  return {
+    id: payload.id,
+    name: payload.name,
+    role: payload.role,
+    planCode: payload.plan_code
+  };
+}
+
+function mapInvitation(payload: ApiInvitation): WorkspaceInvitation {
+  return {
+    id: payload.id,
+    email: payload.email,
+    role: payload.role,
+    expiresAt: payload.expires_at,
+    acceptedAt: payload.accepted_at ?? undefined,
+    revokedAt: payload.revoked_at ?? undefined,
+    inviteToken: payload.invite_token ?? undefined
+  };
+}
+
+export function mergeAccount(session: NexusSession, account: NexusAccount): NexusSession {
+  return {
+    ...session,
+    userId: account.userId,
+    workspaceId: account.workspaceId,
+    displayName: account.displayName,
+    email: account.email,
+    photoUrl: account.photoUrl,
+    role: account.role
+  };
+}
+
 async function apiError(response: Response, fallback: string): Promise<string> {
   const payload = (await response.json().catch(() => null)) as
     | { detail?: string | Array<{ msg?: string }> }
@@ -580,13 +893,38 @@ function mapTask(task: {
   };
 }
 
-function mergeProject(project: ApiProjectSummary, index: number): ProjectSummary {
-  const visualSeed =
-    missionData.projects.find((item) => item.codename === project.codename) ??
-    missionData.projects[index % missionData.projects.length];
+function mergeProject(
+  project: ApiProjectSummary,
+  index: number,
+  liveFeatures?: WorkspaceFeature[]
+): ProjectSummary {
+  const visualSeed = liveFeatures
+    ? undefined
+    : missionData.projects.find((item) => item.codename === project.codename) ??
+      missionData.projects[index % missionData.projects.length];
+  const angle = index * 2.399963;
+  const radius = index === 0 ? 0 : 4.5 + Math.sqrt(index) * 3.2;
+  const accents = ["#48e5ff", "#8b7cff", "#53e3a6", "#ffd166", "#ff6b8a"];
 
   return {
-    ...visualSeed,
+    ...(visualSeed ?? {
+      coordinates: [
+        Math.cos(angle) * radius,
+        ((index % 3) - 1) * 1.8,
+        Math.sin(angle) * radius
+      ] as [number, number, number],
+      accent: accents[index % accents.length],
+      planets: (liveFeatures ?? []).map((feature, featureIndex) => ({
+        id: feature.id,
+        name: feature.title,
+        status: feature.status,
+        progress: feature.progress,
+        taskCount: feature.taskCount,
+        blockedTaskCount: feature.blockedTaskCount,
+        orbitRadius: 0.58 + featureIndex * 0.18
+      }))
+    }),
+    id: project.id,
     name: project.name,
     codename: project.codename,
     status: project.status,

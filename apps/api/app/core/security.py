@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -13,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_session
 from app.models.enums import WorkspaceRole
+from app.models.user_session import UserSession
 from app.models.workspace import WorkspaceMember
 
 password_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -24,6 +27,7 @@ class AuthContext:
     user_id: str
     workspace_id: str
     role: WorkspaceRole = WorkspaceRole.owner
+    session_id: str | None = None
 
 
 def hash_password(password: str) -> str:
@@ -32,6 +36,14 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
     return password_context.verify(plain_password, password_hash)
+
+
+def create_refresh_token() -> str:
+    return secrets.token_urlsafe(48)
+
+
+def hash_refresh_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def create_access_token(subject: str, extra_claims: dict[str, Any] | None = None) -> str:
@@ -70,10 +82,23 @@ async def require_auth_context(
         )
         user_id = str(payload["sub"])
         workspace_id = str(payload["workspace_id"])
+        session_id = str(payload["sid"])
         if payload.get("type") != "access":
             raise JWTError("Unexpected token type")
     except (JWTError, KeyError, TypeError, ValueError) as error:
         raise _unauthorized("Invalid or expired session") from error
+
+    active_session = await session.scalar(
+        select(UserSession.id).where(
+            UserSession.id == session_id,
+            UserSession.user_id == user_id,
+            UserSession.workspace_id == workspace_id,
+            UserSession.revoked_at.is_(None),
+            UserSession.expires_at > datetime.now(UTC),
+        )
+    )
+    if active_session is None:
+        raise _unauthorized("Session has been revoked")
 
     role = await session.scalar(
         select(WorkspaceMember.role).where(
@@ -83,7 +108,12 @@ async def require_auth_context(
     )
     if role is None:
         raise _unauthorized("Workspace access denied")
-    return AuthContext(user_id=user_id, workspace_id=workspace_id, role=WorkspaceRole(role))
+    return AuthContext(
+        user_id=user_id,
+        workspace_id=workspace_id,
+        role=WorkspaceRole(role),
+        session_id=session_id,
+    )
 
 
 WORKSPACE_EDITOR_ROLES = {
@@ -98,6 +128,22 @@ def require_workspace_editor(auth: AuthContext) -> None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Workspace viewer role cannot modify project data",
+        )
+
+
+def require_workspace_admin(auth: AuthContext) -> None:
+    if auth.role not in {WorkspaceRole.owner, WorkspaceRole.admin}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Workspace administrator role is required",
+        )
+
+
+def require_workspace_owner(auth: AuthContext) -> None:
+    if auth.role != WorkspaceRole.owner:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Workspace owner role is required",
         )
 
 

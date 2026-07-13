@@ -40,6 +40,7 @@ export async function signInWithGoogle(): Promise<NexusSession> {
   try {
     return {
       ...(await exchangeFirebaseToken(accessToken)),
+      identityProvider: "google",
       ...profile
     };
   } catch (error) {
@@ -56,6 +57,7 @@ export async function signInWithGoogle(): Promise<NexusSession> {
       userId: credential.user.uid,
       workspaceId: `firebase-${credential.user.uid}`,
       mode: "firebase",
+      identityProvider: "google",
       ...profile
     };
   }

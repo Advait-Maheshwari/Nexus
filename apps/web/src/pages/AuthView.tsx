@@ -6,6 +6,10 @@ import { authenticate } from "@/lib/api";
 import { signInWithGoogle } from "@/lib/firebase";
 import type { NexusSession } from "@/types/auth";
 
+const OWNER_DEMO_KEY = "nexus.owner.demo.v1";
+const OWNER_DEMO_QUERY = "owner_demo";
+const OWNER_DEMO_VALUE = "advait";
+
 export function AuthView({ onAuthenticated }: { onAuthenticated: (session: NexusSession) => void }) {
   const [mode, setMode] = useState<"login" | "register">("register");
   const [fullName, setFullName] = useState("");
@@ -13,13 +17,14 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ownerDemoEnabled] = useState(readOwnerDemoAccess);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setLoading(true);
     setError("");
     try {
-      onAuthenticated(await authenticate(mode, { email, password, fullName }));
+      onAuthenticated(await authenticate(mode, { email, password, fullName: fullName.trim() }));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Authentication is unavailable.");
     } finally {
@@ -32,7 +37,8 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
       accessToken: "local-demo",
       userId: "local-user",
       workspaceId: "workspace-personal",
-      mode: "local"
+      mode: "local",
+      identityProvider: "local"
     });
   }
 
@@ -66,6 +72,7 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
             <SecurityLine text="Separate workspace ownership for every account." />
             <SecurityLine text="Password hashes never leave the API." />
             <SecurityLine text="JWT sessions expire automatically." />
+            <SecurityLine text="Public users only see cloud authentication paths." />
           </div>
         </div>
 
@@ -92,9 +99,10 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
               <AuthInput
                 label="Full name"
                 value={fullName}
-                onChange={setFullName}
-                pattern="[A-Za-z ]+"
-                title="Use letters and spaces only"
+                onChange={(value) => setFullName(value.replace(/[^A-Za-z ]/g, ""))}
+                pattern="(?=.*[A-Za-z])[A-Za-z ]+"
+                title="Use alphabets and spaces only"
+                autoComplete="name"
               />
             ) : null}
             <AuthInput label="Email" type="email" value={email} onChange={setEmail} />
@@ -124,7 +132,7 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
 
           <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-[0.16em] text-slate-600">
             <span className="h-px flex-1 bg-white/10" />
-            Offline preview
+            Cloud identity
             <span className="h-px flex-1 bg-white/10" />
           </div>
           <Button
@@ -137,19 +145,47 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
           >
             Continue with Google
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full"
-            icon={<LockKeyhole size={16} />}
-            onClick={continueLocally}
-          >
-            Continue Local Demo
-          </Button>
+          {ownerDemoEnabled ? (
+            <div className="mt-3 rounded-md border border-cyan/20 bg-cyan/10 p-3">
+              <p className="mb-3 text-xs uppercase tracking-[0.16em] text-cyan">Owner workspace</p>
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                icon={<LockKeyhole size={16} />}
+                onClick={continueLocally}
+              >
+                Open Local Owner Workspace
+              </Button>
+            </div>
+          ) : null}
         </div>
       </section>
     </main>
   );
+}
+
+function readOwnerDemoAccess() {
+  if (import.meta.env.DEV) {
+    return true;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const requestedOwnerMode = params.get(OWNER_DEMO_QUERY)?.toLowerCase() === OWNER_DEMO_VALUE;
+
+  if (requestedOwnerMode) {
+    sessionStorage.setItem(OWNER_DEMO_KEY, "enabled");
+    params.delete(OWNER_DEMO_QUERY);
+    const nextSearch = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash}`
+    );
+    return true;
+  }
+
+  return sessionStorage.getItem(OWNER_DEMO_KEY) === "enabled";
 }
 
 function ModeButton({
@@ -180,8 +216,7 @@ function AuthInput({
   onChange,
   type = "text",
   minLength,
-  autoComplete
-  ,
+  autoComplete,
   pattern,
   title
 }: {

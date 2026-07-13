@@ -47,19 +47,19 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 
 ## Phase 4: SaaS Foundation
 
-- Status: started in parallel at the user's request.
+- Status: core foundation complete; final operator tooling rolls into Phase 5 launch hardening.
 - Signup, login, logout, JWT browser session, and PostgreSQL account/workspace creation foundation.
 - Firebase Google identity adapter and Firebase Hosting deployment.
 - Authenticated project/feature/task persistence with strict workspace filters.
 - Tenant-scoped milestone Calendar, scored Ideas, and project Journal persistence.
 - Functional account Profile and persistent Settings.
-- Workspace invitations.
-- Roles and permissions.
+- Workspace invitations through secure copyable links.
+- Roles, permissions, and workspace switching.
 - Authenticated PostgreSQL CRUD and strict workspace tenant filtering.
-- Usage limits.
-- Billing-ready plans.
-- Admin analytics.
-- Production observability.
+- Server-enforced zero-cost usage limits.
+- Billing-ready `plan_code` policy boundary with no active billing provider.
+- Tenant-scoped Mission Control and workspace usage analytics.
+- Database readiness probes and request correlation logging.
 
 ## Phase 5: Secure Launch
 

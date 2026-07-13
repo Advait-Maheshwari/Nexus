@@ -52,9 +52,9 @@ const initialLocalState: LocalState = {
       projectId: "local-nexus",
       title: "Phase 2: 3D Command OS",
       description: "Mission Control, Galaxy/Solar, City Builder, Analytics, and cinematic project views.",
-      status: "in_progress",
+      status: "done",
       priority: "high",
-      progress: 72,
+      progress: 100,
       taskCount: 5,
       blockedTaskCount: 0
     },
