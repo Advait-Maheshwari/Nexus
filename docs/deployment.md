@@ -84,6 +84,18 @@ GitHub Actions starts PostgreSQL 16 and runs the tenant-isolation suite against 
 `NEXUS_TEST_DATABASE_URL`. Local runs skip that one test unless the variable is provided. SQLite
 tests still run for fast feedback.
 
+## Live Deployment Verification
+
+After each Firebase or Render release, run the zero-dependency production check:
+
+```powershell
+python ops/verify_deployment.py
+```
+
+It requires the Render readiness endpoint to confirm database-backed readiness, checks API and
+Firebase security headers, and inspects the emitted JavaScript for the deployed API origin. It
+fails when a production bundle still references the local `:8000` endpoint.
+
 ## Zero-Cost Workspace Limits
 
 The `personal_free` plan is enforced server-side: 25 active projects, 2,500 tasks, and 5 members
