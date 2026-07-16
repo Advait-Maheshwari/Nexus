@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from "react";
-import { Building2, Clock3, Factory, RadioTower, ShieldAlert, Zap } from "lucide-react";
+import { Building2, Clock3, Factory, RadioTower, RotateCcw, ShieldAlert, Zap } from "lucide-react";
 
 import { StatusPill } from "@/components/StatusPill";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ export function CityBuilderView({ data }: { data: MissionData }) {
   const [selectedId, setSelectedId] = useState(data.projects[0]?.id ?? "");
   const [mode, setMode] = useState<CityViewMode>("overview");
   const [sort, setSort] = useState<"health" | "progress" | "risk">("risk");
+  const [sceneRevision, setSceneRevision] = useState(0);
   const selected = data.projects.find((project) => project.id === selectedId);
   const sortedProjects = [...data.projects].sort((first, second) => {
     if (sort === "health") return second.healthScore - first.healthScore;
@@ -52,7 +53,11 @@ export function CityBuilderView({ data }: { data: MissionData }) {
             <button
               key={project.id}
               type="button"
-              onClick={() => setSelectedId(project.id)}
+              onClick={() => {
+                setSelectedId(project.id);
+                setMode("overview");
+                setSceneRevision((revision) => revision + 1);
+              }}
               className={cn(
                 "w-full rounded-md border p-3 text-left transition",
                 selectedId === project.id
@@ -80,7 +85,7 @@ export function CityBuilderView({ data }: { data: MissionData }) {
       <div className="relative min-h-[560px] overflow-hidden rounded-lg border border-white/10 bg-void">
         {selected ? (
           <Suspense fallback={<div className="h-full bg-void" />}>
-            <CityScene project={selected} mode={mode} />
+            <CityScene project={selected} mode={mode} resetSignal={sceneRevision} />
           </Suspense>
         ) : null}
         <div className="pointer-events-none absolute left-4 top-4">
@@ -93,6 +98,15 @@ export function CityBuilderView({ data }: { data: MissionData }) {
           </p>
         </div>
         <div className="absolute bottom-4 right-4 flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            title="Reset camera"
+            aria-label="Reset city camera"
+            onClick={() => setSceneRevision((revision) => revision + 1)}
+            className="grid h-9 w-9 place-items-center rounded-md border border-white/10 bg-void/75 text-slate-300 backdrop-blur-md transition hover:border-solar/35 hover:text-solar"
+          >
+            <RotateCcw size={15} />
+          </button>
           <CityModeButton active={mode === "overview"} onClick={() => setMode("overview")}>
             Overview
           </CityModeButton>
@@ -102,12 +116,6 @@ export function CityBuilderView({ data }: { data: MissionData }) {
           <CityModeButton active={mode === "risk"} onClick={() => setMode("risk")}>
             Risk Scan
           </CityModeButton>
-        </div>
-        <div className="pointer-events-none absolute bottom-4 left-4 rounded-md border border-white/10 bg-void/80 px-3 py-2 backdrop-blur-md">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
-            Navigation
-          </p>
-          <p className="mt-1 text-xs text-slate-300">Drag to orbit / scroll to zoom / select project left</p>
         </div>
       </div>
 

@@ -1,11 +1,15 @@
 import { Billboard, Grid, Line, OrbitControls, Text } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
+import type { ComponentRef, MutableRefObject } from "react";
 import * as THREE from "three";
 
 import type { FeaturePlanet, ProjectSummary } from "@/types/domain";
 
 export type CityViewMode = "overview" | "street" | "risk";
+
+const CITY_TARGET = new THREE.Vector3(0, 0.42, 0);
+type OrbitControlsHandle = ComponentRef<typeof OrbitControls>;
 
 interface CityStyle {
   name: string;
@@ -844,7 +848,17 @@ function getCityStyle(project: ProjectSummary): CityStyle {
   };
 }
 
-function CityCamera({ mode }: { mode: CityViewMode }) {
+function CityCamera({
+  controls,
+  mode,
+  projectId,
+  resetSignal
+}: {
+  controls: MutableRefObject<OrbitControlsHandle | null>;
+  mode: CityViewMode;
+  projectId: string;
+  resetSignal: number;
+}) {
   const { camera } = useThree();
 
   useEffect(() => {
@@ -855,14 +869,27 @@ function CityCamera({ mode }: { mode: CityViewMode }) {
     } else {
       camera.position.set(5.4, 4.15, 6.1);
     }
-    camera.lookAt(0, 0.42, 0);
-  }, [camera, mode]);
+    camera.lookAt(CITY_TARGET);
+    controls.current?.target.copy(CITY_TARGET);
+    controls.current?.update();
+  }, [camera, controls, mode, projectId, resetSignal]);
 
   return null;
 }
 
-export default function CityScene({ project, mode = "overview" }: { project: ProjectSummary; mode?: CityViewMode }) {
+export default function CityScene({
+  project,
+  mode = "overview",
+  resetSignal = 0
+}: {
+  project: ProjectSummary;
+  mode?: CityViewMode;
+  resetSignal?: number;
+}) {
   const style = getCityStyle(project);
+  const controls = useRef<OrbitControlsHandle>(null);
+  const minDistance = mode === "street" ? 2.6 : mode === "risk" ? 6.4 : 5.1;
+  const maxDistance = mode === "street" ? 8.5 : mode === "risk" ? 13.5 : 15;
 
   return (
     <Canvas camera={{ position: [5.4, 4.15, 6.1], fov: 52 }} dpr={[1, 1.75]} shadows>
@@ -884,24 +911,25 @@ export default function CityScene({ project, mode = "overview" }: { project: Pro
         fadeDistance={16}
         infiniteGrid
       />
-      <CityCamera mode={mode} />
+      <CityCamera controls={controls} mode={mode} projectId={project.id} resetSignal={resetSignal} />
       <ProjectCity project={project} mode={mode} />
       <OrbitControls
+        ref={controls}
         makeDefault
-        enablePan
+        enablePan={mode === "street"}
         enableZoom
         enableRotate
         enableDamping
-        dampingFactor={0.07}
-        zoomSpeed={0.78}
+        dampingFactor={0.08}
+        zoomSpeed={0.46}
         rotateSpeed={0.68}
-        panSpeed={0.72}
+        panSpeed={0.48}
         screenSpacePanning
-        minDistance={mode === "street" ? 1.15 : 2.4}
-        maxDistance={20}
-        minPolarAngle={0.04}
-        maxPolarAngle={Math.PI * 0.96}
-        target={new THREE.Vector3(0, 0.42, 0)}
+        minDistance={minDistance}
+        maxDistance={maxDistance}
+        minPolarAngle={0.1}
+        maxPolarAngle={Math.PI / 2 - 0.035}
+        target={CITY_TARGET}
       />
     </Canvas>
   );
