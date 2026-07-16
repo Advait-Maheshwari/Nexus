@@ -40,6 +40,12 @@ After restoration, run Alembic status, API readiness, authentication, tenant-iso
 count checks. Record the date, backup timestamp, restore duration, operator, and results. Never run a
 first-time restore drill against production.
 
+For the hosted zero-cost drill, add `NEXUS_NEON_DATABASE_URL` and
+`NEXUS_BACKUP_PASSPHRASE` as GitHub Actions repository secrets, then manually run the
+`Database Recovery Drill` workflow. It reads Neon, restores only into a disposable PostgreSQL 16
+service, checks the Alembic schema, and retains the encrypted artifact for seven days. The workflow
+has no scheduled trigger and never restores into the production database.
+
 ## Same-Site Domain Plan
 
 The zero-cost deployment uses Firebase Hosting and Render, so refresh cookies are cross-site and

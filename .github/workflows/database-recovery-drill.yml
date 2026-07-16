@@ -1,0 +1,64 @@
+name: Database Recovery Drill
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup-and-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nexus
+          POSTGRES_PASSWORD: nexus
+          POSTGRES_DB: nexus_restore_drill
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexus -d nexus_restore_drill"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client and OpenSSL
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client openssl
+
+      - name: Create encrypted Neon backup
+        run: python ops/backup_database.py --output-dir backups/recovery-drill
+        env:
+          DATABASE_URL: ${{ secrets.NEXUS_NEON_DATABASE_URL }}
+          NEXUS_BACKUP_PASSPHRASE: ${{ secrets.NEXUS_BACKUP_PASSPHRASE }}
+
+      - name: Restore into disposable PostgreSQL
+        shell: bash
+        run: |
+          backup="$(find backups/recovery-drill -name '*.dump.enc' -type f -print -quit)"
+          test -n "$backup"
+          python ops/restore_database.py "$backup" --confirm-database nexus_restore_drill
+        env:
+          DATABASE_URL: postgresql://nexus:nexus@localhost:5432/nexus_restore_drill?sslmode=disable
+          NEXUS_ALLOW_RESTORE: "true"
+          NEXUS_BACKUP_PASSPHRASE: ${{ secrets.NEXUS_BACKUP_PASSPHRASE }}
+
+      - name: Verify restored schema
+        run: |
+          test "$(psql "$DATABASE_URL" --tuples-only --no-align --command 'select count(*) from alembic_version')" = "1"
+          psql "$DATABASE_URL" --command '\dt'
+        env:
+          DATABASE_URL: postgresql://nexus:nexus@localhost:5432/nexus_restore_drill?sslmode=disable
+
+      - name: Retain encrypted recovery artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-encrypted-recovery-drill
+          path: backups/recovery-drill/*
+          if-no-files-found: error
+          retention-days: 7
