@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, String
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, IdMixin, TimestampMixin
@@ -21,6 +23,7 @@ class User(IdMixin, TimestampMixin, Base):
     avatar_url: Mapped[str | None] = mapped_column(String(500))
     firebase_uid: Mapped[str | None] = mapped_column(String(128), unique=True, index=True)
     password_hash: Mapped[str | None] = mapped_column(String(255))
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     memberships: Mapped[list["WorkspaceMember"]] = relationship(back_populates="user")

@@ -19,6 +19,7 @@ export interface NexusAccount {
   role: "owner" | "admin" | "member" | "viewer";
   workspaceName: string;
   passwordEnabled: boolean;
+  emailVerified: boolean;
 }
 
 export type NexusRole = "owner" | "admin" | "member" | "viewer";

@@ -60,7 +60,7 @@ export function GalaxyView({ data }: { data: MissionData }) {
 
   return (
     <section className="grid min-h-[calc(100vh-8rem)] gap-4 xl:grid-cols-[1fr_360px]">
-      <div className="relative min-h-[520px] overflow-hidden rounded-lg border border-white/10 bg-void">
+      <div className="relative min-h-[520px] overflow-hidden rounded-lg border border-white/10 bg-void xl:h-[calc(100vh-8rem)] xl:min-h-[620px] xl:max-h-[820px] xl:self-start">
         <Suspense fallback={<div className="h-full w-full bg-void" />}>
           <GalaxyScene
             projects={data.projects}

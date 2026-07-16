@@ -9,6 +9,10 @@
 - Access tokens have expiry, issued-at, unique ID, issuer, audience, and token-type claims.
 - Access tokens are bound to a live server session ID; revoked sessions fail on the next request.
 - Refresh tokens are random, stored only as SHA-256 hashes, rotated once, and rejected on replay.
+- Database-password accounts support verified-email enforcement with single-use, expiring tokens.
+- Password-reset tokens are stored only as SHA-256 hashes, expire after 30 minutes by default,
+  and revoke every active session after a successful reset.
+- Account recovery responses do not reveal whether an email address is registered.
 
 ## Authorization
 
@@ -47,9 +51,7 @@
 ## Launch Work Remaining
 
 - Replace process-local throttling with distributed rate limiting before horizontal scaling.
-- Add verified email and password-reset delivery for database-password accounts.
-- Run the existing tenant-isolation suite against live PostgreSQL in CI.
-- Add audit events, encrypted backups, restore drills, and dependency scanning.
+- Configure user-owned SMTP and enable required email verification before public password signup.
+- Run the encrypted backup tooling and document a successful isolated restore drill.
 - Complete an external security review before public SaaS launch.
-- Complete account recovery delivery and a same-site production domain before broad public SaaS
-  availability.
+- Configure a same-site production domain before broad public SaaS availability.

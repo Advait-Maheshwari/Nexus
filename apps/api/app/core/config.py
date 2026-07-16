@@ -22,6 +22,20 @@ class Settings(BaseSettings):
     refresh_cookie_name: str = Field(default="nexus_refresh", alias="REFRESH_COOKIE_NAME")
     auth_backend: str = Field(default="local", alias="NEXUS_AUTH_BACKEND")
     firebase_project_id: str = Field(default="nexus-advait-pm", alias="FIREBASE_PROJECT_ID")
+    require_email_verification: bool = Field(
+        default=False, alias="NEXUS_REQUIRE_EMAIL_VERIFICATION"
+    )
+    email_delivery_mode: str = Field(default="console", alias="NEXUS_EMAIL_DELIVERY_MODE")
+    email_from_address: str = Field(default="noreply@nexus.local", alias="NEXUS_EMAIL_FROM")
+    smtp_host: str | None = Field(default=None, alias="NEXUS_SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="NEXUS_SMTP_PORT")
+    smtp_username: str | None = Field(default=None, alias="NEXUS_SMTP_USERNAME")
+    smtp_password: str | None = Field(default=None, alias="NEXUS_SMTP_PASSWORD")
+    smtp_starttls: bool = Field(default=True, alias="NEXUS_SMTP_STARTTLS")
+    email_verification_expire_hours: int = Field(
+        default=24, alias="EMAIL_VERIFICATION_EXPIRE_HOURS"
+    )
+    password_reset_expire_minutes: int = Field(default=30, alias="PASSWORD_RESET_EXPIRE_MINUTES")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     google_ai_api_key: str | None = Field(default=None, alias="GOOGLE_AI_API_KEY")
@@ -35,6 +49,22 @@ class Settings(BaseSettings):
             raise ValueError("Production JWT_SECRET_KEY must contain at least 32 characters")
         if self.auth_backend not in {"local", "database"}:
             raise ValueError("NEXUS_AUTH_BACKEND must be local or database")
+        if self.email_delivery_mode not in {"disabled", "console", "smtp"}:
+            raise ValueError("NEXUS_EMAIL_DELIVERY_MODE must be disabled, console, or smtp")
+        if self.env.lower() == "production" and self.email_delivery_mode == "console":
+            raise ValueError("Console email delivery cannot be used in production")
+        if self.require_email_verification and self.email_delivery_mode == "disabled":
+            raise ValueError("Email delivery is required when email verification is enabled")
+        if self.email_delivery_mode == "smtp" and (
+            not self.smtp_host or not self.email_from_address
+        ):
+            raise ValueError("SMTP delivery requires NEXUS_SMTP_HOST and NEXUS_EMAIL_FROM")
+        if self.smtp_port < 1 or self.smtp_port > 65535:
+            raise ValueError("NEXUS_SMTP_PORT must be a valid TCP port")
+        if self.email_verification_expire_hours < 1 or self.email_verification_expire_hours > 72:
+            raise ValueError("EMAIL_VERIFICATION_EXPIRE_HOURS must be between 1 and 72")
+        if self.password_reset_expire_minutes < 10 or self.password_reset_expire_minutes > 120:
+            raise ValueError("PASSWORD_RESET_EXPIRE_MINUTES must be between 10 and 120")
         if self.access_token_expire_minutes < 5 or self.access_token_expire_minutes > 120:
             raise ValueError("ACCESS_TOKEN_EXPIRE_MINUTES must be between 5 and 120")
         if self.refresh_token_expire_days < 1 or self.refresh_token_expire_days > 30:

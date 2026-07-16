@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Orbit profile picture">
+  <rect width="128" height="128" rx="64" fill="#071827"/>
+  <circle cx="64" cy="54" r="27" fill="#d8a77e"/>
+  <path d="M34 49c3-25 15-34 31-34 18 0 30 12 31 36-11-12-20-18-34-18-11 0-19 5-28 16Z" fill="#172033"/>
+  <path d="M22 128c3-31 18-47 42-47s40 16 42 47Z" fill="#237a8d"/>
+  <circle cx="54" cy="55" r="2.5" fill="#172033"/><circle cx="75" cy="55" r="2.5" fill="#172033"/>
+  <path d="M55 68c6 5 13 5 19 0" fill="none" stroke="#8a4f3b" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="64" cy="64" r="58" fill="none" stroke="#48e5ff" stroke-width="3" opacity=".65"/>
+</svg>

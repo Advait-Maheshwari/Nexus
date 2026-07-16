@@ -12,15 +12,17 @@ The product has three layers:
 
 Nexus must cost `0` from Phase 1 through the final personal-use phase. Core functionality must use local code, open-source tools, self-hosted services, free tiers, and optional user-owned credentials. Paid AI or cloud services can exist only as disabled future adapters, never as required dependencies.
 
-## Current Status
+## Client/Server Layout
 
-This repository is the first production-grade scaffold:
+Nexus is a client/server monorepo with one controlled contract boundary:
 
-- `apps/web`: React, TypeScript, Vite, Three.js, React Three Fiber, Drei, Framer Motion, GSAP, TailwindCSS, and a shadcn-inspired local UI layer.
-- `apps/api`: FastAPI, SQLAlchemy 2, Alembic, JWT-ready auth helpers, domain models, analytics services, and AI service boundaries.
-- `packages/shared`: shared TypeScript domain types for frontend contracts.
+- `apps/web` is the client: React, TypeScript, Vite, Three.js, React Three Fiber, TailwindCSS, and the browser-safe API client.
+- `apps/api` is the server: FastAPI, SQLAlchemy, Alembic, authentication, authorization, tenant isolation, persistence, analytics, and integrations.
+- `packages/shared` contains client-safe TypeScript contracts. It contains no database, secret, or server runtime code.
 - `infra`: Docker Compose for PostgreSQL, Redis, API, and web.
 - `docs`: product architecture, roadmap, and design system notes.
+
+The client communicates with the server only through versioned `/api/v1` HTTP endpoints. The client never connects directly to PostgreSQL, Neon, SMTP, Firebase Admin, or server credentials.
 
 ## Local Development
 
@@ -30,19 +32,24 @@ Install frontend dependencies:
 npm install
 ```
 
-Run the web app:
+Run the client from the repository root:
 
 ```bash
-npm run dev:web
+npm run dev:client
 ```
 
-Run the API from `apps/api` after installing Python dependencies:
+Install the server once:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
-uvicorn app.main:app --reload
+pip install -e "apps/api[dev]"
+```
+
+Then run the server from the repository root:
+
+```bash
+npm run dev:server
 ```
 
 Or use Docker:

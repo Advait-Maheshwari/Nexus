@@ -30,6 +30,10 @@ function App() {
   const { data: missionData } = useMissionData(session);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [activeView]);
+
+  useEffect(() => {
     let active = true;
     const saved = loadSession();
     if (!saved) {

@@ -112,7 +112,27 @@ delivery, and file upload automation.
   suite.
 - Render readiness checks include the Neon database, and request correlation logs provide a
   zero-cost observability baseline.
+- Database-password accounts now have single-use verified-email and password-reset workflows;
+  action tokens are hashed at rest, expire, reject replay, and password reset revokes all sessions.
+- User-owned SMTP provides a zero-cost production delivery path while console email is restricted
+  to local development.
+- Encrypted PostgreSQL backup and guarded restore scripts now support checksum verification and
+  isolated restore drills.
+- The project guidance engine now includes editable delivery teams, team leads, responsibilities,
+  exclusive task assignments, unassigned-work detection, and computed on-track/watch/lagging
+  signals that feed the recommended next move.
+- The monorepo now has an explicit client/server contract: `apps/web` owns browser presentation,
+  `apps/api` owns security and business rules, and `packages/shared` stays transport-only.
+- City Builder now starts with a complete-city framing, supports a 20-unit zoom range and full
+  orbit/pan control, and includes peripheral neighborhoods, parks, city gates, and moving transit.
+- Galaxy now uses corrected camera targeting, stable selected-system spacing, semantic feature
+  labels, task-moon meaning, and responsive canvas heights instead of a cropped or overlong scene.
+- Control Center includes four local profile-picture presets with a server-side allowlist so no
+  third-party image host or tracking URL is required.
+- Final desktop and 375px phone QA passed for City, Galaxy, profile presets, and project guidance
+  with nonblank WebGL scenes, no horizontal overflow, and no browser console errors.
 
-Remaining launch work is Phase 5: verified-email/password-reset delivery, backup and restore
-drills, same-site production domain planning, final responsive browser QA, and external security
+Remaining launch work is operator-only Phase 5 hardening: configure SMTP and enable verification
+in production, execute and record a Neon backup/restore drill, recheck the live Render/Firebase
+deployment, adopt a same-site domain when one is available, and finish the external security
 review.

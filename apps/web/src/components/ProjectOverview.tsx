@@ -14,13 +14,15 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
+  UserRound,
+  Users,
   X
 } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { useProjectBlueprint } from "@/hooks/useProjectBlueprint";
-import type { ProjectBlueprint, ProjectStep } from "@/types/blueprint";
+import type { ProjectBlueprint, ProjectStep, ProjectTeam } from "@/types/blueprint";
 import type { WorkspaceFeature, WorkspaceTask } from "@/types/workspace";
 
 type GuidanceTone = "cyan" | "violet" | "solar" | "risk" | "success";
@@ -36,6 +38,18 @@ interface RiskSignal {
   title: string;
   body: string;
   severity: "low" | "medium" | "high";
+}
+
+type TeamDeliveryState = "on_track" | "watch" | "lagging" | "unassigned";
+
+interface TeamDelivery {
+  team: ProjectTeam;
+  assignedTasks: WorkspaceTask[];
+  completion: number;
+  blockedCount: number;
+  overdueCount: number;
+  activeCount: number;
+  state: TeamDeliveryState;
 }
 
 export function ProjectOverview({
@@ -59,13 +73,22 @@ export function ProjectOverview({
 
   const completion = useMemo(() => calculateCompletion(blueprint), [blueprint]);
   const guidance = useMemo(
-    () => buildGuidance(blueprint, features, tasks),
-    [blueprint, features, tasks]
+    () => buildGuidance(blueprint, features, tasks, projectProgress),
+    [blueprint, features, tasks, projectProgress]
   );
   const risks = useMemo(
     () => buildRisks(blueprint, features, tasks, projectProgress),
     [blueprint, features, tasks, projectProgress]
   );
+  const teamDelivery = useMemo(
+    () => buildTeamDelivery(blueprint.teams, tasks, projectProgress),
+    [blueprint.teams, tasks, projectProgress]
+  );
+  const assignedTaskIds = useMemo(
+    () => new Set(blueprint.teams.flatMap((team) => team.taskIds)),
+    [blueprint.teams]
+  );
+  const unassignedTasks = tasks.filter((task) => !assignedTaskIds.has(task.id));
   const missionScore = Math.round(completion * 0.45 + projectProgress * 0.35 + healthScore * 0.2);
   const activeStep =
     blueprint.steps.find((step) => step.status === "active") ??
@@ -108,6 +131,63 @@ export function ProjectOverview({
     setDraft((current) => ({
       ...current,
       constraints: current.constraints.filter((_, index) => index !== indexToRemove)
+    }));
+  }
+
+  function addTeam() {
+    setDraft((current) => ({
+      ...current,
+      teams: [
+        ...current.teams,
+        {
+          id: crypto.randomUUID(),
+          name: "New delivery team",
+          lead: "Unassigned",
+          responsibility: "Define the outcome this team owns.",
+          taskIds: []
+        }
+      ]
+    }));
+  }
+
+  function updateTeam(teamId: string, patch: Partial<ProjectTeam>) {
+    setDraft((current) => ({
+      ...current,
+      teams: current.teams.map((team) => (team.id === teamId ? { ...team, ...patch } : team))
+    }));
+  }
+
+  function removeTeam(teamId: string) {
+    setDraft((current) => ({
+      ...current,
+      teams: current.teams.filter((team) => team.id !== teamId)
+    }));
+  }
+
+  function assignTask(teamId: string, taskId: string) {
+    if (!taskId) {
+      return;
+    }
+    setDraft((current) => ({
+      ...current,
+      teams: current.teams.map((team) => ({
+        ...team,
+        taskIds:
+          team.id === teamId
+            ? [...team.taskIds.filter((id) => id !== taskId), taskId]
+            : team.taskIds.filter((id) => id !== taskId)
+      }))
+    }));
+  }
+
+  function unassignTask(teamId: string, taskId: string) {
+    setDraft((current) => ({
+      ...current,
+      teams: current.teams.map((team) =>
+        team.id === teamId
+          ? { ...team, taskIds: team.taskIds.filter((id) => id !== taskId) }
+          : team
+      )
     }));
   }
 
@@ -548,7 +628,236 @@ export function ProjectOverview({
           </section>
         </aside>
       </div>
+
+      <section className="mt-5 border-t border-white/10 pt-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-cyan">
+              <Users size={18} />
+              <h4 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-300">
+                Team Accountability
+              </h4>
+            </div>
+            <p className="mt-2 max-w-3xl text-sm leading-5 text-slate-400">
+              Ownership, assigned work, and delivery pressure for every team responsible for this goal.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <AccountabilityBadge
+              label={`${blueprint.teams.length} team${blueprint.teams.length === 1 ? "" : "s"}`}
+              tone="neutral"
+            />
+            <AccountabilityBadge
+              label={`${unassignedTasks.length} unassigned`}
+              tone={unassignedTasks.length > 0 ? "watch" : "healthy"}
+            />
+            <AccountabilityBadge
+              label={`${teamDelivery.filter((team) => team.state === "lagging").length} lagging`}
+              tone={teamDelivery.some((team) => team.state === "lagging") ? "risk" : "healthy"}
+            />
+            {editing ? <AddButton label="Add team" onClick={addTeam} /> : null}
+          </div>
+        </div>
+
+        {editing ? (
+          <div className="mt-4 divide-y divide-white/10 border-y border-white/10">
+            {draft.teams.length > 0 ? (
+              draft.teams.map((team) => {
+                const assignedTasks = tasks.filter((task) => team.taskIds.includes(task.id));
+                const assignedElsewhere = new Set(
+                  draft.teams
+                    .filter((item) => item.id !== team.id)
+                    .flatMap((item) => item.taskIds)
+                );
+                const availableTasks = tasks.filter((task) => !assignedElsewhere.has(task.id));
+
+                return (
+                  <div key={team.id} className="grid gap-4 py-4 xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.8fr)]">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="text-xs text-slate-500">
+                        Team name
+                        <input
+                          value={team.name}
+                          onChange={(event) => updateTeam(team.id, { name: event.target.value })}
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-navy px-3 text-sm text-white outline-none focus:border-cyan/50"
+                        />
+                      </label>
+                      <label className="text-xs text-slate-500">
+                        Team lead
+                        <input
+                          value={team.lead}
+                          onChange={(event) => updateTeam(team.id, { lead: event.target.value })}
+                          className="mt-1 h-10 w-full rounded-md border border-white/10 bg-navy px-3 text-sm text-white outline-none focus:border-cyan/50"
+                        />
+                      </label>
+                      <label className="text-xs text-slate-500 sm:col-span-2">
+                        Responsibility
+                        <textarea
+                          value={team.responsibility}
+                          onChange={(event) => updateTeam(team.id, { responsibility: event.target.value })}
+                          className="mt-1 min-h-20 w-full resize-y rounded-md border border-white/10 bg-navy p-3 text-sm leading-5 text-white outline-none focus:border-cyan/50"
+                        />
+                      </label>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs text-slate-500">Assigned tasks</span>
+                        <button
+                          type="button"
+                          onClick={() => removeTeam(team.id)}
+                          className="text-slate-500 transition hover:text-risk"
+                          aria-label={`Remove ${team.name}`}
+                          title="Remove team"
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+                      <select
+                        value=""
+                        onChange={(event) => assignTask(team.id, event.target.value)}
+                        disabled={availableTasks.length === assignedTasks.length}
+                        className="mt-1 h-10 w-full rounded-md border border-white/10 bg-navy px-3 text-sm text-white outline-none focus:border-cyan/50 disabled:opacity-50"
+                      >
+                        <option value="">Assign a task...</option>
+                        {availableTasks
+                          .filter((task) => !team.taskIds.includes(task.id))
+                          .map((task) => (
+                            <option key={task.id} value={task.id}>
+                              {task.title}
+                            </option>
+                          ))}
+                      </select>
+                      <div className="mt-2 space-y-1.5">
+                        {assignedTasks.map((task) => (
+                          <div key={task.id} className="flex items-center justify-between gap-3 rounded-md bg-white/[0.04] px-3 py-2">
+                            <span className="min-w-0 truncate text-sm text-slate-300">{task.title}</span>
+                            <button
+                              type="button"
+                              onClick={() => unassignTask(team.id, task.id)}
+                              className="shrink-0 text-slate-500 transition hover:text-risk"
+                              aria-label={`Unassign ${task.title}`}
+                              title="Unassign task"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="py-5 text-sm text-slate-400">Add the first team to define delivery ownership.</p>
+            )}
+          </div>
+        ) : teamDelivery.length > 0 ? (
+          <div className="mt-4 divide-y divide-white/10 border-y border-white/10">
+            {teamDelivery.map((delivery) => (
+              <TeamDeliveryRow key={delivery.team.id} delivery={delivery} />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 flex items-center gap-3 rounded-md border border-dashed border-white/15 p-4 text-sm text-slate-400">
+            <Users size={18} className="shrink-0 text-slate-500" />
+            Edit the blueprint to define which teams own this project and assign their tasks.
+          </div>
+        )}
+
+        {!editing && unassignedTasks.length > 0 ? (
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-solar/20 bg-solar/[0.055] px-3 py-2.5">
+            <AlertTriangle size={16} className="shrink-0 text-solar" />
+            <span className="text-sm font-medium text-slate-200">Needs an owner:</span>
+            <span className="min-w-0 text-sm text-slate-400">
+              {unassignedTasks.slice(0, 3).map((task) => task.title).join(", ")}
+              {unassignedTasks.length > 3 ? ` and ${unassignedTasks.length - 3} more` : ""}
+            </span>
+          </div>
+        ) : null}
+      </section>
     </section>
+  );
+}
+
+function TeamDeliveryRow({ delivery }: { delivery: TeamDelivery }) {
+  return (
+    <article className="grid gap-4 py-4 lg:grid-cols-[minmax(220px,0.7fr)_minmax(260px,1fr)_minmax(280px,1.15fr)] lg:items-start">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <h5 className="text-sm font-semibold text-white">{delivery.team.name}</h5>
+          <span className={cn("rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]", teamStateClass(delivery.state))}>
+            {teamStateLabel(delivery.state)}
+          </span>
+        </div>
+        <div className="mt-2 flex items-center gap-2 text-sm text-slate-400">
+          <UserRound size={14} className="shrink-0 text-violet" />
+          <span>{delivery.team.lead}</span>
+        </div>
+        <p className="mt-2 text-sm leading-5 text-slate-400">{delivery.team.responsibility}</p>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+          <span>Team delivery</span>
+          <span className="font-mono text-slate-300">{delivery.completion}%</span>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div
+            className={cn("h-full rounded-full", teamProgressClass(delivery.state))}
+            style={{ width: `${delivery.completion}%` }}
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <AccountabilityBadge label={`${delivery.assignedTasks.length} assigned`} tone="neutral" />
+          <AccountabilityBadge label={`${delivery.activeCount} active`} tone="healthy" />
+          <AccountabilityBadge label={`${delivery.blockedCount} blocked`} tone={delivery.blockedCount ? "risk" : "neutral"} />
+          <AccountabilityBadge label={`${delivery.overdueCount} overdue`} tone={delivery.overdueCount ? "risk" : "neutral"} />
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs text-slate-500">Task ownership</p>
+        {delivery.assignedTasks.length > 0 ? (
+          <div className="mt-2 space-y-1.5">
+            {delivery.assignedTasks.slice(0, 4).map((task) => (
+              <div key={task.id} className="flex items-center justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate text-slate-300">{task.title}</span>
+                <span className={cn("shrink-0 text-[10px] uppercase tracking-[0.08em]", taskStatusClass(task.status))}>
+                  {task.status.replace("_", " ")}
+                </span>
+              </div>
+            ))}
+            {delivery.assignedTasks.length > 4 ? (
+              <p className="text-xs text-slate-500">+{delivery.assignedTasks.length - 4} more assigned tasks</p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-slate-500">No tasks assigned yet.</p>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function AccountabilityBadge({
+  label,
+  tone
+}: {
+  label: string;
+  tone: "neutral" | "healthy" | "watch" | "risk";
+}) {
+  return (
+    <span
+      className={cn(
+        "rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em]",
+        tone === "risk" && "border-risk/25 bg-risk/10 text-risk",
+        tone === "watch" && "border-solar/25 bg-solar/10 text-solar",
+        tone === "healthy" && "border-success/25 bg-success/10 text-success",
+        tone === "neutral" && "border-white/10 bg-white/[0.04] text-slate-400"
+      )}
+    >
+      {label}
+    </span>
   );
 }
 
@@ -638,10 +947,70 @@ function calculateCompletion(blueprint: ProjectBlueprint): number {
   return Math.round(((completedGoals + completedSteps) / total) * 100);
 }
 
+function buildTeamDelivery(
+  teams: ProjectTeam[],
+  tasks: WorkspaceTask[],
+  projectProgress: number
+): TeamDelivery[] {
+  const taskById = new Map(tasks.map((task) => [task.id, task]));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return teams.map((team) => {
+    const assignedTasks = team.taskIds
+      .map((taskId) => taskById.get(taskId))
+      .filter((task): task is WorkspaceTask => Boolean(task));
+    const completedCount = assignedTasks.filter((task) => task.status === "done").length;
+    const blockedCount = assignedTasks.filter((task) => task.status === "blocked").length;
+    const activeCount = assignedTasks.filter((task) => task.status === "in_progress").length;
+    const overdueCount = assignedTasks.filter((task) => {
+      if (!task.dueDate || task.status === "done" || task.status === "archived") {
+        return false;
+      }
+      const dueDate = new Date(task.dueDate);
+      return !Number.isNaN(dueDate.getTime()) && dueDate < today;
+    }).length;
+    const completion = assignedTasks.length
+      ? Math.round((completedCount / assignedTasks.length) * 100)
+      : 0;
+    const deliveryGap = projectProgress - completion;
+    const priorityPressure = assignedTasks.some(
+      (task) =>
+        task.status !== "done" &&
+        task.status !== "archived" &&
+        (task.priority === "critical" || task.priority === "high")
+    );
+
+    let state: TeamDeliveryState = "on_track";
+    if (assignedTasks.length === 0) {
+      state = "unassigned";
+    } else if (
+      blockedCount > 0 ||
+      overdueCount > 0 ||
+      (assignedTasks.length >= 2 && deliveryGap >= 25)
+    ) {
+      state = "lagging";
+    } else if (deliveryGap >= 10 || (activeCount === 0 && completion < 100) || priorityPressure) {
+      state = "watch";
+    }
+
+    return {
+      team,
+      assignedTasks,
+      completion,
+      blockedCount,
+      overdueCount,
+      activeCount,
+      state
+    };
+  });
+}
+
 function buildGuidance(
   blueprint: ProjectBlueprint,
   features: WorkspaceFeature[],
-  tasks: WorkspaceTask[]
+  tasks: WorkspaceTask[],
+  projectProgress: number
 ): GuidanceAction[] {
   const blockedTasks = tasks.filter((task) => task.status === "blocked");
   const activeTask = tasks.find((task) => task.status === "in_progress");
@@ -653,8 +1022,28 @@ function buildGuidance(
   const weakestFeature = [...features]
     .filter((feature) => feature.status !== "done")
     .sort((first, second) => first.progress - second.progress)[0];
+  const laggingTeam = buildTeamDelivery(blueprint.teams, tasks, projectProgress).find(
+    (delivery) => delivery.state === "lagging"
+  );
 
   const actions: GuidanceAction[] = [];
+
+  if (laggingTeam) {
+    const pressure = [
+      laggingTeam.blockedCount
+        ? `${laggingTeam.blockedCount} blocked`
+        : null,
+      laggingTeam.overdueCount
+        ? `${laggingTeam.overdueCount} overdue`
+        : null
+    ].filter(Boolean);
+    actions.push({
+      title: `Recover ${laggingTeam.team.name}`,
+      body: `${laggingTeam.team.lead} owns this recovery. Review ${laggingTeam.assignedTasks.length} assigned task${laggingTeam.assignedTasks.length === 1 ? "" : "s"}${pressure.length ? `, including ${pressure.join(" and ")}` : ""}, remove the highest-impact constraint, and confirm the next deliverable.`,
+      confidence: 96,
+      tone: "risk"
+    });
+  }
 
   if (blockedTasks.length > 0) {
     actions.push({
@@ -829,4 +1218,59 @@ function toneTextClass(tone: GuidanceTone) {
     return "text-violet";
   }
   return "text-cyan";
+}
+
+function teamStateLabel(state: TeamDeliveryState) {
+  if (state === "on_track") {
+    return "On track";
+  }
+  if (state === "watch") {
+    return "Watch";
+  }
+  if (state === "lagging") {
+    return "Lagging";
+  }
+  return "Needs tasks";
+}
+
+function teamStateClass(state: TeamDeliveryState) {
+  if (state === "lagging") {
+    return "border-risk/25 bg-risk/10 text-risk";
+  }
+  if (state === "watch") {
+    return "border-solar/25 bg-solar/10 text-solar";
+  }
+  if (state === "on_track") {
+    return "border-success/25 bg-success/10 text-success";
+  }
+  return "border-white/10 bg-white/[0.04] text-slate-400";
+}
+
+function teamProgressClass(state: TeamDeliveryState) {
+  if (state === "lagging") {
+    return "bg-risk";
+  }
+  if (state === "watch") {
+    return "bg-solar";
+  }
+  if (state === "on_track") {
+    return "bg-success";
+  }
+  return "bg-slate-600";
+}
+
+function taskStatusClass(status: WorkspaceTask["status"]) {
+  if (status === "blocked") {
+    return "text-risk";
+  }
+  if (status === "done") {
+    return "text-success";
+  }
+  if (status === "in_progress") {
+    return "text-cyan";
+  }
+  if (status === "ready") {
+    return "text-solar";
+  }
+  return "text-slate-500";
 }

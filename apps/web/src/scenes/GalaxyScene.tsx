@@ -56,7 +56,7 @@ function ProjectStar({
         1,
         1.72
       );
-      const focusScale = selected ? 0.62 : focusMode ? 0.5 : 0.42;
+      const focusScale = selected ? 1.14 : focusMode ? 0.48 : 0.34;
       group.current.scale.setScalar(focusScale * Math.min(distanceScale, focusMode ? 1.26 : 1.08));
     }
     if (orbit.current) {
@@ -73,9 +73,9 @@ function ProjectStar({
     () =>
       project.planets.map((planet, planetIndex) => {
         const angle = (planetIndex / project.planets.length) * Math.PI * 2;
-        const radiusMultiplier = selected ? 1.72 : focusMode ? 1.24 : 1;
+        const radiusMultiplier = selected ? 2.08 : focusMode ? 1.5 : 1;
         const radius = planet.orbitRadius * radiusMultiplier;
-        const progressScale = 0.058 + planet.progress / 1900 + Math.min(planet.taskCount, 18) / 2600;
+        const progressScale = 0.078 + planet.progress / 1600 + Math.min(planet.taskCount, 18) / 2200;
         const completedTaskCount = Math.round(planet.taskCount * (planet.progress / 100));
         const openTaskCount = Math.max(0, planet.taskCount - completedTaskCount - planet.blockedTaskCount);
         return {
@@ -94,7 +94,7 @@ function ProjectStar({
           signalLabel: buildPlanetSignal(planet.progress, planet.blockedTaskCount)
         };
       }),
-    [project.planets]
+    [focusMode, project.planets, selected]
   );
 
   return (
@@ -304,9 +304,10 @@ function FeaturePlanetMesh({
       }),
     [planet.blockedTaskCount, planet.completedTaskCount, planet.size, satelliteCount]
   );
-  const visibleMoons = moons.slice(0, selected ? 6 : systemSelected ? 2 : overview ? 1 : 2);
+  const visibleMoons = moons.slice(0, selected ? 6 : systemSelected ? 3 : overview ? 1 : 2);
   const hasRings = Math.round(planet.angle * 100) % 2 === 0;
   const showFullDetail = selected && systemSelected && !overview;
+  const showSemanticLabel = systemSelected || selected;
   const showRiskMarker = !showFullDetail && planet.blockedTaskCount > 0;
   const progressAngle = (planet.progress / 100) * Math.PI * 2 + planet.angle;
   const progressMarkerPosition: [number, number, number] = [
@@ -329,8 +330,8 @@ function FeaturePlanetMesh({
     if (group.current) {
       const worldPosition = new THREE.Vector3();
       group.current.getWorldPosition(worldPosition);
-      const distanceScale = THREE.MathUtils.clamp(camera.position.distanceTo(worldPosition) / 4.5, 1, 1.9);
-      const modeScale = selected ? 0.92 : systemSelected ? 0.68 : overview ? 0.5 : 0.72;
+      const distanceScale = THREE.MathUtils.clamp(camera.position.distanceTo(worldPosition) / 5.2, 1, 1.55);
+      const modeScale = selected ? 1 : systemSelected ? 0.78 : overview ? 0.62 : 0.72;
       group.current.scale.setScalar(modeScale * distanceScale);
     }
     if (mesh.current) {
@@ -440,12 +441,14 @@ function FeaturePlanetMesh({
           <meshBasicMaterial color="#fb7185" />
         </mesh>
       ) : null}
-      {showFullDetail ? (
+      {showSemanticLabel ? (
         <>
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[planet.size * 3.4, 0.0012, 8, 72]} />
-            <meshBasicMaterial color="#dff8ff" transparent opacity={0.28} />
-          </mesh>
+          {showFullDetail ? (
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[planet.size * 3.4, 0.0012, 8, 72]} />
+              <meshBasicMaterial color="#dff8ff" transparent opacity={0.28} />
+            </mesh>
+          ) : null}
           <Billboard position={[0, planet.size * (selected ? 2.65 : 2.7), 0]}>
             <Text
               fontSize={selected ? Math.max(0.017, planet.size * 0.18) : Math.max(0.011, planet.size * 0.1)}
@@ -454,7 +457,7 @@ function FeaturePlanetMesh({
               anchorY="middle"
               maxWidth={0.42}
             >
-              {planet.name}
+              {planet.name.toUpperCase()}
             </Text>
             <Text
               position={[0, -Math.max(0.024, planet.size * 0.22), 0]}
@@ -464,7 +467,9 @@ function FeaturePlanetMesh({
               anchorY="middle"
               maxWidth={0.52}
             >
-              {selected ? `${planet.signalLabel} / ${planet.taskCount} moons` : `${planet.progress}% / ${planet.taskCount} moons`}
+              {selected
+                ? `${planet.signalLabel} / ${planet.taskCount} task moons`
+                : `feature / ${planet.progress}% / ${planet.taskCount} tasks`}
             </Text>
           </Billboard>
         </>
@@ -670,11 +675,11 @@ export function GalaxyScene({
 
   return (
     <Canvas
-      camera={{ position: [0, 0.45, 9.8], fov: 61 }}
+      camera={{ position: [0, 0.8, 9.8], fov: 58 }}
       dpr={[1, 1.8]}
     >
       <color attach="background" args={["#02040a"]} />
-      <fog attach="fog" args={["#02040a", 24, 46]} />
+      <fog attach="fog" args={["#02040a", 32, 64]} />
       <ambientLight intensity={1.48} />
       <pointLight position={[2.2, 2.4, 2.8]} intensity={3.8} color="#48e5ff" />
       <pointLight position={[-2.8, -1.4, 2.2]} intensity={2.2} color="#8d67ff" />
@@ -696,16 +701,22 @@ export function GalaxyScene({
       <OrbitControls
         enablePan
         enableZoom
-        minDistance={3.2}
-        maxDistance={16}
+        enableDamping
+        dampingFactor={0.065}
+        zoomSpeed={0.72}
+        rotateSpeed={0.62}
+        panSpeed={0.68}
+        screenSpacePanning
+        minDistance={3.8}
+        maxDistance={24}
         target={
           selectedProject
             ? [
                 selectedProject.coordinates[0],
-                selectedProject.coordinates[1] - 2.75,
+                selectedProject.coordinates[1] - 0.22,
                 selectedProject.coordinates[2]
               ]
-            : [0, -1.85, 0]
+            : [0, 0, 0]
         }
         autoRotate={!selectedProjectId}
         autoRotateSpeed={0.32}

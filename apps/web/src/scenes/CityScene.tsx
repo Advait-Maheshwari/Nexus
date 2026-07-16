@@ -55,6 +55,7 @@ function ProjectCity({ project, mode }: { project: ProjectSummary; mode: CityVie
       <CityBase style={style} mode={mode} />
       <RoadNetwork style={style} />
       <ElevatedLoop style={style} />
+      <CityTraffic accent={style.secondary} />
       <TransitLines districts={districts} style={style} mode={mode} />
       <CentralCore project={project} style={style} />
 
@@ -68,25 +69,10 @@ function ProjectCity({ project, mode }: { project: ProjectSummary; mode: CityVie
         />
       ))}
 
-      <OuterCityDetails style={style} blockedCount={project.blockedTaskCount} />
+      <OuterCityDetails style={style} project={project} />
 
       {mode === "street" ? <StreetScanner accent={style.accent} /> : null}
 
-      <Billboard position={[0, 0.18, 2.85]}>
-        <Text fontSize={0.14} color="#ffffff" anchorX="center" anchorY="middle" maxWidth={2.4}>
-          {project.codename} PROJECT CITY
-        </Text>
-        <Text
-          position={[0, -0.16, 0]}
-          fontSize={0.07}
-          color="#94a3b8"
-          anchorX="center"
-          anchorY="middle"
-          maxWidth={2.8}
-        >
-          {style.name} / districts are features / towers are tasks
-        </Text>
-      </Billboard>
     </group>
   );
 }
@@ -661,19 +647,98 @@ function HologramNeedles({ accent, count, radius }: { accent: string; count: num
   );
 }
 
-function OuterCityDetails({ style, blockedCount }: { style: CityStyle; blockedCount: number }) {
+function CityTraffic({ accent }: { accent: string }) {
+  const traffic = useRef<THREE.Group>(null);
+
+  useFrame(({ clock }) => {
+    if (traffic.current) {
+      traffic.current.rotation.y = clock.getElapsedTime() * 0.18;
+    }
+  });
+
+  return (
+    <group ref={traffic}>
+      {Array.from({ length: 8 }, (_, index) => {
+        const angle = (index / 8) * Math.PI * 2;
+        return (
+          <group key={`transit-pod-${index}`} rotation={[0, angle, 0]}>
+            <mesh position={[2.02, 0.26 + (index % 2) * 0.035, 0]}>
+              <capsuleGeometry args={[0.025, 0.075, 4, 8]} />
+              <meshStandardMaterial color="#dff8ff" emissive={accent} emissiveIntensity={1.4} />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+function OuterCityDetails({ style, project }: { style: CityStyle; project: ProjectSummary }) {
+  const buildingCount = Math.max(30, Math.min(54, project.taskCount + 22));
+  const completedRatio = project.progress / 100;
+
   return (
     <group>
-      {Array.from({ length: 14 }, (_, index) => {
-        const angle = (index / 14) * Math.PI * 2;
-        const radius = 2.46 + (index % 2) * 0.16;
-        const color = blockedCount > 0 && index < blockedCount ? "#fb7185" : style.secondary;
+      <mesh position={[0, 0.024, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[2.18, 2.34, 128]} />
+        <meshStandardMaterial color="#071827" emissive={style.accent} emissiveIntensity={0.1} roughness={0.3} />
+      </mesh>
+      {[0, Math.PI / 2, Math.PI, (Math.PI * 3) / 2].map((angle) => (
+        <group key={`city-gate-${angle}`} rotation={[0, angle, 0]}>
+          <mesh position={[2.26, 0.09, 0]}>
+            <boxGeometry args={[0.34, 0.035, 0.13]} />
+            <meshStandardMaterial color="#dff8ff" emissive={style.secondary} emissiveIntensity={0.44} />
+          </mesh>
+          <mesh position={[2.48, 0.18, 0]}>
+            <boxGeometry args={[0.035, 0.28, 0.035]} />
+            <meshBasicMaterial color={style.secondary} />
+          </mesh>
+        </group>
+      ))}
+      {Array.from({ length: buildingCount }, (_, index) => {
+        const angle = (index / buildingCount) * Math.PI * 2 + project.codename.length * 0.17;
+        const radius = 2.5 + (index % 3) * 0.24;
+        const completed = index / buildingCount <= completedRatio;
+        const blocked = project.blockedTaskCount > 0 && index % Math.max(6, buildingCount - project.blockedTaskCount) === 0;
+        const height = 0.16 + ((index * 7 + project.name.length) % 8) * 0.055;
+        const width = 0.1 + (index % 3) * 0.025;
+        const color = blocked ? "#fb7185" : completed ? style.secondary : style.baseColor;
         return (
-          <group key={`outer-${index}`} position={[Math.cos(angle) * radius, 0.08, Math.sin(angle) * radius]}>
-            <mesh>
-              <boxGeometry args={[0.06, 0.12 + (index % 4) * 0.035, 0.06]} />
-              <meshStandardMaterial color="#0f172a" emissive={color} emissiveIntensity={0.22} />
+          <group
+            key={`outer-${index}`}
+            position={[Math.cos(angle) * radius, 0, Math.sin(angle) * radius]}
+            rotation={[0, -angle, 0]}
+          >
+            <mesh position={[0, height / 2 + 0.045, 0]} castShadow>
+              {index % 4 === 0 ? (
+                <cylinderGeometry args={[width * 0.62, width, height, 8]} />
+              ) : (
+                <boxGeometry args={[width, height, width * 0.78]} />
+              )}
+              <meshStandardMaterial
+                color={blocked ? "#30101c" : completed ? style.baseColor : "#101827"}
+                emissive={color}
+                emissiveIntensity={blocked ? 0.68 : completed ? 0.2 : 0.04}
+                metalness={0.18}
+                roughness={0.48}
+              />
             </mesh>
+            <mesh position={[0, height + 0.052, 0]}>
+              <boxGeometry args={[width * 0.72, 0.018, width * 0.58]} />
+              <meshBasicMaterial color={color} transparent opacity={completed ? 0.74 : 0.22} />
+            </mesh>
+            {index % 5 === 0 ? (
+              <group position={[width * 1.3, 0.07, width * 0.9]}>
+                <mesh position={[0, 0.07, 0]}>
+                  <cylinderGeometry args={[0.012, 0.016, 0.12, 6]} />
+                  <meshStandardMaterial color="#365314" />
+                </mesh>
+                <mesh position={[0, 0.16, 0]}>
+                  <coneGeometry args={[0.07, 0.16, 7]} />
+                  <meshStandardMaterial color={style.parkColor} emissive={style.parkColor} emissiveIntensity={0.1} />
+                </mesh>
+              </group>
+            ) : null}
           </group>
         );
       })}
@@ -784,13 +849,13 @@ function CityCamera({ mode }: { mode: CityViewMode }) {
 
   useEffect(() => {
     if (mode === "street") {
-      camera.position.set(1.45, 0.84, 2.08);
+      camera.position.set(2.7, 1.12, 3.6);
     } else if (mode === "risk") {
-      camera.position.set(0.25, 4.5, 1.1);
+      camera.position.set(0.4, 7.4, 2.2);
     } else {
-      camera.position.set(2.95, 2.42, 3.2);
+      camera.position.set(5.4, 4.15, 6.1);
     }
-    camera.lookAt(0, 0.34, 0);
+    camera.lookAt(0, 0.42, 0);
   }, [camera, mode]);
 
   return null;
@@ -800,9 +865,9 @@ export default function CityScene({ project, mode = "overview" }: { project: Pro
   const style = getCityStyle(project);
 
   return (
-    <Canvas camera={{ position: [2.95, 2.42, 3.2], fov: 48 }} dpr={[1, 1.75]} shadows>
+    <Canvas camera={{ position: [5.4, 4.15, 6.1], fov: 52 }} dpr={[1, 1.75]} shadows>
       <color attach="background" args={["#02040a"]} />
-      <fog attach="fog" args={["#02040a", 6.5, 13]} />
+      <fog attach="fog" args={["#02040a", 12, 30]} />
       <ambientLight intensity={0.64} />
       <directionalLight position={[2.5, 5, 3.5]} intensity={2.6} color="#dff8ff" castShadow />
       <pointLight position={[-3, 2.2, 1.6]} intensity={2.2} color="#8d67ff" />
@@ -816,7 +881,7 @@ export default function CityScene({ project, mode = "overview" }: { project: Pro
         sectionSize={1}
         sectionThickness={0.7}
         sectionColor="#245b78"
-        fadeDistance={9}
+        fadeDistance={16}
         infiniteGrid
       />
       <CityCamera mode={mode} />
@@ -826,11 +891,17 @@ export default function CityScene({ project, mode = "overview" }: { project: Pro
         enablePan
         enableZoom
         enableRotate
-        minDistance={mode === "street" ? 0.9 : 1.35}
-        maxDistance={9.2}
-        minPolarAngle={0.05}
-        maxPolarAngle={Math.PI * 0.95}
-        target={new THREE.Vector3(0, 0.34, 0)}
+        enableDamping
+        dampingFactor={0.07}
+        zoomSpeed={0.78}
+        rotateSpeed={0.68}
+        panSpeed={0.72}
+        screenSpacePanning
+        minDistance={mode === "street" ? 1.15 : 2.4}
+        maxDistance={20}
+        minPolarAngle={0.04}
+        maxPolarAngle={Math.PI * 0.96}
+        target={new THREE.Vector3(0, 0.42, 0)}
       />
     </Canvas>
   );

@@ -8,13 +8,24 @@ from app.core.session_cookie import clear_refresh_cookie, set_refresh_cookie
 from app.schemas.auth import (
     AccountResponse,
     AccountUpdateRequest,
+    AuthActionResponse,
+    EmailActionRequest,
     FirebaseExchangeRequest,
     LoginRequest,
     PasswordChangeRequest,
+    PasswordResetRequest,
     RegisterRequest,
+    TokenActionRequest,
     TokenResponse,
 )
+from app.services.account_recovery import (
+    begin_password_reset,
+    resend_email_verification,
+    reset_password,
+    verify_email,
+)
 from app.services.database_auth import (
+    VerificationIssue,
     change_password,
     exchange_firebase_identity,
     get_account,
@@ -31,14 +42,20 @@ from app.services.local_store import local_store
 router = APIRouter()
 
 
-@router.post("/register", response_model=TokenResponse)
+@router.post("/register", response_model=TokenResponse | AuthActionResponse)
 async def register(
     request: RegisterRequest,
     response: Response,
     session: AsyncSession = Depends(get_session),
-) -> TokenResponse:
+) -> TokenResponse | AuthActionResponse:
     if settings.auth_backend == "database":
         issued = await register_user(request, session)
+        if isinstance(issued, VerificationIssue):
+            response.status_code = status.HTTP_202_ACCEPTED
+            return AuthActionResponse(
+                message=issued.message,
+                verification_required=issued.verification_required,
+            )
         set_refresh_cookie(response, issued.refresh_token)
         return issued.token
     return local_store.register(request)
@@ -150,6 +167,62 @@ async def update_password(
 ) -> Response:
     _require_database_accounts()
     await change_password(request, auth, session)
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
+@router.post(
+    "/email/resend", response_model=AuthActionResponse, status_code=status.HTTP_202_ACCEPTED
+)
+async def resend_verification(
+    request: EmailActionRequest,
+    session: AsyncSession = Depends(get_session),
+) -> AuthActionResponse:
+    _require_database_accounts()
+    await resend_email_verification(request.email, session)
+    return AuthActionResponse(
+        message="If the account needs verification, a new link has been sent.",
+        verification_required=True,
+    )
+
+
+@router.post("/email/verify", status_code=status.HTTP_204_NO_CONTENT)
+async def confirm_email(
+    request: TokenActionRequest,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    _require_database_accounts()
+    await verify_email(request.token, session)
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
+@router.post(
+    "/password/forgot",
+    response_model=AuthActionResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def forgot_password(
+    request: EmailActionRequest,
+    session: AsyncSession = Depends(get_session),
+) -> AuthActionResponse:
+    _require_database_accounts()
+    await begin_password_reset(request.email, session)
+    return AuthActionResponse(
+        message="If the account can be recovered, a reset link has been sent."
+    )
+
+
+@router.post("/password/reset", status_code=status.HTTP_204_NO_CONTENT)
+async def confirm_password_reset(
+    request: PasswordResetRequest,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    _require_database_accounts()
+    await reset_password(request.token, request.new_password, session)
+    clear_refresh_cookie(response)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 

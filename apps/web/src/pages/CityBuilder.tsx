@@ -20,7 +20,7 @@ export function CityBuilderView({ data }: { data: MissionData }) {
   });
 
   return (
-    <section className="grid min-h-[calc(100vh-8rem)] gap-4 xl:grid-cols-[280px_minmax(0,1fr)_330px]">
+    <section className="grid min-h-[calc(100vh-8rem)] gap-4 xl:grid-cols-[250px_minmax(0,1fr)] 2xl:grid-cols-[260px_minmax(560px,1fr)_310px]">
       <aside className="glass-panel rounded-lg p-3">
         <div className="flex items-center justify-between gap-3 px-2 py-2">
           <div>
@@ -112,7 +112,7 @@ export function CityBuilderView({ data }: { data: MissionData }) {
       </div>
 
       {selected ? (
-        <aside className="space-y-3">
+        <aside className="space-y-3 xl:col-span-2 2xl:col-span-1">
           <section className="glass-panel rounded-lg p-5">
             <div className="flex items-start justify-between gap-3">
               <div>

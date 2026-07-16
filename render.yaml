@@ -17,6 +17,10 @@ services:
         value: https://advait-maheshwari.github.io
       - key: FIREBASE_PROJECT_ID
         value: nexus-advait-pm
+      - key: NEXUS_REQUIRE_EMAIL_VERIFICATION
+        value: false
+      - key: NEXUS_EMAIL_DELIVERY_MODE
+        value: disabled
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: ACCESS_TOKEN_EXPIRE_MINUTES

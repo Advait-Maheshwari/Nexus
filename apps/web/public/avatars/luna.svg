@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Luna profile picture">
+  <rect width="128" height="128" rx="64" fill="#171326"/>
+  <circle cx="64" cy="55" r="27" fill="#edc8aa"/>
+  <path d="M31 57c0-29 13-43 34-43 19 0 32 14 32 42l-10 26-6-39c-17 8-32 9-50 14Z" fill="#44314f"/>
+  <path d="M20 128c4-31 19-47 44-47s40 16 44 47Z" fill="#b94b75"/>
+  <circle cx="54" cy="57" r="2.5" fill="#36243e"/><circle cx="75" cy="57" r="2.5" fill="#36243e"/>
+  <path d="M56 69c5 4 11 4 16 0" fill="none" stroke="#b16f67" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="101" cy="27" r="10" fill="#f5c451" opacity=".85"/>
+</svg>

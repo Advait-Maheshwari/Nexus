@@ -11,6 +11,49 @@ Nexus has a hard zero-cost constraint from Phase 1 through the final personal-us
 ## System Shape
 
 ```txt
+Desktop / mobile browser
+        |
+        v
+Client application (apps/web)
+        |
+        | HTTPS + JSON through /api/v1
+        v
+Server application (apps/api)
+        |
+        +-- PostgreSQL / Neon
+        +-- Firebase token verification
+        +-- SMTP or console email delivery
+        +-- optional external integrations
+
+Client-safe contracts (packages/shared) describe transport data only.
+```
+
+### Boundary Rules
+
+- The client owns presentation, interaction, responsive layout, 3D rendering, and temporary view state.
+- The server owns authentication, authorization, workspace isolation, validation, business rules, persistence, analytics, and integration secrets.
+- The browser reaches server features only through versioned `/api/v1` endpoints; it never reaches a database directly.
+- `packages/shared` may expose serializable types and constants, but it may not import client UI or server runtime modules.
+- Firebase proves identity; the server still issues the Nexus session and enforces workspace permissions.
+- Local-storage adapters are resilience and demo fallbacks, not an authoritative multi-user data store.
+- Render hosts the server and Firebase Hosting serves the client within the zero-cost policy.
+
+### Repository Layout
+
+```txt
+apps/
+  web/          # client application
+  api/          # server application
+packages/
+  shared/       # browser-safe transport contracts
+infra/          # local client/server dependencies
+ops/            # server operations, backup, and recovery tools
+docs/           # architecture and operating guidance
+```
+
+The established `web` and `api` folder names are retained because deployment and CI already consume them; their architectural roles are client and server respectively.
+
+```txt
 User
   Workspace
     Project

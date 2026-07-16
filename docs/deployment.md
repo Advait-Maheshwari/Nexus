@@ -95,3 +95,19 @@ so Nexus intentionally uses a separate persistent free database provider.
 
 GitHub Pages hosts only the frontend. The repository workflow is preferred over branch deployment
 because it runs the Vite build with the required `/Nexus/` base path before publishing the output.
+
+## Account Email Delivery
+
+The Render baseline keeps database email delivery disabled so an unset SMTP credential cannot
+break the existing private deployment. Before enabling public password signup, configure a
+user-owned SMTP account as Render secrets:
+
+- `NEXUS_EMAIL_DELIVERY_MODE=smtp`
+- `NEXUS_REQUIRE_EMAIL_VERIFICATION=true`
+- `NEXUS_EMAIL_FROM`
+- `NEXUS_SMTP_HOST`, `NEXUS_SMTP_PORT`, `NEXUS_SMTP_USERNAME`, `NEXUS_SMTP_PASSWORD`
+- `NEXUS_SMTP_STARTTLS=true`
+
+Console delivery is accepted only during local development and is rejected at production startup.
+Verification links expire after 24 hours and reset links after 30 minutes by default. Detailed
+backup, restore, same-site domain, QA, and incident procedures are in `docs/operations.md`.

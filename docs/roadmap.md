@@ -63,7 +63,7 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 
 ## Phase 5: Secure Launch
 
-- Status: started in parallel.
+- Status: in progress.
 - Full-name and password policy enforcement.
 - JWT issuer, audience, expiry, type, and membership validation.
 - Verified Firebase token exchange into Nexus workspace sessions.
@@ -75,7 +75,15 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 - Backups, restore drills, dependency scanning, and security review.
 - Free-tier frontend, API, and PostgreSQL deployment with documented limits.
 - Exchange Google/Firebase identity tokens for tenant-scoped Nexus API sessions.
+- Single-use verified-email and password-reset workflows with hashed, expiring tokens.
+- Zero-cost user-owned SMTP delivery adapter with production configuration guards.
+- Encrypted PostgreSQL backup and confirmation-gated restore tooling.
+- Production operations, browser QA, same-site domain, and incident-response runbooks.
 - Public beta readiness and incident response runbook.
+- Client/server repository contract and root development commands.
+- Project-goal team accountability with task ownership and lagging-team recovery guidance.
+- Production-grade City/Galaxy camera, semantic, density, and responsive layout hardening.
+- Bundled zero-cost profile-picture presets with server-side path allowlisting.
 
 ## Permanent Constraint: Zero Cost
 

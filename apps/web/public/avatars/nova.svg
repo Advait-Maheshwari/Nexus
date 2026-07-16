@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Nova profile picture">
+  <rect width="128" height="128" rx="64" fill="#11152b"/>
+  <circle cx="64" cy="55" r="27" fill="#8d5d48"/>
+  <path d="M33 54c0-26 12-39 31-39 20 0 32 14 32 42-8-9-14-14-23-18-13 8-25 11-40 15Z" fill="#160e19"/>
+  <path d="M20 128c4-31 19-47 44-47s40 16 44 47Z" fill="#6d4bd1"/>
+  <circle cx="54" cy="57" r="2.5" fill="#160e19"/><circle cx="75" cy="57" r="2.5" fill="#160e19"/>
+  <path d="M56 69c5 4 11 4 16 0" fill="none" stroke="#5d3027" stroke-width="3" stroke-linecap="round"/>
+  <path d="M18 29 29 18M99 18l11 11" stroke="#8d67ff" stroke-width="4" stroke-linecap="round" opacity=".8"/>
+</svg>

@@ -62,6 +62,20 @@ const defaults: Preferences = {
   autoBriefing: true
 };
 
+const avatarPresets = [
+  { label: "Orbit", path: "/avatars/orbit.svg" },
+  { label: "Nova", path: "/avatars/nova.svg" },
+  { label: "Atlas", path: "/avatars/atlas.svg" },
+  { label: "Luna", path: "/avatars/luna.svg" }
+] as const;
+
+function resolveAvatarUrl(value?: string) {
+  if (!value?.startsWith("/avatars/")) {
+    return value;
+  }
+  return `${import.meta.env.BASE_URL}${value.slice(1)}`;
+}
+
 type ControlModule =
   | "settings"
   | "team"
@@ -681,6 +695,7 @@ function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
           <PreferenceInfo label="Recognition first" value="Main navigation uses labels, icons, and helper text." />
           <PreferenceInfo label="Low friction" value="Secondary tools are grouped away from daily command views." />
           <PreferenceInfo label="Error prevention" value="Public demo access is hidden and owner-local mode is explicit." />
+          <PreferenceInfo label="Profile pictures" value="Private bundled presets with no external tracking" />
         </PreferencePanel>
       </div>
       <Button className="mt-4" icon={<Save size={16} />} onClick={save}>
@@ -701,6 +716,7 @@ export function ProfileView({
 }) {
   const [account, setAccount] = useState<NexusAccount | null>(null);
   const [fullName, setFullName] = useState(session.displayName ?? "");
+  const [avatarUrl, setAvatarUrl] = useState(session.photoUrl ?? "");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(session.mode === "api");
 
@@ -713,6 +729,7 @@ export function ProfileView({
         if (!active) return;
         setAccount(nextAccount);
         setFullName(nextAccount.displayName);
+        setAvatarUrl(nextAccount.photoUrl ?? "");
       })
       .catch((error) => {
         if (active) setStatus(error instanceof Error ? error.message : "Account loading failed.");
@@ -731,7 +748,11 @@ export function ProfileView({
     setBusy(true);
     setStatus("");
     try {
-      const nextAccount = await updateAccount(session.accessToken, fullName.trim());
+      const nextAccount = await updateAccount(
+        session.accessToken,
+        fullName.trim(),
+        avatarUrl.startsWith("/avatars/") ? avatarUrl : undefined
+      );
       setAccount(nextAccount);
       setFullName(nextAccount.displayName);
       onSessionChange?.(mergeAccount(session, nextAccount));
@@ -755,9 +776,9 @@ export function ProfileView({
       <div className="grid gap-4 md:grid-cols-[220px_1fr]">
         <div className="glass-panel flex min-h-56 items-center justify-center rounded-lg">
           <div className="text-center">
-            {session.photoUrl ? (
+            {avatarUrl || session.photoUrl ? (
               <img
-                src={session.photoUrl}
+                src={resolveAvatarUrl(avatarUrl || session.photoUrl)}
                 alt=""
                 referrerPolicy="no-referrer"
                 className="mx-auto h-16 w-16 rounded-full border border-cyan/30 object-cover"
@@ -809,6 +830,43 @@ export function ProfileView({
             />
             <AccountInput label="Email" value={email ?? ""} disabled onChange={() => undefined} />
           </div>
+          <fieldset className="mt-5 border-t border-white/10 pt-5">
+            <legend className="text-sm font-semibold text-white">Profile picture</legend>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Bundled with Nexus for fast loading, privacy, and zero external image cost.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {avatarPresets.map((avatar) => {
+                const selected = avatarUrl === avatar.path;
+                return (
+                  <button
+                    key={avatar.path}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setAvatarUrl(avatar.path)}
+                    className={cn(
+                      "relative flex min-h-24 flex-col items-center justify-center rounded-md border p-3 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan",
+                      selected
+                        ? "border-cyan/55 bg-cyan/10 shadow-glow"
+                        : "border-white/10 bg-white/[0.035] hover:border-white/25"
+                    )}
+                  >
+                    <img
+                      src={resolveAvatarUrl(avatar.path)}
+                      alt=""
+                      className="h-12 w-12 rounded-full border border-white/15 object-cover"
+                    />
+                    <span className="mt-2 text-xs font-medium text-slate-300">{avatar.label}</span>
+                    {selected ? (
+                      <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-cyan text-void">
+                        <Check size={12} strokeWidth={3} />
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button type="submit" icon={<Save size={16} />} disabled={busy || !fullName.trim()}>
               {busy ? "Saving..." : "Save Profile"}

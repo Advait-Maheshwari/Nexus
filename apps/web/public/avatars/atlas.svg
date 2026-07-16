@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Atlas profile picture">
+  <rect width="128" height="128" rx="64" fill="#071b18"/>
+  <circle cx="64" cy="54" r="27" fill="#c98f68"/>
+  <path d="M34 48c2-22 13-33 30-33 19 0 30 13 31 36-7-8-15-13-24-15-12 5-24 9-37 12Z" fill="#4b2d1d"/>
+  <path d="M22 128c3-31 18-47 42-47s39 16 42 47Z" fill="#217a57"/>
+  <circle cx="54" cy="55" r="2.5" fill="#2b1b14"/><circle cx="75" cy="55" r="2.5" fill="#2b1b14"/>
+  <path d="M55 68c6 5 13 5 19 0" fill="none" stroke="#7c4735" stroke-width="3" stroke-linecap="round"/>
+  <path d="M14 96c19 6 81 6 100 0" fill="none" stroke="#4ade80" stroke-width="3" opacity=".5"/>
+</svg>

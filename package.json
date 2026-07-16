@@ -8,15 +8,20 @@
     "packages/shared"
   ],
   "scripts": {
-    "dev": "npm run dev:web",
+    "dev": "npm run dev:client",
+    "dev:client": "npm --workspace apps/web run dev",
+    "dev:server": "python -m uvicorn app.main:app --app-dir apps/api --reload --port 8000",
     "dev:web": "npm --workspace apps/web run dev",
     "build": "npm --workspace apps/web run build",
     "lint": "npm --workspace apps/web run lint",
-    "typecheck": "npm --workspace apps/web run typecheck"
+    "lint:server": "python -m ruff check apps/api",
+    "test:server": "python -m pytest apps/api/tests",
+    "typecheck": "npm --workspace apps/web run typecheck",
+    "check:client": "npm run typecheck && npm run build",
+    "check:server": "npm run lint:server && npm run test:server"
   },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
   }
 }
-

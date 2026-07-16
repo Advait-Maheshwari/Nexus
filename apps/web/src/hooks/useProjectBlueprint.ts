@@ -105,6 +105,7 @@ function createDefaultBlueprint(projectId: string, projectName: string): Project
         priority: "high"
       }
     ],
+    teams: [],
     updatedAt: new Date().toISOString()
   };
 }
@@ -193,6 +194,40 @@ function createNexusBlueprint(projectId: string): ProjectBlueprint {
         priority: "critical"
       }
     ],
+    teams: [
+      {
+        id: crypto.randomUUID(),
+        name: "Product & Delivery",
+        lead: "Project owner",
+        responsibility:
+          "Own scope, project goals, roadmap decisions, delivery priorities, and release acceptance.",
+        taskIds: []
+      },
+      {
+        id: crypto.randomUUID(),
+        name: "Client Experience",
+        lead: "Experience lead",
+        responsibility:
+          "Own Mission Control, Galaxy, City Builder, analytics, HCI quality, accessibility, and responsive UI.",
+        taskIds: []
+      },
+      {
+        id: crypto.randomUUID(),
+        name: "Server Platform & Security",
+        lead: "Platform lead",
+        responsibility:
+          "Own the API, data model, authentication, authorization, automated tests, and security controls.",
+        taskIds: []
+      },
+      {
+        id: crypto.randomUUID(),
+        name: "Cloud & Reliability",
+        lead: "Operations lead",
+        responsibility:
+          "Own Render, Neon, Firebase, monitoring, backups, recovery procedures, and launch operations.",
+        taskIds: []
+      }
+    ],
     updatedAt: new Date().toISOString()
   };
 }
@@ -227,6 +262,13 @@ function normalizeBlueprint(
         fallback.steps[Math.min(index, fallback.steps.length - 1)]?.guidance ||
         "Complete the smallest useful slice, verify it, then move forward.",
       priority: step.priority || fallback.steps[Math.min(index, fallback.steps.length - 1)]?.priority || "medium"
+    })),
+    teams: (Array.isArray(blueprint.teams) ? blueprint.teams : fallback.teams).map((team) => ({
+      id: team.id || crypto.randomUUID(),
+      name: team.name || "Delivery team",
+      lead: team.lead || "Unassigned",
+      responsibility: team.responsibility || "Define this team's delivery responsibility.",
+      taskIds: Array.isArray(team.taskIds) ? [...new Set(team.taskIds)] : []
     }))
   };
 }

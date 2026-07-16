@@ -1,4 +1,5 @@
 from app.models.activity_log import ActivityLog
+from app.models.account_action_token import AccountActionToken
 from app.models.ai_insight import AIInsight
 from app.models.base import Base
 from app.models.feature import Feature
@@ -14,6 +15,7 @@ from app.models.workspace import Workspace, WorkspaceInvitation, WorkspaceMember
 
 __all__ = [
     "AIInsight",
+    "AccountActionToken",
     "ActivityLog",
     "Base",
     "Feature",

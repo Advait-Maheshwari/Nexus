@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from app.core.config import Settings, settings
 from app.core.security import AuthContext, create_access_token, require_workspace_editor
 from app.models.enums import WorkspaceRole
-from app.schemas.auth import RegisterRequest
+from app.schemas.auth import AccountUpdateRequest, RegisterRequest
 
 
 def test_registration_rejects_numbers_in_full_name() -> None:
@@ -15,6 +15,14 @@ def test_registration_rejects_numbers_in_full_name() -> None:
             email="pilot@nexus.dev",
             full_name="Pilot 7",
             password="secure-password-7",
+        )
+
+
+def test_account_update_rejects_external_avatar_urls() -> None:
+    with pytest.raises(ValidationError, match="bundled Nexus profile pictures"):
+        AccountUpdateRequest(
+            full_name="Nexus Pilot",
+            avatar_url="https://tracking.example/avatar.png",
         )
 
 
@@ -95,4 +103,7 @@ def test_neon_database_url_is_normalized_for_asyncpg() -> None:
         )
     )
 
-    assert settings.database_url == "postgresql+asyncpg://nexus:secret@example.neon.tech/nexus?ssl=require"
+    assert (
+        settings.database_url
+        == "postgresql+asyncpg://nexus:secret@example.neon.tech/nexus?ssl=require"
+    )

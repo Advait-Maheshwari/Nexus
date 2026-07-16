@@ -17,12 +17,18 @@ import type {
   ProjectMilestone
 } from "@/types/planning";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const localApiUrl = `${window.location.protocol}//${window.location.hostname}:8000`;
+const API_URL = import.meta.env.VITE_API_URL ?? localApiUrl;
+
+export interface AuthActionResult {
+  message: string;
+  verificationRequired: boolean;
+}
 
 export async function authenticate(
   mode: "login" | "register",
   input: { email: string; password: string; fullName?: string }
-): Promise<NexusSession> {
+): Promise<NexusSession | AuthActionResult> {
   const response = await fetch(`${API_URL}/api/v1/auth/${mode}`, {
     method: "POST",
     credentials: "include",
@@ -37,7 +43,53 @@ export async function authenticate(
     throw new Error(await apiError(response, "Authentication failed"));
   }
 
-  return sessionFromPayload(await response.json(), "password");
+  const payload = (await response.json()) as ApiTokenPayload | ApiAuthActionPayload;
+  if (!("access_token" in payload)) {
+    return {
+      message: payload.message,
+      verificationRequired: payload.verification_required ?? false
+    };
+  }
+  return sessionFromPayload(payload, "password");
+}
+
+export async function requestPasswordReset(email: string): Promise<string> {
+  const response = await fetch(`${API_URL}/api/v1/auth/password/forgot`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Password recovery failed"));
+  return ((await response.json()) as ApiAuthActionPayload).message;
+}
+
+export async function resetAccountPassword(token: string, newPassword: string): Promise<void> {
+  const response = await fetch(`${API_URL}/api/v1/auth/password/reset`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, new_password: newPassword })
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Password reset failed"));
+}
+
+export async function verifyAccountEmail(token: string): Promise<void> {
+  const response = await fetch(`${API_URL}/api/v1/auth/email/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token })
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Email verification failed"));
+}
+
+export async function resendAccountVerification(email: string): Promise<string> {
+  const response = await fetch(`${API_URL}/api/v1/auth/email/resend`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Verification request failed"));
+  return ((await response.json()) as ApiAuthActionPayload).message;
 }
 
 export async function exchangeFirebaseToken(idToken: string): Promise<NexusSession> {
@@ -119,13 +171,17 @@ export async function fetchAccount(accessToken: string): Promise<NexusAccount> {
 
 export async function updateAccount(
   accessToken: string,
-  fullName: string
+  fullName: string,
+  avatarUrl?: string
 ): Promise<NexusAccount> {
   const response = await fetch(`${API_URL}/api/v1/auth/me`, {
     method: "PATCH",
     credentials: "include",
     headers: authHeaders(accessToken, true),
-    body: JSON.stringify({ full_name: fullName })
+    body: JSON.stringify({
+      full_name: fullName,
+      ...(avatarUrl ? { avatar_url: avatarUrl } : {})
+    })
   });
   if (!response.ok) throw new Error(await apiError(response, "Profile update failed"));
   return mapAccount(await response.json());
@@ -759,6 +815,11 @@ interface ApiTokenPayload {
   role?: NexusSession["role"] | null;
 }
 
+interface ApiAuthActionPayload {
+  message: string;
+  verification_required?: boolean;
+}
+
 interface ApiAccountPayload {
   user_id: string;
   workspace_id: string;
@@ -768,6 +829,7 @@ interface ApiAccountPayload {
   role: NexusAccount["role"];
   workspace_name: string;
   password_enabled: boolean;
+  email_verified: boolean;
 }
 
 interface ApiWorkspace {
@@ -812,7 +874,8 @@ function mapAccount(payload: ApiAccountPayload): NexusAccount {
     photoUrl: payload.avatar_url ?? undefined,
     role: payload.role,
     workspaceName: payload.workspace_name,
-    passwordEnabled: payload.password_enabled
+    passwordEnabled: payload.password_enabled,
+    emailVerified: payload.email_verified
   };
 }
 

@@ -19,6 +19,9 @@ htmlcov/
 !.env.example
 *.sqlite3
 *.db
+backups/
+*.dump
+*.dump.enc
 coverage/
 playwright-report/
 test-results/
