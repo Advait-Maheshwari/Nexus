@@ -18,7 +18,16 @@ import type {
 } from "@/types/planning";
 
 const localApiUrl = `${window.location.protocol}//${window.location.hostname}:8000`;
-const API_URL = import.meta.env.VITE_API_URL ?? localApiUrl;
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+const API_URL = (configuredApiUrl || (import.meta.env.DEV ? localApiUrl : "")).replace(/\/$/, "");
+
+if (!API_URL) {
+  throw new Error("VITE_API_URL is required for production builds");
+}
+
+if (import.meta.env.PROD && new URL(API_URL).protocol !== "https:") {
+  throw new Error("VITE_API_URL must use HTTPS in production");
+}
 
 export interface AuthActionResult {
   message: string;
