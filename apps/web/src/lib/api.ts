@@ -177,6 +177,33 @@ export async function fetchAccount(accessToken: string): Promise<NexusAccount> {
   return mapAccount(await response.json());
 }
 
+export async function enterPrivateDemo(accessToken: string): Promise<NexusSession> {
+  const response = await fetch(`${API_URL}/api/v1/auth/demo`, {
+    method: "POST",
+    credentials: "include",
+    headers: authHeaders(accessToken)
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Private demo is unavailable"));
+  return sessionFromPayload(await response.json());
+}
+
+export async function deleteAccount(
+  accessToken: string,
+  confirmation: string,
+  currentPassword?: string
+): Promise<void> {
+  const response = await fetch(`${API_URL}/api/v1/auth/me`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify({
+      confirmation,
+      ...(currentPassword ? { current_password: currentPassword } : {})
+    })
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Account deletion failed"));
+}
+
 export async function updateAccount(
   accessToken: string,
   fullName: string,
@@ -838,6 +865,8 @@ interface ApiAccountPayload {
   workspace_name: string;
   password_enabled: boolean;
   email_verified: boolean;
+  demo_access: boolean;
+  demo_workspace: boolean;
 }
 
 interface ApiWorkspace {
@@ -883,7 +912,9 @@ function mapAccount(payload: ApiAccountPayload): NexusAccount {
     role: payload.role,
     workspaceName: payload.workspace_name,
     passwordEnabled: payload.password_enabled,
-    emailVerified: payload.email_verified
+    emailVerified: payload.email_verified,
+    demoAccess: payload.demo_access,
+    demoWorkspace: payload.demo_workspace
   };
 }
 

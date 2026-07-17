@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -15,11 +15,22 @@ from app.core.security import (
     hash_refresh_token,
     verify_password,
 )
-from app.models.enums import WorkspaceRole
+from app.models.account_action_token import AccountActionToken
+from app.models.activity_log import ActivityLog
+from app.models.ai_insight import AIInsight
+from app.models.enums import Priority, WorkStatus, WorkspaceRole
+from app.models.feature import Feature
+from app.models.idea import Idea
+from app.models.journal import JournalEntry
+from app.models.milestone import Milestone
+from app.models.project import Project
+from app.models.task import Task, TaskDependency
+from app.models.time_entry import TimeEntry
 from app.models.user import User
 from app.models.user_session import UserSession
-from app.models.workspace import Workspace, WorkspaceMember
+from app.models.workspace import Workspace, WorkspaceInvitation, WorkspaceMember
 from app.schemas.auth import (
+    AccountDeleteRequest,
     AccountResponse,
     AccountUpdateRequest,
     LoginRequest,
@@ -263,7 +274,47 @@ async def get_account(auth: AuthContext, session: AsyncSession) -> AccountRespon
         workspace_name=workspace.name,
         password_enabled=user.password_hash is not None,
         email_verified=user.email_verified_at is not None,
+        demo_access=_has_demo_access(user.email),
+        demo_workspace=workspace.slug == _demo_slug(user.id),
     )
+
+
+async def enter_private_demo(auth: AuthContext, session: AsyncSession) -> SessionIssue:
+    user = await session.get(User, auth.user_id)
+    if user is None or not user.is_active or not _has_demo_access(user.email):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Private demo is not available")
+
+    slug = _demo_slug(user.id)
+    workspace = await session.scalar(select(Workspace).where(Workspace.slug == slug))
+    if workspace is None:
+        workspace = Workspace(
+            name="Nexus Private Demo",
+            slug=slug,
+            plan_code="personal_free",
+        )
+        session.add_all(
+            [
+                workspace,
+                WorkspaceMember(workspace=workspace, user=user, role=WorkspaceRole.owner),
+            ]
+        )
+        await session.flush()
+        await _seed_private_demo(session, user, workspace)
+    else:
+        membership = await session.scalar(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == workspace.id,
+                WorkspaceMember.user_id == user.id,
+                WorkspaceMember.role == WorkspaceRole.owner,
+            )
+        )
+        if membership is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Private demo is not available")
+
+    issued = await _issue_session(user, workspace.id, WorkspaceRole.owner, session)
+    await _replace_current_session(auth, issued, session)
+    await session.commit()
+    return issued
 
 
 async def update_account(
@@ -306,6 +357,68 @@ async def change_password(
     await session.commit()
 
 
+async def delete_account(
+    request: AccountDeleteRequest, auth: AuthContext, session: AsyncSession
+) -> None:
+    user = await session.scalar(select(User).where(User.id == auth.user_id).with_for_update())
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account was not found")
+    if user.password_hash and (
+        not request.current_password
+        or not verify_password(request.current_password, user.password_hash)
+    ):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Current password is incorrect")
+
+    owned_workspace_ids = list(
+        (
+            await session.scalars(
+                select(WorkspaceMember.workspace_id).where(
+                    WorkspaceMember.user_id == user.id,
+                    WorkspaceMember.role == WorkspaceRole.owner,
+                )
+            )
+        ).all()
+    )
+    if owned_workspace_ids:
+        shared_workspace = await session.scalar(
+            select(Workspace.id)
+            .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+            .where(Workspace.id.in_(owned_workspace_ids))
+            .group_by(Workspace.id)
+            .having(func.count(WorkspaceMember.id) > 1)
+            .limit(1)
+        )
+        if shared_workspace:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Transfer or remove the other members from owned workspaces before deleting your account",
+            )
+
+    project_conditions = [Project.owner_id == user.id]
+    if owned_workspace_ids:
+        project_conditions.append(Project.workspace_id.in_(owned_workspace_ids))
+    project_ids = list(
+        (await session.scalars(select(Project.id).where(or_(*project_conditions)))).all()
+    )
+    await _delete_project_graph(session, project_ids)
+
+    await session.execute(delete(TimeEntry).where(TimeEntry.user_id == user.id))
+    await session.execute(
+        update(ActivityLog).where(ActivityLog.actor_id == user.id).values(actor_id=None)
+    )
+    invitation_conditions = [WorkspaceInvitation.invited_by_id == user.id]
+    if owned_workspace_ids:
+        invitation_conditions.append(WorkspaceInvitation.workspace_id.in_(owned_workspace_ids))
+    await session.execute(delete(WorkspaceInvitation).where(or_(*invitation_conditions)))
+    await session.execute(delete(AccountActionToken).where(AccountActionToken.user_id == user.id))
+    await session.execute(delete(UserSession).where(UserSession.user_id == user.id))
+    await session.execute(delete(WorkspaceMember).where(WorkspaceMember.user_id == user.id))
+    if owned_workspace_ids:
+        await session.execute(delete(Workspace).where(Workspace.id.in_(owned_workspace_ids)))
+    await session.execute(delete(User).where(User.id == user.id))
+    await session.commit()
+
+
 async def _issue_session(
     user: User,
     workspace_id: str,
@@ -341,6 +454,117 @@ async def _issue_session(
         ),
         refresh_token=raw_refresh_token,
     )
+
+
+async def _replace_current_session(
+    auth: AuthContext, issued: SessionIssue, session: AsyncSession
+) -> None:
+    if not auth.session_id:
+        return
+    current = await session.get(UserSession, auth.session_id)
+    if current is None or current.revoked_at is not None:
+        return
+    current.revoked_at = datetime.now(UTC)
+    current.replaced_by_id = await session.scalar(
+        select(UserSession.id).where(
+            UserSession.refresh_token_hash == hash_refresh_token(issued.refresh_token)
+        )
+    )
+
+
+async def _delete_project_graph(session: AsyncSession, project_ids: list[str]) -> None:
+    if not project_ids:
+        return
+    task_ids = select(Task.id).where(Task.project_id.in_(project_ids))
+    await session.execute(
+        delete(TaskDependency).where(
+            or_(
+                TaskDependency.task_id.in_(task_ids),
+                TaskDependency.depends_on_task_id.in_(task_ids),
+            )
+        )
+    )
+    await session.execute(delete(TimeEntry).where(TimeEntry.project_id.in_(project_ids)))
+    await session.execute(delete(Idea).where(Idea.project_id.in_(project_ids)))
+    await session.execute(delete(ActivityLog).where(ActivityLog.project_id.in_(project_ids)))
+    await session.execute(delete(AIInsight).where(AIInsight.project_id.in_(project_ids)))
+    await session.execute(delete(Milestone).where(Milestone.project_id.in_(project_ids)))
+    await session.execute(delete(JournalEntry).where(JournalEntry.project_id.in_(project_ids)))
+    await session.execute(delete(Task).where(Task.project_id.in_(project_ids)))
+    await session.execute(delete(Feature).where(Feature.project_id.in_(project_ids)))
+    await session.execute(delete(Project).where(Project.id.in_(project_ids)))
+
+
+async def _seed_private_demo(
+    session: AsyncSession, user: User, workspace: Workspace
+) -> None:
+    project = Project(
+        workspace_id=workspace.id,
+        owner_id=user.id,
+        name="Nexus Product Launch",
+        codename="NEXUS",
+        description=(
+            "Build a secure, zero-cost, AI-assisted project command system with clear goals, "
+            "team ownership, live analytics, and meaningful 3D project views."
+        ),
+        status=WorkStatus.in_progress,
+        priority=Priority.critical,
+        health_score=86,
+        target_velocity=8,
+    )
+    session.add(project)
+    await session.flush()
+    feature = Feature(
+        workspace_id=workspace.id,
+        project_id=project.id,
+        title="Production launch baseline",
+        description="Security, account lifecycle, deployment, responsive UX, and observability.",
+        status=WorkStatus.in_progress,
+        priority=Priority.critical,
+        progress=70,
+        sort_order=0,
+    )
+    session.add(feature)
+    await session.flush()
+    session.add_all(
+        [
+            Task(
+                workspace_id=workspace.id,
+                project_id=project.id,
+                feature_id=feature.id,
+                title="Verify the production account lifecycle",
+                status=WorkStatus.in_progress,
+                priority=Priority.critical,
+                estimate_minutes=120,
+                time_spent_minutes=45,
+            ),
+            Task(
+                workspace_id=workspace.id,
+                project_id=project.id,
+                feature_id=feature.id,
+                title="Complete cross-device release QA",
+                status=WorkStatus.ready,
+                priority=Priority.high,
+                estimate_minutes=180,
+                time_spent_minutes=0,
+            ),
+            Milestone(
+                workspace_id=workspace.id,
+                project_id=project.id,
+                title="Production-ready Phase 5",
+                description="Core workflows, security controls, and deployment are verified.",
+                status=WorkStatus.in_progress,
+            ),
+        ]
+    )
+
+
+def _has_demo_access(email: str) -> bool:
+    return email.strip().lower() in settings.demo_owner_email_set
+
+
+def _demo_slug(user_id: str) -> str:
+    return f"nexus-private-demo-{user_id.lower()}"[:120]
 
 
 def _slug(value: str) -> str:

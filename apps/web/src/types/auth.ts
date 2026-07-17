@@ -20,6 +20,8 @@ export interface NexusAccount {
   workspaceName: string;
   passwordEnabled: boolean;
   emailVerified: boolean;
+  demoAccess: boolean;
+  demoWorkspace: boolean;
 }
 
 export type NexusRole = "owner" | "admin" | "member" | "viewer";

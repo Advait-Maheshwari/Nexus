@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
 
 ALLOWED_AVATAR_PRESETS = {
@@ -115,6 +117,8 @@ class AccountResponse(BaseModel):
     workspace_name: str
     password_enabled: bool
     email_verified: bool
+    demo_access: bool = False
+    demo_workspace: bool = False
 
 
 class AccountUpdateRequest(BaseModel):
@@ -142,3 +146,8 @@ class PasswordChangeRequest(BaseModel):
     @classmethod
     def validate_new_password(cls, value: str) -> str:
         return validate_password_strength(value)
+
+
+class AccountDeleteRequest(BaseModel):
+    confirmation: Literal["DELETE MY ACCOUNT"]
+    current_password: str | None = Field(default=None, min_length=1, max_length=128)

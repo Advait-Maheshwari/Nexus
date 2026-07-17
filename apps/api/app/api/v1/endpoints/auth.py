@@ -6,6 +6,7 @@ from app.core.database import get_session
 from app.core.security import AuthContext, require_auth_context
 from app.core.session_cookie import clear_refresh_cookie, set_refresh_cookie
 from app.schemas.auth import (
+    AccountDeleteRequest,
     AccountResponse,
     AccountUpdateRequest,
     AuthActionResponse,
@@ -27,6 +28,8 @@ from app.services.account_recovery import (
 from app.services.database_auth import (
     VerificationIssue,
     change_password,
+    delete_account,
+    enter_private_demo,
     exchange_firebase_identity,
     get_account,
     login_user,
@@ -149,6 +152,18 @@ async def me(
     return local_store.get_account(auth.user_id)
 
 
+@router.post("/demo", response_model=TokenResponse)
+async def open_private_demo(
+    response: Response,
+    auth: AuthContext = Depends(require_auth_context),
+    session: AsyncSession = Depends(get_session),
+) -> TokenResponse:
+    _require_database_accounts()
+    issued = await enter_private_demo(auth, session)
+    set_refresh_cookie(response, issued.refresh_token)
+    return issued.token
+
+
 @router.patch("/me", response_model=AccountResponse)
 async def patch_me(
     request: AccountUpdateRequest,
@@ -157,6 +172,20 @@ async def patch_me(
 ) -> AccountResponse:
     _require_database_accounts()
     return await update_account(request, auth, session)
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_account(
+    request: AccountDeleteRequest,
+    response: Response,
+    auth: AuthContext = Depends(require_auth_context),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    _require_database_accounts()
+    await delete_account(request, auth, session)
+    clear_refresh_cookie(response)
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
 
 
 @router.post("/password", status_code=status.HTTP_204_NO_CONTENT)

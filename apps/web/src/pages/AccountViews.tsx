@@ -6,6 +6,7 @@ import {
   Copy,
   Database,
   Fingerprint,
+  FlaskConical,
   Gauge,
   Github,
   LayoutDashboard,
@@ -18,14 +19,18 @@ import {
   Settings,
   ShieldCheck,
   SlidersHorizontal,
+  Trash2,
   UserCircle,
-  Users
+  Users,
+  X
 } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import {
   changeAccountPassword,
   createWorkspaceInvitation,
+  deleteAccount,
+  enterPrivateDemo,
   fetchAccount,
   fetchWorkspaceUsage,
   listWorkspaceMembers,
@@ -207,7 +212,14 @@ export function ControlCenterView({
       </aside>
 
       <div className="min-w-0">
-        {activeModule === "settings" ? <SettingsView embedded /> : null}
+        {activeModule === "settings" ? (
+          <SettingsView
+            session={session}
+            onSessionChange={onSessionChange}
+            onSessionRevoked={onSessionRevoked}
+            embedded
+          />
+        ) : null}
         {activeModule === "team" ? (
           <TeamCenter session={session} onSessionChange={onSessionChange} />
         ) : null}
@@ -618,11 +630,38 @@ function SecurityCenter({
   );
 }
 
-export function SettingsView({ embedded = false }: { embedded?: boolean }) {
-  return <SettingsPanel embedded={embedded} />;
+export function SettingsView({
+  session,
+  onSessionChange,
+  onSessionRevoked,
+  embedded = false
+}: {
+  session: NexusSession;
+  onSessionChange: (session: NexusSession) => void;
+  onSessionRevoked: () => void;
+  embedded?: boolean;
+}) {
+  return (
+    <SettingsPanel
+      session={session}
+      onSessionChange={onSessionChange}
+      onSessionRevoked={onSessionRevoked}
+      embedded={embedded}
+    />
+  );
 }
 
-function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
+function SettingsPanel({
+  session,
+  onSessionChange,
+  onSessionRevoked,
+  embedded = false
+}: {
+  session: NexusSession;
+  onSessionChange: (session: NexusSession) => void;
+  onSessionRevoked: () => void;
+  embedded?: boolean;
+}) {
   const [preferences, setPreferences] = useState<Preferences>(() => {
     try {
       return { ...defaults, ...JSON.parse(localStorage.getItem(PREFERENCES_KEY) ?? "{}") };
@@ -631,16 +670,71 @@ function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
     }
   });
   const [saved, setSaved] = useState(false);
+  const [account, setAccount] = useState<NexusAccount | null>(null);
+  const [accountStatus, setAccountStatus] = useState("");
+  const [accountBusy, setAccountBusy] = useState(true);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePhrase, setDeletePhrase] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
 
   useEffect(() => {
     document.documentElement.classList.toggle("reduce-motion", preferences.reducedMotion);
     document.documentElement.classList.toggle("compact-interface", preferences.compactInterface);
   }, [preferences.compactInterface, preferences.reducedMotion]);
 
+  useEffect(() => {
+    let active = true;
+    setAccountBusy(true);
+    void fetchAccount(session.accessToken)
+      .then((nextAccount) => {
+        if (active) setAccount(nextAccount);
+      })
+      .catch((error) => {
+        if (active) {
+          setAccountStatus(error instanceof Error ? error.message : "Account controls failed to load.");
+        }
+      })
+      .finally(() => {
+        if (active) setAccountBusy(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [session.accessToken]);
+
   function save() {
     localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
     setSaved(true);
     window.setTimeout(() => setSaved(false), 1600);
+  }
+
+  async function openPrivateDemo() {
+    setAccountBusy(true);
+    setAccountStatus("");
+    try {
+      const demoSession = await enterPrivateDemo(session.accessToken);
+      onSessionChange({
+        ...demoSession,
+        identityProvider: session.identityProvider,
+        photoUrl: session.photoUrl
+      });
+    } catch (error) {
+      setAccountStatus(error instanceof Error ? error.message : "Private demo could not be opened.");
+      setAccountBusy(false);
+    }
+  }
+
+  async function removeAccount(event: React.FormEvent) {
+    event.preventDefault();
+    setAccountBusy(true);
+    setAccountStatus("");
+    try {
+      await deleteAccount(session.accessToken, deletePhrase, deletePassword || undefined);
+      onSessionRevoked();
+    } catch (error) {
+      setAccountStatus(error instanceof Error ? error.message : "Account deletion failed.");
+      setAccountBusy(false);
+    }
   }
 
   return (
@@ -694,10 +788,122 @@ function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
           <PreferenceInfo label="Error prevention" value="Authentication always resolves to a server workspace." />
           <PreferenceInfo label="Profile pictures" value="Private bundled presets with no external tracking" />
         </PreferencePanel>
+        {account?.demoAccess ? (
+          <PreferencePanel icon={<FlaskConical size={20} />} title="Private Demo">
+            <p className="text-sm leading-6 text-slate-400">
+              Your isolated showcase workspace contains representative Nexus work. This control is
+              authorized by the API and is never shown to other accounts.
+            </p>
+            <Button
+              type="button"
+              variant="primary"
+              icon={<FlaskConical size={16} />}
+              disabled={accountBusy || account.demoWorkspace}
+              onClick={() => void openPrivateDemo()}
+            >
+              {account.demoWorkspace ? "Private Demo Active" : "Open Private Demo"}
+            </Button>
+          </PreferencePanel>
+        ) : null}
       </div>
-      <Button className="mt-4" icon={<Save size={16} />} onClick={save}>
-        {saved ? "Saved" : "Save Settings"}
-      </Button>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button icon={<Save size={16} />} onClick={save}>
+          {saved ? "Saved" : "Save Settings"}
+        </Button>
+        {accountStatus ? <p role="status" className="text-sm text-slate-400">{accountStatus}</p> : null}
+      </div>
+      <section className="mt-8 border-t border-danger/30 pt-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-danger">Danger Zone</p>
+            <h3 className="mt-2 text-lg font-semibold text-white">Delete Account</h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+              Permanently removes your profile, sessions, private workspaces, and owned project
+              data. Shared workspaces with other members must be resolved first.
+            </p>
+          </div>
+          <Button
+            type="button"
+            icon={<Trash2 size={16} />}
+            className="border-danger/45 text-danger hover:border-danger/70 hover:bg-danger/10"
+            disabled={accountBusy}
+            onClick={() => setDeleteOpen(true)}
+          >
+            Delete Account
+          </Button>
+        </div>
+      </section>
+      {deleteOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.currentTarget === event.target) setDeleteOpen(false);
+          }}
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-account-title"
+            className="glass-panel w-full max-w-lg rounded-lg border-danger/35 p-5 shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-danger">Permanent Action</p>
+                <h3 id="delete-account-title" className="mt-2 text-xl font-semibold text-white">
+                  Delete your Nexus account?
+                </h3>
+              </div>
+              <button
+                type="button"
+                aria-label="Close account deletion"
+                className="flex h-10 w-10 items-center justify-center rounded-md border border-white/10 text-slate-400 transition hover:border-white/25 hover:text-white"
+                onClick={() => setDeleteOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-slate-400">
+              This cannot be undone. Type <strong className="font-mono text-white">DELETE MY ACCOUNT</strong>
+              {account?.passwordEnabled ? " and enter your current password" : ""} to continue.
+            </p>
+            <form className="mt-5 space-y-4" onSubmit={removeAccount}>
+              <AccountInput
+                label="Confirmation phrase"
+                value={deletePhrase}
+                onChange={setDeletePhrase}
+                autoComplete="off"
+              />
+              {account?.passwordEnabled ? (
+                <AccountInput
+                  label="Current password"
+                  type="password"
+                  value={deletePassword}
+                  onChange={setDeletePassword}
+                  autoComplete="current-password"
+                />
+              ) : null}
+              <div className="flex flex-wrap justify-end gap-3 border-t border-white/10 pt-4">
+                <Button type="button" variant="ghost" onClick={() => setDeleteOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  icon={<Trash2 size={16} />}
+                  className="border-danger/55 bg-danger/10 text-danger hover:bg-danger/15"
+                  disabled={
+                    accountBusy ||
+                    deletePhrase !== "DELETE MY ACCOUNT" ||
+                    Boolean(account?.passwordEnabled && !deletePassword)
+                  }
+                >
+                  {accountBusy ? "Deleting..." : "Delete Permanently"}
+                </Button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

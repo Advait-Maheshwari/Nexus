@@ -11,6 +11,8 @@ services:
         value: production
       - key: NEXUS_AUTH_BACKEND
         value: database
+      - key: NEXUS_DEMO_OWNER_EMAILS
+        sync: false
       - key: NEXUS_WEB_URL
         value: https://nexus-advait-pm.web.app
       - key: NEXUS_CORS_ORIGINS
