@@ -157,7 +157,7 @@ function createNexusBlueprint(projectId: string): ProjectBlueprint {
         id: crypto.randomUUID(),
         title: "Phase 1: Core Spine",
         guidance:
-          "Maintain the monorepo, data model, auth base, CRUD services, local fallback, PostgreSQL path, and zero-cost policy as the stable foundation.",
+          "Maintain the monorepo, data model, auth base, CRUD services, local development runtime, PostgreSQL path, and zero-cost policy as the stable foundation.",
         status: "done",
         priority: "critical"
       },

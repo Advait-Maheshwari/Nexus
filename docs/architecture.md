@@ -35,7 +35,7 @@ Client-safe contracts (packages/shared) describe transport data only.
 - The browser reaches server features only through versioned `/api/v1` endpoints; it never reaches a database directly.
 - `packages/shared` may expose serializable types and constants, but it may not import client UI or server runtime modules.
 - Firebase proves identity; the server still issues the Nexus session and enforces workspace permissions.
-- Local-storage adapters are resilience and demo fallbacks, not an authoritative multi-user data store.
+- Browser storage is limited to session and preference state; project data remains authoritative on the API.
 - Render hosts the server and Firebase Hosting serves the client within the zero-cost policy.
 
 ### Repository Layout

@@ -1,6 +1,7 @@
 import { Billboard, Float, Line, OrbitControls, Stars, Text } from "@react-three/drei";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
+import type { ComponentRef, MutableRefObject } from "react";
 import * as THREE from "three";
 
 import type { FeaturePlanet, ProjectRelationship, ProjectSummary, WorkStatus } from "@/types/domain";
@@ -20,6 +21,13 @@ const relationshipColor: Record<ProjectRelationship["type"], string> = {
   "shared-deadline": "#f5c451",
   inspiration: "#48e5ff"
 };
+
+type OrbitControlsHandle = ComponentRef<typeof OrbitControls>;
+
+interface GalaxyFrame {
+  center: THREE.Vector3;
+  radius: number;
+}
 
 function ProjectStar({
   project,
@@ -656,11 +664,87 @@ function ProjectLinks({
   );
 }
 
+function calculateGalaxyFrame(
+  projects: ProjectSummary[],
+  selectedProject?: ProjectSummary
+): GalaxyFrame {
+  if (selectedProject) {
+    const largestOrbit = Math.max(0.8, ...selectedProject.planets.map((planet) => planet.orbitRadius));
+    return {
+      center: new THREE.Vector3(...selectedProject.coordinates),
+      radius: Math.max(2.8, largestOrbit * 2.75 + 0.8)
+    };
+  }
+
+  if (projects.length === 0) {
+    return { center: new THREE.Vector3(), radius: 3.8 };
+  }
+
+  const bounds = new THREE.Box3();
+  for (const project of projects) {
+    const largestOrbit = Math.max(0.8, ...project.planets.map((planet) => planet.orbitRadius));
+    const systemRadius = Math.max(1.25, largestOrbit * 0.52 + 0.55);
+    const center = new THREE.Vector3(...project.coordinates);
+    bounds.expandByPoint(center.clone().addScalar(systemRadius));
+    bounds.expandByPoint(center.clone().addScalar(-systemRadius));
+  }
+  const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+  return { center: sphere.center, radius: Math.max(3.8, sphere.radius) };
+}
+
+function GalaxyCamera({
+  controls,
+  frame,
+  selectedProjectId,
+  resetSignal
+}: {
+  controls: MutableRefObject<OrbitControlsHandle | null>;
+  frame: GalaxyFrame;
+  selectedProjectId?: string;
+  resetSignal: number;
+}) {
+  const { camera, size } = useThree();
+
+  useEffect(() => {
+    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    const aspect = Math.max(0.55, size.width / Math.max(1, size.height));
+    const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+    const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
+    const limitingFov = Math.min(verticalFov, horizontalFov);
+    const distance = (frame.radius / Math.sin(limitingFov / 2)) * (selectedProjectId ? 1.16 : 1.28);
+    const direction = selectedProjectId
+      ? new THREE.Vector3(0.56, 0.28, 1)
+      : new THREE.Vector3(0.62, 0.36, 1);
+
+    camera.position.copy(frame.center).add(direction.normalize().multiplyScalar(distance));
+    camera.near = 0.08;
+    camera.far = Math.max(240, distance + frame.radius * 14);
+    camera.updateProjectionMatrix();
+    camera.lookAt(frame.center);
+    controls.current?.target.copy(frame.center);
+    controls.current?.update();
+  }, [
+    camera,
+    controls,
+    frame.center.x,
+    frame.center.y,
+    frame.center.z,
+    frame.radius,
+    resetSignal,
+    selectedProjectId,
+    size.height,
+    size.width
+  ]);
+
+  return null;
+}
+
 export function GalaxyScene({
   projects,
   relationships = [],
   selectedProjectId,
   selectedPlanetId,
+  resetSignal = 0,
   onSelectProject,
   onSelectPlanet
 }: {
@@ -668,23 +752,35 @@ export function GalaxyScene({
   relationships?: ProjectRelationship[];
   selectedProjectId?: string;
   selectedPlanetId?: string;
+  resetSignal?: number;
   onSelectProject?: (projectId: string) => void;
   onSelectPlanet?: (projectId: string, planetId: string) => void;
 }) {
   const selectedProject = projects.find((project) => project.id === selectedProjectId);
+  const controls = useRef<OrbitControlsHandle>(null);
+  const frame = useMemo(
+    () => calculateGalaxyFrame(projects, selectedProject),
+    [projects, selectedProject]
+  );
 
   return (
     <Canvas
-      camera={{ position: [0, 0.8, 9.8], fov: 58 }}
+      camera={{ position: [0, 2.8, 16], fov: 58 }}
       dpr={[1, 1.8]}
     >
       <color attach="background" args={["#02040a"]} />
-      <fog attach="fog" args={["#02040a", 32, 64]} />
+      <fog attach="fog" args={["#02040a", 90, 190]} />
       <ambientLight intensity={1.48} />
       <pointLight position={[2.2, 2.4, 2.8]} intensity={3.8} color="#48e5ff" />
       <pointLight position={[-2.8, -1.4, 2.2]} intensity={2.2} color="#8d67ff" />
       <directionalLight position={[0.4, 2.6, 3.2]} intensity={2.15} color="#eef9ff" />
       <Stars radius={80} depth={40} count={2600} factor={3.6} saturation={0.35} fade speed={0.38} />
+      <GalaxyCamera
+        controls={controls}
+        frame={frame}
+        selectedProjectId={selectedProjectId}
+        resetSignal={resetSignal}
+      />
       <ProjectLinks projects={projects} relationships={relationships} />
       {projects.map((project, index) => (
         <ProjectStar
@@ -699,25 +795,20 @@ export function GalaxyScene({
         />
       ))}
       <OrbitControls
+        ref={controls}
+        makeDefault
         enablePan
         enableZoom
         enableDamping
         dampingFactor={0.065}
-        zoomSpeed={0.72}
+        zoomSpeed={0.9}
         rotateSpeed={0.62}
         panSpeed={0.68}
         screenSpacePanning
-        minDistance={3.8}
-        maxDistance={24}
-        target={
-          selectedProject
-            ? [
-                selectedProject.coordinates[0],
-                selectedProject.coordinates[1] - 0.22,
-                selectedProject.coordinates[2]
-              ]
-            : [0, 0, 0]
-        }
+        zoomToCursor
+        minDistance={selectedProject ? 2.2 : 3.2}
+        maxDistance={Math.max(52, frame.radius * 12)}
+        target={[frame.center.x, frame.center.y, frame.center.z]}
         autoRotate={!selectedProjectId}
         autoRotateSpeed={0.32}
         maxPolarAngle={Math.PI - 0.08}

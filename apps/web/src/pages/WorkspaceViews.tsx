@@ -10,6 +10,7 @@ import {
   Lightbulb,
   NotebookPen,
   Orbit,
+  RotateCcw,
   Settings,
   ShieldCheck,
   Target,
@@ -26,10 +27,9 @@ import type { MissionData, ProjectSummary } from "@/types/domain";
 const GalaxyScene = lazy(() => import("@/scenes/GalaxyScene"));
 
 export function GalaxyView({ data }: { data: MissionData }) {
-  const [selectedProjectId, setSelectedProjectId] = useState(data.projects[0]?.id ?? "");
-  const [selectedPlanetId, setSelectedPlanetId] = useState(
-    data.projects[0]?.planets[0]?.id ?? ""
-  );
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedPlanetId, setSelectedPlanetId] = useState("");
+  const [sceneRevision, setSceneRevision] = useState(0);
   const selectedProject = data.projects.find((project) => project.id === selectedProjectId);
   const selectedPlanet = selectedProject?.planets.find(
     (planet) => planet.id === selectedPlanetId
@@ -59,14 +59,15 @@ export function GalaxyView({ data }: { data: MissionData }) {
   }, [data.projects, data.relationships, selectedProject]);
 
   return (
-    <section className="grid min-h-[calc(100vh-8rem)] gap-4 xl:grid-cols-[1fr_360px]">
-      <div className="relative min-h-[520px] overflow-hidden rounded-lg border border-white/10 bg-void xl:h-[calc(100vh-8rem)] xl:min-h-[620px] xl:max-h-[820px] xl:self-start">
+    <section className="grid min-h-[calc(100vh-8rem)] min-w-0 w-full gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="relative min-h-[520px] min-w-0 w-full overflow-hidden rounded-lg border border-white/10 bg-void xl:h-[calc(100vh-8rem)] xl:min-h-[620px] xl:max-h-[820px] xl:self-start">
         <Suspense fallback={<div className="h-full w-full bg-void" />}>
           <GalaxyScene
             projects={data.projects}
             relationships={data.relationships}
             selectedProjectId={selectedProjectId}
             selectedPlanetId={selectedPlanetId}
+            resetSignal={sceneRevision}
             onSelectProject={(projectId) => {
               setSelectedProjectId(projectId);
               const project = data.projects.find((item) => item.id === projectId);
@@ -78,14 +79,36 @@ export function GalaxyView({ data }: { data: MissionData }) {
             }}
           />
         </Suspense>
+        {data.projects.length === 0 ? (
+          <div className="pointer-events-none absolute inset-0 grid place-items-center p-6 text-center">
+            <div>
+              <Orbit className="mx-auto text-cyan" size={28} />
+              <p className="mt-3 text-sm font-semibold text-white">No project systems yet</p>
+              <p className="mt-1 text-xs text-slate-400">Create a project to form its first star.</p>
+            </div>
+          </div>
+        ) : null}
         <div className="pointer-events-none absolute bottom-4 left-4 rounded-md border border-white/10 bg-void/80 px-3 py-2 backdrop-blur-md">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
             Navigation
           </p>
           <p className="mt-1 text-xs text-slate-300">Select a star / drag to orbit / scroll to zoom</p>
         </div>
+        <button
+          type="button"
+          title="Fit all project systems"
+          aria-label="Reset galaxy camera"
+          onClick={() => {
+            setSelectedProjectId("");
+            setSelectedPlanetId("");
+            setSceneRevision((revision) => revision + 1);
+          }}
+          className="absolute bottom-4 right-4 grid h-9 w-9 place-items-center rounded-md border border-white/10 bg-void/80 text-slate-300 backdrop-blur-md transition hover:border-cyan/35 hover:text-cyan"
+        >
+          <RotateCcw size={15} />
+        </button>
       </div>
-      <div className="space-y-3">
+      <div className="min-w-0 space-y-3">
         {selectedProject ? (
           <>
             <ProjectOrbitCard project={selectedProject} />

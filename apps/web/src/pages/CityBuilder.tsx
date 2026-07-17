@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Building2, Clock3, Factory, RadioTower, RotateCcw, ShieldAlert, Zap } from "lucide-react";
 
 import { StatusPill } from "@/components/StatusPill";
@@ -20,9 +20,15 @@ export function CityBuilderView({ data }: { data: MissionData }) {
     return second.blockedTaskCount - first.blockedTaskCount || second.priority.localeCompare(first.priority);
   });
 
+  useEffect(() => {
+    if (selectedId && data.projects.some((project) => project.id === selectedId)) return;
+    setSelectedId(data.projects[0]?.id ?? "");
+    setSceneRevision((revision) => revision + 1);
+  }, [data.projects, selectedId]);
+
   return (
-    <section className="grid min-h-[calc(100vh-8rem)] gap-4 xl:grid-cols-[250px_minmax(0,1fr)] 2xl:grid-cols-[260px_minmax(560px,1fr)_310px]">
-      <aside className="glass-panel rounded-lg p-3">
+    <section className="grid min-h-[calc(100vh-8rem)] min-w-0 w-full gap-4 xl:grid-cols-[250px_minmax(0,1fr)] 2xl:grid-cols-[260px_minmax(560px,1fr)_310px]">
+      <aside className="glass-panel min-w-0 rounded-lg p-3">
         <div className="flex items-center justify-between gap-3 px-2 py-2">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-solar">
@@ -82,12 +88,20 @@ export function CityBuilderView({ data }: { data: MissionData }) {
         </div>
       </aside>
 
-      <div className="relative min-h-[560px] overflow-hidden rounded-lg border border-white/10 bg-void">
+      <div className="relative min-h-[560px] min-w-0 w-full overflow-hidden rounded-lg border border-white/10 bg-void">
         {selected ? (
           <Suspense fallback={<div className="h-full bg-void" />}>
             <CityScene project={selected} mode={mode} resetSignal={sceneRevision} />
           </Suspense>
-        ) : null}
+        ) : (
+          <div className="absolute inset-0 grid place-items-center p-6 text-center">
+            <div>
+              <Factory className="mx-auto text-solar" size={28} />
+              <p className="mt-3 text-sm font-semibold text-white">No project city yet</p>
+              <p className="mt-1 text-xs text-slate-400">Create a project to generate its city.</p>
+            </div>
+          </div>
+        )}
         <div className="pointer-events-none absolute left-4 top-4">
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-solar">City Builder</p>
           <h2 className="mt-1 text-2xl font-semibold text-white">
@@ -120,7 +134,7 @@ export function CityBuilderView({ data }: { data: MissionData }) {
       </div>
 
       {selected ? (
-        <aside className="space-y-3 xl:col-span-2 2xl:col-span-1">
+        <aside className="min-w-0 space-y-3 xl:col-span-2 2xl:col-span-1">
           <section className="glass-panel rounded-lg p-5">
             <div className="flex items-start justify-between gap-3">
               <div>

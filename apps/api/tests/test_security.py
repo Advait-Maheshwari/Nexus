@@ -1,10 +1,16 @@
 import pytest
 from fastapi import HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from pydantic import ValidationError
 
 from app.core.config import Settings, settings
-from app.core.security import AuthContext, create_access_token, require_workspace_editor
+from app.core.security import (
+    AuthContext,
+    create_access_token,
+    require_auth_context,
+    require_workspace_editor,
+)
 from app.models.enums import WorkspaceRole
 from app.schemas.auth import AccountUpdateRequest, RegisterRequest
 
@@ -65,6 +71,30 @@ def test_access_token_is_bound_to_nexus_audience_and_issuer() -> None:
             audience="another-app",
             issuer=settings.jwt_issuer,
         )
+
+
+@pytest.mark.asyncio
+async def test_local_api_requires_a_bearer_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "auth_backend", "local")
+
+    with pytest.raises(HTTPException) as error:
+        await require_auth_context(credentials=None, session=None)  # type: ignore[arg-type]
+
+    assert error.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_local_api_validates_the_access_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "auth_backend", "local")
+    token = create_access_token("user-local", {"workspace_id": "workspace-personal"})
+
+    auth = await require_auth_context(
+        credentials=HTTPAuthorizationCredentials(scheme="Bearer", credentials=token),
+        session=None,  # type: ignore[arg-type]
+    )
+
+    assert auth.user_id == "user-local"
+    assert auth.workspace_id == "workspace-personal"
 
 
 def test_workspace_viewer_cannot_modify_project_data() -> None:

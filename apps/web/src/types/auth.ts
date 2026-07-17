@@ -2,8 +2,8 @@ export interface NexusSession {
   accessToken: string;
   userId: string;
   workspaceId: string;
-  mode: "api" | "local" | "firebase";
-  identityProvider?: "password" | "google" | "local";
+  mode: "api";
+  identityProvider?: "password" | "google";
   role?: "owner" | "admin" | "member" | "viewer";
   displayName?: string;
   email?: string;

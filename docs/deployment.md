@@ -40,8 +40,8 @@ Phone/SMS authentication is intentionally not enabled by the zero-cost policy.
 
 ## Current Hosting Boundary
 
-The static deployment runs the local-first workspace and local demo authentication without a paid
-backend. Real multi-user accounts require the FastAPI API with:
+The static deployment is a client-only shell. Authentication and workspace data require the
+FastAPI API with:
 
 - `NEXUS_AUTH_BACKEND=database`
 - A PostgreSQL `DATABASE_URL`

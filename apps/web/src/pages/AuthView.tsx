@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   Chrome,
   KeyRound,
-  LockKeyhole,
   LogIn,
   MailCheck,
   Orbit,
@@ -23,10 +22,6 @@ import {
 import { signInWithGoogle } from "@/lib/firebase";
 import type { NexusSession } from "@/types/auth";
 
-const OWNER_DEMO_KEY = "nexus.owner.demo.v1";
-const OWNER_DEMO_QUERY = "owner_demo";
-const OWNER_DEMO_VALUE = "advait";
-
 type AuthMode = "login" | "register" | "forgot" | "reset";
 
 export function AuthView({ onAuthenticated }: { onAuthenticated: (session: NexusSession) => void }) {
@@ -39,7 +34,6 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
-  const [ownerDemoEnabled] = useState(readOwnerDemoAccess);
 
   useEffect(() => {
     const token = readActionToken("verify_email");
@@ -116,16 +110,6 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
     setError("");
     setNotice("");
     setPassword("");
-  }
-
-  function continueLocally() {
-    onAuthenticated({
-      accessToken: "local-demo",
-      userId: "local-user",
-      workspaceId: "workspace-personal",
-      mode: "local",
-      identityProvider: "local"
-    });
   }
 
   async function continueWithGoogle() {
@@ -274,41 +258,12 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
               >
                 Continue with Google
               </Button>
-              {ownerDemoEnabled ? (
-                <div className="mt-3 rounded-md border border-cyan/20 bg-cyan/10 p-3">
-                  <p className="mb-3 text-xs uppercase tracking-[0.16em] text-cyan">
-                    Owner workspace
-                  </p>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="w-full"
-                    icon={<LockKeyhole size={16} />}
-                    onClick={continueLocally}
-                  >
-                    Open Local Owner Workspace
-                  </Button>
-                </div>
-              ) : null}
             </>
           ) : null}
         </div>
       </section>
     </main>
   );
-}
-
-function readOwnerDemoAccess() {
-  if (import.meta.env.DEV) return true;
-  const params = new URLSearchParams(window.location.search);
-  const requestedOwnerMode = params.get(OWNER_DEMO_QUERY)?.toLowerCase() === OWNER_DEMO_VALUE;
-  if (requestedOwnerMode) {
-    sessionStorage.setItem(OWNER_DEMO_KEY, "enabled");
-    params.delete(OWNER_DEMO_QUERY);
-    replaceSearch(params);
-    return true;
-  }
-  return sessionStorage.getItem(OWNER_DEMO_KEY) === "enabled";
 }
 
 function readActionToken(name: "verify_email" | "reset_password") {

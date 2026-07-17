@@ -10,6 +10,7 @@ import {
   listWorkspaceProjects,
   updateMilestone as updateMilestoneApi
 } from "@/lib/api";
+import { notifyMissionDataChanged } from "@/lib/missionEvents";
 import type { NexusSession } from "@/types/auth";
 import type { WorkStatus } from "@/types/domain";
 import type {
@@ -27,73 +28,19 @@ interface PlanningState {
 }
 
 const initialState: PlanningState = {
-  projects: [{ id: "local-nexus", name: "Nexus", codename: "ORION" }],
-  ideas: [
-    {
-      id: "idea-zero-cost-ai",
-      projectId: "local-nexus",
-      title: "Zero-cost AI briefing engine",
-      body: "Keep the AI briefing useful through local rules: next task, delay risk, bottlenecks, health, weekly review, and exportable reports without paid API calls.",
-      score: 92,
-      source: "Nexus roadmap",
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: "idea-saas-control-center",
-      projectId: "local-nexus",
-      title: "SaaS readiness control center",
-      body: "Show deployment health, account mode, database sync, security status, backup readiness, and launch blockers in one place.",
-      score: 88,
-      source: "Phase 5",
-      createdAt: new Date().toISOString()
-    }
-  ],
-  journal: [
-    {
-      id: "journal-real-roadmap",
-      projectId: "local-nexus",
-      title: "Nexus roadmap reset",
-      body: "Removed placeholder portfolio concepts and made Nexus itself the source project. The app should now manage the real build plan: Phase 4 cloud/security first, then Phase 5 SaaS launch readiness.",
-      summary:
-        "Nexus project manager now tracks the actual Nexus build plan and launch roadmap.",
-      mood: "focused",
-      createdAt: new Date().toISOString()
-    }
-  ],
-  milestones: [
-    {
-      id: "milestone-phase-4",
-      projectId: "local-nexus",
-      title: "Phase 4 cloud and security complete",
-      description: "Render, Neon, Firebase, session validation, account/profile, role safety, and live database verification are complete.",
-      status: "in_progress",
-      dueDate: new Date(Date.now() + 7 * 86_400_000).toISOString(),
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: "milestone-phase-5",
-      projectId: "local-nexus",
-      title: "Phase 5 SaaS launch readiness complete",
-      description: "Collaboration polish, onboarding, monitoring, backup/restore, responsive QA, and final launch checklist are complete.",
-      status: "backlog",
-      dueDate: new Date(Date.now() + 28 * 86_400_000).toISOString(),
-      createdAt: new Date().toISOString()
-    }
-  ]
+  projects: [],
+  ideas: [],
+  journal: [],
+  milestones: []
 };
 
 export function usePlanningWorkspace(session: NexusSession) {
-  const storageKey = `nexus.planning.v2.${session.workspaceId}`;
-  const [state, setState] = useState<PlanningState>(() => load(storageKey));
+  const [state, setState] = useState<PlanningState>(initialState);
   const [selectedProjectId, setSelectedProjectId] = useState(state.projects[0]?.id ?? "");
-  const [mode, setMode] = useState<"api" | "local">(session.mode === "api" ? "api" : "local");
+  const mode = "api" as const;
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (session.mode !== "api") {
-      setMode("local");
-      return;
-    }
     let active = true;
     Promise.all([
       listWorkspaceProjects(session.accessToken),
@@ -106,7 +53,6 @@ export function usePlanningWorkspace(session: NexusSession) {
         const planningProjects = projects.map(({ id, name, codename }) => ({ id, name, codename }));
         setState({ projects: planningProjects, ideas, journal, milestones });
         setSelectedProjectId(planningProjects[0]?.id ?? "");
-        setMode("api");
         setError("");
       })
       .catch((reason) => {
@@ -117,10 +63,6 @@ export function usePlanningWorkspace(session: NexusSession) {
       active = false;
     };
   }, [session.accessToken, session.mode]);
-
-  useEffect(() => {
-    if (mode === "local") localStorage.setItem(storageKey, JSON.stringify(state));
-  }, [mode, state, storageKey]);
 
   const selectedIdeas = useMemo(
     () => state.ideas.filter((item) => item.projectId === selectedProjectId),
@@ -142,31 +84,16 @@ export function usePlanningWorkspace(session: NexusSession) {
     source?: string;
   }) {
     if (!selectedProjectId) return;
-    const idea =
-      mode === "api"
-        ? await createIdeaApi(selectedProjectId, input, session.accessToken)
-        : {
-            id: crypto.randomUUID(),
-            projectId: selectedProjectId,
-            createdAt: new Date().toISOString(),
-            ...input
-          };
+    const idea = await createIdeaApi(selectedProjectId, input, session.accessToken);
     setState((current) => ({ ...current, ideas: [idea, ...current.ideas] }));
+    notifyMissionDataChanged();
   }
 
   async function createJournal(input: { title: string; body: string; mood?: string }) {
     if (!selectedProjectId) return;
-    const entry =
-      mode === "api"
-        ? await createJournalApi(selectedProjectId, input, session.accessToken)
-        : {
-            id: crypto.randomUUID(),
-            projectId: selectedProjectId,
-            createdAt: new Date().toISOString(),
-            summary: input.body.slice(0, 240),
-            ...input
-          };
+    const entry = await createJournalApi(selectedProjectId, input, session.accessToken);
     setState((current) => ({ ...current, journal: [entry, ...current.journal] }));
+    notifyMissionDataChanged();
   }
 
   async function createMilestone(input: {
@@ -175,27 +102,17 @@ export function usePlanningWorkspace(session: NexusSession) {
     dueDate?: string;
   }) {
     if (!selectedProjectId) return;
-    const milestone =
-      mode === "api"
-        ? await createMilestoneApi(
-            selectedProjectId,
-            {
-              title: input.title,
-              description: input.description,
-              due_date: input.dueDate ? new Date(input.dueDate).toISOString() : undefined
-            },
-            session.accessToken
-          )
-        : {
-            id: crypto.randomUUID(),
-            projectId: selectedProjectId,
-            status: "backlog" as const,
-            dueDate: input.dueDate ? new Date(input.dueDate).toISOString() : undefined,
-            createdAt: new Date().toISOString(),
-            title: input.title,
-            description: input.description
-          };
+    const milestone = await createMilestoneApi(
+      selectedProjectId,
+      {
+        title: input.title,
+        description: input.description,
+        due_date: input.dueDate ? new Date(input.dueDate).toISOString() : undefined
+      },
+      session.accessToken
+    );
     setState((current) => ({ ...current, milestones: [...current.milestones, milestone] }));
+    notifyMissionDataChanged();
   }
 
   async function advanceMilestone(milestone: ProjectMilestone) {
@@ -205,14 +122,16 @@ export function usePlanningWorkspace(session: NexusSession) {
         : milestone.status === "in_progress"
           ? "done"
           : "in_progress";
-    const updated =
-      mode === "api"
-        ? await updateMilestoneApi(milestone.id, { status: nextStatus }, session.accessToken)
-        : { ...milestone, status: nextStatus, completedAt: nextStatus === "done" ? new Date().toISOString() : undefined };
+    const updated = await updateMilestoneApi(
+      milestone.id,
+      { status: nextStatus },
+      session.accessToken
+    );
     setState((current) => ({
       ...current,
       milestones: current.milestones.map((item) => (item.id === updated.id ? updated : item))
     }));
+    notifyMissionDataChanged();
   }
 
   return {
@@ -229,13 +148,4 @@ export function usePlanningWorkspace(session: NexusSession) {
     createMilestone,
     advanceMilestone
   };
-}
-
-function load(storageKey: string): PlanningState {
-  try {
-    const saved = localStorage.getItem(storageKey);
-    return saved ? (JSON.parse(saved) as PlanningState) : initialState;
-  } catch {
-    return initialState;
-  }
 }

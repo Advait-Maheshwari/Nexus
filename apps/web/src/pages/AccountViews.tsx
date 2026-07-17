@@ -47,6 +47,7 @@ import type {
   WorkspaceMember,
   WorkspaceUsage
 } from "@/types/auth";
+import type { MissionData } from "@/types/domain";
 
 const PREFERENCES_KEY = "nexus.preferences.v1";
 
@@ -137,10 +138,12 @@ const controlModules: Array<{
 
 export function ControlCenterView({
   session,
+  missionData,
   onSessionChange,
   onSessionRevoked
 }: {
   session: NexusSession;
+  missionData: MissionData;
   onSessionChange: (session: NexusSession) => void;
   onSessionRevoked: () => void;
 }) {
@@ -195,15 +198,10 @@ export function ControlCenterView({
         <div className="mt-4 hidden rounded-md border border-white/10 bg-white/[0.035] p-3 xl:block">
           <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Workspace mode</p>
           <p className="mt-1 text-sm font-semibold text-white">
-            {session.mode === "api"
-              ? "Cloud account"
-              : session.mode === "firebase"
-                ? "Google identity"
-                : "Owner local workspace"}
+            Cloud account
           </p>
           <p className="mt-2 text-xs leading-5 text-slate-500">
-            Public users should use email or Google sign-in. Local workspace access is hidden from
-            the public auth flow.
+            Email and Google identities connect to an isolated server workspace.
           </p>
         </div>
       </aside>
@@ -215,7 +213,7 @@ export function ControlCenterView({
         ) : null}
         {activeModule === "ideas" ? <IdeasView session={session} /> : null}
         {activeModule === "journal" ? <JournalView session={session} /> : null}
-        {activeModule === "integrations" ? <IntegrationsView /> : null}
+        {activeModule === "integrations" ? <IntegrationsView data={missionData} /> : null}
         {activeModule === "profile" ? (
           <ProfileView session={session} onSessionChange={onSessionChange} embedded />
         ) : null}
@@ -540,9 +538,9 @@ function SecurityCenter({
       </header>
       <div className="grid gap-4 md:grid-cols-3">
         <PreferencePanel icon={<ShieldCheck size={20} />} title="Authentication">
-          <SecurityLine label="Session" value={session.mode === "firebase" ? "Google verified" : session.mode} />
+          <SecurityLine label="Session" value="API verified" />
           <SecurityLine label="Workspace" value={session.workspaceId} />
-          <SecurityLine label="Boundary" value={session.mode === "api" ? "Server isolated" : "Local-first"} />
+          <SecurityLine label="Boundary" value="Server isolated" />
         </PreferencePanel>
         <PreferencePanel icon={<Database size={20} />} title="Data Policy">
           <SecurityLine label="Project cost" value="$0 target" />
@@ -559,7 +557,6 @@ function SecurityCenter({
         <PreferencePanel icon={<Fingerprint size={20} />} title="Identity Controls">
           <SecurityLine label="Full name" value="Letters and spaces only on sign up" />
           <SecurityLine label="Password minimum" value="10 characters" />
-          <SecurityLine label="Local demo" value="Owner-gated and hidden from public users" />
         </PreferencePanel>
         <PreferencePanel icon={<Cloud size={20} />} title="Zero-Cost Boundary">
           <SecurityLine label="Firebase hosting" value="Free tier target" />
@@ -694,7 +691,7 @@ function SettingsPanel({ embedded = false }: { embedded?: boolean }) {
         <PreferencePanel icon={<SlidersHorizontal size={20} />} title="HCI Rules">
           <PreferenceInfo label="Recognition first" value="Main navigation uses labels, icons, and helper text." />
           <PreferenceInfo label="Low friction" value="Secondary tools are grouped away from daily command views." />
-          <PreferenceInfo label="Error prevention" value="Public demo access is hidden and owner-local mode is explicit." />
+          <PreferenceInfo label="Error prevention" value="Authentication always resolves to a server workspace." />
           <PreferenceInfo label="Profile pictures" value="Private bundled presets with no external tracking" />
         </PreferencePanel>
       </div>
@@ -787,7 +784,7 @@ export function ProfileView({
               <UserCircle className="mx-auto text-cyan" size={64} />
             )}
             <p className="mt-3 font-medium text-white">
-              {displayName ?? (session.mode === "api" ? "Nexus Member" : "Local Commander")}
+              {displayName ?? "Nexus Member"}
             </p>
             {email ? <p className="mt-1 text-xs text-slate-500">{email}</p> : null}
           </div>
@@ -796,11 +793,7 @@ export function ProfileView({
           <div className="flex items-center gap-2 text-success">
             <ShieldCheck size={18} />
             <span className="text-sm font-medium">
-              {session.mode === "api"
-                ? "Authenticated workspace"
-                : session.mode === "firebase"
-                  ? "Google identity verified"
-                  : "Offline local session"}
+              Authenticated workspace
             </span>
           </div>
           <dl className="mt-6 grid gap-5 sm:grid-cols-2">

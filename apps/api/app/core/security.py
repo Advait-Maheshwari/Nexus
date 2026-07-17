@@ -67,8 +67,6 @@ async def require_auth_context(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     session: AsyncSession = Depends(get_session),
 ) -> AuthContext:
-    if settings.auth_backend != "database":
-        return AuthContext(user_id="local-user", workspace_id="workspace-personal")
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise _unauthorized("Authentication required")
 
@@ -82,10 +80,17 @@ async def require_auth_context(
         )
         user_id = str(payload["sub"])
         workspace_id = str(payload["workspace_id"])
-        session_id = str(payload["sid"])
         if payload.get("type") != "access":
             raise JWTError("Unexpected token type")
     except (JWTError, KeyError, TypeError, ValueError) as error:
+        raise _unauthorized("Invalid or expired session") from error
+
+    if settings.auth_backend != "database":
+        return AuthContext(user_id=user_id, workspace_id=workspace_id)
+
+    try:
+        session_id = str(payload["sid"])
+    except (KeyError, TypeError, ValueError) as error:
         raise _unauthorized("Invalid or expired session") from error
 
     active_session = await session.scalar(

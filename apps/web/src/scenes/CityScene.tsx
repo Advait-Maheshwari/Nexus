@@ -859,22 +859,38 @@ function CityCamera({
   projectId: string;
   resetSignal: number;
 }) {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
 
   useEffect(() => {
-    if (mode === "street") {
-      camera.position.set(2.7, 1.12, 3.6);
-    } else if (mode === "risk") {
-      camera.position.set(0.4, 7.4, 2.2);
-    } else {
-      camera.position.set(5.4, 4.15, 6.1);
-    }
+    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    const aspect = Math.max(0.6, size.width / Math.max(1, size.height));
+    const radius = mode === "street" ? 1.55 : mode === "risk" ? 4.35 : 4.15;
+    const padding = mode === "street" ? 1.06 : 1.24;
+    const distance = fitPerspectiveDistance(camera.fov, aspect, radius) * padding;
+    const direction =
+      mode === "street"
+        ? new THREE.Vector3(1.2, 0.17, 1.6)
+        : mode === "risk"
+          ? new THREE.Vector3(0.05, 1, 0.26)
+          : new THREE.Vector3(0.78, 0.56, 1);
+
+    camera.position.copy(CITY_TARGET).add(direction.normalize().multiplyScalar(distance));
+    camera.near = 0.05;
+    camera.far = 180;
+    camera.updateProjectionMatrix();
     camera.lookAt(CITY_TARGET);
     controls.current?.target.copy(CITY_TARGET);
     controls.current?.update();
-  }, [camera, controls, mode, projectId, resetSignal]);
+  }, [camera, controls, mode, projectId, resetSignal, size.height, size.width]);
 
   return null;
+}
+
+function fitPerspectiveDistance(fovDegrees: number, aspect: number, radius: number) {
+  const verticalFov = THREE.MathUtils.degToRad(fovDegrees);
+  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
+  const limitingFov = Math.min(verticalFov, horizontalFov);
+  return radius / Math.sin(limitingFov / 2);
 }
 
 export default function CityScene({
@@ -888,13 +904,13 @@ export default function CityScene({
 }) {
   const style = getCityStyle(project);
   const controls = useRef<OrbitControlsHandle>(null);
-  const minDistance = mode === "street" ? 2.6 : mode === "risk" ? 6.4 : 5.1;
-  const maxDistance = mode === "street" ? 8.5 : mode === "risk" ? 13.5 : 15;
+  const minDistance = mode === "street" ? 1.4 : 2.2;
+  const maxDistance = mode === "street" ? 18 : mode === "risk" ? 40 : 42;
 
   return (
     <Canvas camera={{ position: [5.4, 4.15, 6.1], fov: 52 }} dpr={[1, 1.75]} shadows>
       <color attach="background" args={["#02040a"]} />
-      <fog attach="fog" args={["#02040a", 12, 30]} />
+      <fog attach="fog" args={["#02040a", 35, 90]} />
       <ambientLight intensity={0.64} />
       <directionalLight position={[2.5, 5, 3.5]} intensity={2.6} color="#dff8ff" castShadow />
       <pointLight position={[-3, 2.2, 1.6]} intensity={2.2} color="#8d67ff" />
@@ -908,7 +924,7 @@ export default function CityScene({
         sectionSize={1}
         sectionThickness={0.7}
         sectionColor="#245b78"
-        fadeDistance={16}
+        fadeDistance={34}
         infiniteGrid
       />
       <CityCamera controls={controls} mode={mode} projectId={project.id} resetSignal={resetSignal} />
@@ -916,19 +932,20 @@ export default function CityScene({
       <OrbitControls
         ref={controls}
         makeDefault
-        enablePan={mode === "street"}
+        enablePan
         enableZoom
         enableRotate
         enableDamping
         dampingFactor={0.08}
-        zoomSpeed={0.46}
+        zoomSpeed={0.82}
         rotateSpeed={0.68}
         panSpeed={0.48}
         screenSpacePanning
+        zoomToCursor
         minDistance={minDistance}
         maxDistance={maxDistance}
-        minPolarAngle={0.1}
-        maxPolarAngle={Math.PI / 2 - 0.035}
+        minPolarAngle={0.06}
+        maxPolarAngle={mode === "street" ? Math.PI / 2 - 0.02 : Math.PI - 0.12}
         target={CITY_TARGET}
       />
     </Canvas>

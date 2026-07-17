@@ -144,8 +144,9 @@ async def me(
     auth: AuthContext = Depends(require_auth_context),
     session: AsyncSession = Depends(get_session),
 ) -> AccountResponse:
-    _require_database_accounts()
-    return await get_account(auth, session)
+    if settings.auth_backend == "database":
+        return await get_account(auth, session)
+    return local_store.get_account(auth.user_id)
 
 
 @router.patch("/me", response_model=AccountResponse)

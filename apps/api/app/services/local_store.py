@@ -9,7 +9,7 @@ from fastapi import HTTPException, status
 from app.core.security import create_access_token, hash_password, verify_password
 from app.domain.progress import TaskSignal, calculate_completion, calculate_health_score
 from app.models.enums import Priority, WorkStatus
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+from app.schemas.auth import AccountResponse, LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.feature import FeatureCreate, FeatureRead, FeatureUpdate
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
@@ -80,116 +80,6 @@ class LocalStore:
     features: dict[str, LocalFeature] = field(default_factory=dict)
     tasks: dict[str, LocalTask] = field(default_factory=dict)
 
-    def __post_init__(self) -> None:
-        self._seed_phase_one()
-
-    def _seed_phase_one(self) -> None:
-        if self.projects:
-            return
-
-        project = LocalProject(
-            id="project-nexus",
-            workspace_id=WORKSPACE_ID,
-            name="Nexus",
-            codename="ORION",
-            description="Futuristic zero-cost AI-powered project management system.",
-            status=WorkStatus.in_progress,
-            priority=Priority.critical,
-            health_score=88,
-            deadline=None,
-        )
-        self.projects[project.id] = project
-
-        features = [
-            LocalFeature(
-                id="feature-core",
-                workspace_id=WORKSPACE_ID,
-                project_id=project.id,
-                title="Core Spine",
-                description="Project, feature, task, and milestone management.",
-                status=WorkStatus.in_progress,
-                priority=Priority.critical,
-                progress=0,
-                deadline=None,
-            ),
-            LocalFeature(
-                id="feature-galaxy",
-                workspace_id=WORKSPACE_ID,
-                project_id=project.id,
-                title="Galaxy View",
-                description="Projects as stars, features as planets, and links as constellations.",
-                status=WorkStatus.in_progress,
-                priority=Priority.high,
-                progress=0,
-                deadline=None,
-            ),
-        ]
-        for feature in features:
-            self.features[feature.id] = feature
-
-        tasks = [
-            LocalTask(
-                id="task-crud-projects",
-                workspace_id=WORKSPACE_ID,
-                project_id=project.id,
-                feature_id="feature-core",
-                parent_task_id=None,
-                title="Project CRUD API",
-                description="Create, list, update, and delete projects.",
-                status=WorkStatus.done,
-                priority=Priority.critical,
-                estimate_minutes=90,
-                time_spent_minutes=70,
-                due_date=None,
-            ),
-            LocalTask(
-                id="task-crud-features",
-                workspace_id=WORKSPACE_ID,
-                project_id=project.id,
-                feature_id="feature-core",
-                parent_task_id=None,
-                title="Feature CRUD API",
-                description="Create, list, update, and delete features.",
-                status=WorkStatus.done,
-                priority=Priority.high,
-                estimate_minutes=75,
-                time_spent_minutes=60,
-                due_date=None,
-            ),
-            LocalTask(
-                id="task-crud-tasks",
-                workspace_id=WORKSPACE_ID,
-                project_id=project.id,
-                feature_id="feature-core",
-                parent_task_id=None,
-                title="Task CRUD API",
-                description="Create, list, update, and delete tasks.",
-                status=WorkStatus.in_progress,
-                priority=Priority.critical,
-                estimate_minutes=90,
-                time_spent_minutes=45,
-                due_date=None,
-            ),
-            LocalTask(
-                id="task-galaxy-links",
-                workspace_id=WORKSPACE_ID,
-                project_id=project.id,
-                feature_id="feature-galaxy",
-                parent_task_id=None,
-                title="Enhance planets and constellation links",
-                description="Render feature planets and project relationship strength.",
-                status=WorkStatus.in_progress,
-                priority=Priority.high,
-                estimate_minutes=120,
-                time_spent_minutes=80,
-                due_date=None,
-            ),
-        ]
-        for task in tasks:
-            self.tasks[task.id] = task
-
-        self._refresh_rollups(project.id)
-
     def register(self, request: RegisterRequest) -> TokenResponse:
         existing = next((user for user in self.users.values() if user.email == request.email), None)
         if existing:
@@ -209,6 +99,21 @@ class LocalStore:
         if not user or not verify_password(request.password, user.password_hash):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
         return self._token_for_user(user)
+
+    def get_account(self, user_id: str) -> AccountResponse:
+        user = self.users.get(user_id)
+        if not user:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Account is unavailable")
+        return AccountResponse(
+            user_id=user.id,
+            workspace_id=WORKSPACE_ID,
+            full_name=user.full_name,
+            email=user.email,
+            role="owner",
+            workspace_name="Personal Workspace",
+            password_enabled=True,
+            email_verified=True,
+        )
 
     def create_project(self, request: ProjectCreate) -> ProjectRead:
         project = LocalProject(

@@ -4,6 +4,14 @@ from app.schemas.feature import FeatureCreate
 from app.schemas.project import ProjectCreate
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services.local_store import LocalStore
+from app.services.analytics import build_local_mission_control
+
+
+def test_local_store_starts_without_seeded_portfolio() -> None:
+    store = LocalStore()
+
+    assert store.list_projects() == []
+    assert build_local_mission_control(store).projects == []
 
 
 def test_auth_registers_and_logs_in_without_paid_services() -> None:
@@ -22,6 +30,7 @@ def test_auth_registers_and_logs_in_without_paid_services() -> None:
     assert registered.user_id == logged_in.user_id
     assert registered.workspace_id == "workspace-personal"
     assert logged_in.access_token
+    assert store.get_account(registered.user_id).email == registration.email
 
 
 def test_project_feature_task_rollups_update_progress() -> None:

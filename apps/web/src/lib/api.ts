@@ -1,4 +1,3 @@
-import { missionData } from "@/data/nexusSeed";
 import type { MissionData, ProjectSummary } from "@/types/domain";
 import type {
   NexusAccount,
@@ -366,9 +365,9 @@ interface ApiMissionControl {
   activity: string[];
 }
 
-export async function fetchMissionControl(accessToken?: string): Promise<MissionData> {
+export async function fetchMissionControl(accessToken: string): Promise<MissionData> {
   const response = await fetch(`${API_URL}/api/v1/mission-control`, {
-    headers: accessToken ? authHeaders(accessToken) : undefined
+    headers: authHeaders(accessToken)
   });
 
   if (!response.ok) {
@@ -378,16 +377,15 @@ export async function fetchMissionControl(accessToken?: string): Promise<Mission
   const payload = (await response.json()) as ApiMissionControl;
   const projects = await Promise.all(
     payload.projects.map(async (project, index) => {
-      if (!accessToken) return mergeProject(project, index);
       const features = await listWorkspaceFeatures(project.id, accessToken).catch(() => []);
       return mergeProject(project, index, features);
     })
   );
 
   return {
-    ...missionData,
     metrics: payload.metrics,
     projects,
+    relationships: [],
     todayMission: payload.today_mission,
     aiRecommendations: payload.ai_recommendations.map((recommendation) => ({
       title: recommendation.title,
@@ -395,7 +393,8 @@ export async function fetchMissionControl(accessToken?: string): Promise<Mission
       confidence: recommendation.confidence,
       actionLabel: recommendation.action_label
     })),
-    activity: payload.activity
+    activity: payload.activity,
+    timeline: []
   };
 }
 
@@ -970,32 +969,26 @@ function mergeProject(
   index: number,
   liveFeatures?: WorkspaceFeature[]
 ): ProjectSummary {
-  const visualSeed = liveFeatures
-    ? undefined
-    : missionData.projects.find((item) => item.codename === project.codename) ??
-      missionData.projects[index % missionData.projects.length];
   const angle = index * 2.399963;
   const radius = index === 0 ? 0 : 4.5 + Math.sqrt(index) * 3.2;
   const accents = ["#48e5ff", "#8b7cff", "#53e3a6", "#ffd166", "#ff6b8a"];
 
   return {
-    ...(visualSeed ?? {
-      coordinates: [
-        Math.cos(angle) * radius,
-        ((index % 3) - 1) * 1.8,
-        Math.sin(angle) * radius
-      ] as [number, number, number],
-      accent: accents[index % accents.length],
-      planets: (liveFeatures ?? []).map((feature, featureIndex) => ({
-        id: feature.id,
-        name: feature.title,
-        status: feature.status,
-        progress: feature.progress,
-        taskCount: feature.taskCount,
-        blockedTaskCount: feature.blockedTaskCount,
-        orbitRadius: 0.58 + featureIndex * 0.18
-      }))
-    }),
+    coordinates: [
+      Math.cos(angle) * radius,
+      ((index % 3) - 1) * 1.8,
+      Math.sin(angle) * radius
+    ] as [number, number, number],
+    accent: accents[index % accents.length],
+    planets: (liveFeatures ?? []).map((feature, featureIndex) => ({
+      id: feature.id,
+      name: feature.title,
+      status: feature.status,
+      progress: feature.progress,
+      taskCount: feature.taskCount,
+      blockedTaskCount: feature.blockedTaskCount,
+      orbitRadius: 0.58 + featureIndex * 0.18
+    })),
     id: project.id,
     name: project.name,
     codename: project.codename,

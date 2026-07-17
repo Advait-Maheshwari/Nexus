@@ -30,6 +30,10 @@ function App() {
   const { data: missionData } = useMissionData(session);
 
   useEffect(() => {
+    purgeLegacyLocalData();
+  }, []);
+
+  useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [activeView]);
 
@@ -93,10 +97,8 @@ function App() {
       session={session}
       onViewChange={setActiveView}
       onLogout={() => {
-        if (session.mode === "api") {
-          void logoutSession();
-        }
-        if (session.mode === "firebase" || session.identityProvider === "google") {
+        void logoutSession();
+        if (session.identityProvider === "google") {
           void signOutFirebase();
         }
         sessionStorage.removeItem(SESSION_KEY);
@@ -112,6 +114,7 @@ function App() {
       {activeView === "control" ? (
         <ControlCenterView
           session={session}
+          missionData={missionData}
           onSessionChange={(nextSession) => {
             persistSession(nextSession);
             setSession(nextSession);
@@ -131,7 +134,6 @@ function persistSession(session: NexusSession) {
 }
 
 async function activateInvitation(session: NexusSession): Promise<NexusSession> {
-  if (session.mode !== "api") return session;
   const params = new URLSearchParams(window.location.search);
   const inviteToken = params.get("invite");
   if (!inviteToken) return session;
@@ -161,9 +163,25 @@ export default App;
 function loadSession(): NexusSession | null {
   try {
     const saved = sessionStorage.getItem(SESSION_KEY);
-    return saved ? (JSON.parse(saved) as NexusSession) : null;
+    if (!saved) return null;
+    const session = JSON.parse(saved) as NexusSession;
+    if (session.mode !== "api" || !session.accessToken || !session.workspaceId) {
+      sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem("nexus.owner.demo.v1");
+      return null;
+    }
+    return session;
   } catch {
     sessionStorage.removeItem(SESSION_KEY);
     return null;
+  }
+}
+
+function purgeLegacyLocalData() {
+  sessionStorage.removeItem("nexus.owner.demo.v1");
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith("nexus.workspace.v2.") || key.startsWith("nexus.planning.v2.")) {
+      localStorage.removeItem(key);
+    }
   }
 }

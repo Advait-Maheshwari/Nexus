@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
-import { missionData } from "@/data/nexusSeed";
 import { fetchGitHubActivity } from "@/lib/api";
 import {
   createCalendarExport,
@@ -26,60 +25,39 @@ import {
   downloadTextFile
 } from "@/lib/localAi";
 import type { GitHubRepositoryActivity } from "@/types/integrations";
+import type { MissionData } from "@/types/domain";
 
-const localActivity: GitHubRepositoryActivity = {
-  repository: "Advait-Maheshwari/Nexus",
+const emptyActivity: GitHubRepositoryActivity = {
+  repository: "",
   source: "local",
   authenticated: false,
-  commits: [
-    {
-      sha: "5b4127c",
-      message: "ci: verify frontend and backend milestones",
-      author: "Advait-Maheshwari",
-      committedAt: "2026-07-06T12:12:00Z",
-      url: "",
-      verified: false
-    },
-    {
-      sha: "5ab0667",
-      message: "feat: make the project galaxy interactive",
-      author: "Advait-Maheshwari",
-      committedAt: "2026-07-06T12:11:00Z",
-      url: "",
-      verified: false
-    },
-    {
-      sha: "0913c31",
-      message: "feat: add zero-cost project workspace",
-      author: "Advait-Maheshwari",
-      committedAt: "2026-07-06T12:10:00Z",
-      url: "",
-      verified: false
-    }
-  ]
+  commits: []
 };
 
-export function IntegrationsView() {
-  const [owner, setOwner] = useState("Advait-Maheshwari");
-  const [repo, setRepo] = useState("Nexus");
-  const [activity, setActivity] = useState(localActivity);
+export function IntegrationsView({ data }: { data: MissionData }) {
+  const [owner, setOwner] = useState("");
+  const [repo, setRepo] = useState("");
+  const [activity, setActivity] = useState(emptyActivity);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState("");
+  const [error, setError] = useState("");
 
   async function refresh(event?: FormEvent) {
     event?.preventDefault();
     setLoading(true);
+    setError("");
     try {
       setActivity(await fetchGitHubActivity(owner.trim(), repo.trim()));
-    } catch {
-      setActivity({ ...localActivity, repository: `${owner}/${repo}` });
+    } catch (reason) {
+      setActivity({ ...emptyActivity, repository: `${owner.trim()}/${repo.trim()}` });
+      setError(reason instanceof Error ? reason.message : "GitHub activity is unavailable.");
     } finally {
       setLoading(false);
     }
   }
 
   async function copyNotificationTemplate(channel: string) {
-    await navigator.clipboard.writeText(createNotificationTemplate(missionData));
+    await navigator.clipboard.writeText(createNotificationTemplate(data));
     setCopied(channel);
     window.setTimeout(() => setCopied(""), 1400);
   }
@@ -126,7 +104,7 @@ export function IntegrationsView() {
             </div>
             <div className="text-right">
               <span className="rounded-full border border-cyan/25 bg-cyan/10 px-3 py-1 text-xs text-cyan">
-                {activity.source === "github" ? "GitHub connected" : "Local fallback"}
+                {activity.source === "github" ? "GitHub connected" : "Not connected"}
               </span>
               {activity.rateLimitRemaining !== undefined ? (
                 <p className="mt-2 font-mono text-xs text-slate-500">
@@ -137,6 +115,14 @@ export function IntegrationsView() {
           </div>
 
           <div className="mt-6 space-y-2">
+            {error ? (
+              <p className="rounded-md border border-risk/25 bg-risk/10 px-3 py-2 text-sm text-risk">{error}</p>
+            ) : null}
+            {!error && activity.commits.length === 0 ? (
+              <p className="rounded-md border border-white/10 bg-white/[0.035] px-4 py-5 text-sm text-slate-400">
+                Connect a repository to load real commit activity.
+              </p>
+            ) : null}
             {activity.commits.map((commit) => (
               <article
                 key={commit.sha}
@@ -196,7 +182,7 @@ export function IntegrationsView() {
               body="Export project deadlines as a local .ics file, then import it into Google Calendar for free."
               actionLabel="Download .ics"
               onAction={() =>
-                downloadTextFile("nexus-deadlines.ics", createCalendarExport(missionData), "text/calendar")
+                downloadTextFile("nexus-deadlines.ics", createCalendarExport(data), "text/calendar")
               }
             />
             <IntegrationCard
@@ -208,7 +194,7 @@ export function IntegrationsView() {
               onAction={() =>
                 downloadTextFile(
                   "nexus-drive-manifest.json",
-                  createDriveManifest(missionData),
+                  createDriveManifest(data),
                   "application/json"
                 )
               }
@@ -222,7 +208,7 @@ export function IntegrationsView() {
               onAction={() =>
                 downloadTextFile(
                   "nexus-notion-export.md",
-                  createNotionMarkdownExport(missionData),
+                  createNotionMarkdownExport(data),
                   "text/markdown"
                 )
               }

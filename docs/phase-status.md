@@ -12,14 +12,14 @@ Completed foundation:
 - SQLAlchemy domain models.
 - Project, feature, task, milestone, idea, journal, activity, time entry, and AI insight entities.
 - Mission Control UI.
-- Seed analytics and health scoring.
+- Database-backed analytics and health scoring.
 - Local zero-cost AI planner boundary.
 - Docker Compose foundation.
 - Zero-cost auth endpoints with JWT token issuing.
 - Local and PostgreSQL project CRUD paths.
 - Local and PostgreSQL feature CRUD paths.
 - Local and PostgreSQL task/subtask-ready CRUD paths.
-- Frontend API-first Mission Control loading with seed fallback.
+- Frontend Mission Control loading from the authenticated workspace API.
 
 The auth UI, JWT session flow, database CRUD services, frontend bearer-token wiring, and core
 tests are complete. A live PostgreSQL integration test environment and granular follow-up
@@ -106,8 +106,8 @@ delivery, and file upload automation.
   all-device revocation, profile editing, and password changes.
 - Workspace invitations, member roles, workspace switching, and server-enforced `personal_free`
   limits are implemented without a paid email provider.
-- Mission Control and Galaxy feature systems now load tenant-scoped projects and features instead
-  of global demo portfolio data for cloud accounts.
+- Mission Control and Galaxy feature systems load tenant-scoped projects and features for cloud
+  accounts.
 - GitHub Actions now runs tenant isolation against PostgreSQL 16 in addition to the fast SQLite
   suite.
 - Render readiness checks include the Neon database, and request correlation logs provide a

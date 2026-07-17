@@ -25,7 +25,6 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const allowLocalFirebaseFallback = import.meta.env.DEV;
 
 export async function signInWithGoogle(): Promise<NexusSession> {
   const provider = new GoogleAuthProvider();
@@ -37,30 +36,11 @@ export async function signInWithGoogle(): Promise<NexusSession> {
     email: credential.user.email ?? undefined,
     photoUrl: credential.user.photoURL ?? undefined
   };
-  try {
-    return {
-      ...(await exchangeFirebaseToken(accessToken)),
-      identityProvider: "google",
-      ...profile
-    };
-  } catch (error) {
-    if (!allowLocalFirebaseFallback) {
-      throw new Error(
-        error instanceof Error
-          ? `${error.message}. Google sign-in could not create a Nexus cloud session.`
-          : "Google sign-in could not create a Nexus cloud session."
-      );
-    }
-
-    return {
-      accessToken,
-      userId: credential.user.uid,
-      workspaceId: `firebase-${credential.user.uid}`,
-      mode: "firebase",
-      identityProvider: "google",
-      ...profile
-    };
-  }
+  return {
+    ...(await exchangeFirebaseToken(accessToken)),
+    identityProvider: "google",
+    ...profile
+  };
 }
 
 export async function signOutFirebase(): Promise<void> {

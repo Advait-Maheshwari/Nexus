@@ -26,8 +26,11 @@ export function MissionControl({ data }: { data: MissionData }) {
       return;
     }
 
+    const commandItems = commandRef.current.querySelectorAll("[data-command-item]");
+    if (commandItems.length === 0) return;
+
     gsap.fromTo(
-      commandRef.current.querySelectorAll("[data-command-item]"),
+      commandItems,
       { opacity: 0, y: 18 },
       { opacity: 1, y: 0, duration: 0.68, stagger: 0.08, ease: "power3.out" }
     );

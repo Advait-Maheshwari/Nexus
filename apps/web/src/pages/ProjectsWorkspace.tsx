@@ -97,7 +97,7 @@ export function ProjectsView({ session }: { session: NexusSession }) {
           ) : (
             <HardDrive size={14} className="text-solar" />
           )}
-          {workspace.mode === "api" ? "Local API connected" : "Offline local mode"}
+          Cloud API connected
         </div>
       </aside>
 

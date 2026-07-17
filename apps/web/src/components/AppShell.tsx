@@ -5,7 +5,6 @@ import {
   CircuitBoard,
   Cloud,
   Factory,
-  Fingerprint,
   LogOut,
   MoreHorizontal,
   Orbit,
@@ -71,8 +70,7 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
   const closeMobileMenuRef = useRef<HTMLButtonElement>(null);
   const activeItem = navItems.find((item) => item.key === activeView);
   const mobileMoreActive = mobileMoreItems.some((item) => item.key === activeView);
-  const workspaceLabel =
-    session.mode === "api" ? "Cloud workspace" : session.mode === "firebase" ? "Google workspace" : "Owner local";
+  const workspaceLabel = "Cloud workspace";
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -188,7 +186,7 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
           </div>
           <div className="hidden items-center gap-2 sm:flex">
             <HeaderPill
-              icon={session.mode === "local" ? <Fingerprint size={14} /> : <Cloud size={14} />}
+              icon={<Cloud size={14} />}
               label={workspaceLabel}
             />
             <HeaderPill icon={<ShieldCheck size={14} />} label="$0 policy" tone="success" />

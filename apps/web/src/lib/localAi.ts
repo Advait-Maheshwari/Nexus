@@ -13,6 +13,7 @@ export interface LocalBriefing {
 }
 
 export function createLocalBriefing(data: MissionData): LocalBriefing {
+  const hasProjects = data.projects.length > 0;
   const projects = [...data.projects];
   const highestPriority = projects.sort(prioritySort)[0] ?? data.projects[0];
   const mostBlocked = [...data.projects].sort(
@@ -28,7 +29,7 @@ export function createLocalBriefing(data: MissionData): LocalBriefing {
     ? [...highestPriority.planets].sort((first, second) => first.progress - second.progress)[0]
     : undefined;
   const averageProgress =
-    data.projects.length === 0
+    !hasProjects
       ? 0
       : Math.round(
           data.projects.reduce((total, project) => total + project.progress, 0) /
@@ -39,8 +40,8 @@ export function createLocalBriefing(data: MissionData): LocalBriefing {
     0
   );
   const averageHealth =
-    data.projects.length === 0
-      ? 0
+    !hasProjects
+      ? 100
       : Math.round(data.projects.reduce((total, project) => total + project.healthScore, 0) / data.projects.length);
   const actionPlan = buildActionPlan({
     highestPriority,
@@ -51,7 +52,9 @@ export function createLocalBriefing(data: MissionData): LocalBriefing {
   });
 
   return {
-    headline: `${averageProgress}% portfolio progress, ${averageHealth}/100 health, and ${totalBlocked} blocked task signal${totalBlocked === 1 ? "" : "s"}.`,
+    headline: hasProjects
+      ? `${averageProgress}% portfolio progress, ${averageHealth}/100 health, and ${totalBlocked} blocked task signal${totalBlocked === 1 ? "" : "s"}.`
+      : "No project signal yet. Create the first project, define its outcome, and add one finishable task.",
     focus: highestPriority
       ? `Focus on ${highestPriority.name}. It is ${highestPriority.priority} priority, ${highestPriority.progress}% complete, and carrying ${highestPriority.blockedTaskCount} blocker${highestPriority.blockedTaskCount === 1 ? "" : "s"}.`
       : "Create a project before planning the next mission.",
@@ -67,8 +70,9 @@ export function createLocalBriefing(data: MissionData): LocalBriefing {
       mostBlocked && mostBlocked.blockedTaskCount > 0
         ? `${mostBlocked.name} has ${mostBlocked.blockedTaskCount} blocker${mostBlocked.blockedTaskCount === 1 ? "" : "s"}; resolve that before expanding the roadmap.`
         : "No major blocker cluster detected from the current project graph.",
-    healthNarrative:
-      averageHealth >= 80
+    healthNarrative: !hasProjects
+      ? "No portfolio risk is active yet. Health scoring begins when the first project has real work."
+      : averageHealth >= 80
         ? "Portfolio health is strong. The best move is focused execution, not adding new systems."
         : averageHealth >= 68
           ? "Portfolio health is usable but uneven. Clear blockers and stabilize low-progress features."
