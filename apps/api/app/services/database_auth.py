@@ -560,7 +560,7 @@ async def _seed_private_demo(
 
 
 def _has_demo_access(email: str) -> bool:
-    return email.strip().lower() in settings.demo_owner_email_set
+    return settings.private_demo_allowed(email)
 
 
 def _demo_slug(user_id: str) -> str:

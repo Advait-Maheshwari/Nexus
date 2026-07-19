@@ -1,4 +1,5 @@
 import pytest
+from hashlib import sha256
 from fastapi import HTTPException
 from jose import jwt
 from sqlalchemy import func, select
@@ -36,7 +37,11 @@ def _auth(access_token: str) -> AuthContext:
 
 @pytest.mark.asyncio
 async def test_private_demo_is_owner_only_and_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(settings, "demo_owner_emails", "owner@nexus.dev")
+    monkeypatch.setattr(
+        settings,
+        "demo_owner_email_hashes",
+        sha256(b"owner@nexus.dev").hexdigest(),
+    )
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
@@ -91,7 +96,11 @@ async def test_private_demo_is_owner_only_and_idempotent(monkeypatch: pytest.Mon
 async def test_account_deletion_removes_private_workspaces_and_sessions(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(settings, "demo_owner_emails", "owner@nexus.dev")
+    monkeypatch.setattr(
+        settings,
+        "demo_owner_email_hashes",
+        sha256(b"owner@nexus.dev").hexdigest(),
+    )
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)

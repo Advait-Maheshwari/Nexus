@@ -1,4 +1,5 @@
 from functools import lru_cache
+from hashlib import sha256
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import AnyHttpUrl, Field, model_validator
@@ -21,7 +22,7 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = Field(default=14, alias="REFRESH_TOKEN_EXPIRE_DAYS")
     refresh_cookie_name: str = Field(default="nexus_refresh", alias="REFRESH_COOKIE_NAME")
     auth_backend: str = Field(default="local", alias="NEXUS_AUTH_BACKEND")
-    demo_owner_emails: str = Field(default="", alias="NEXUS_DEMO_OWNER_EMAILS")
+    demo_owner_email_hashes: str = Field(default="", alias="NEXUS_DEMO_OWNER_EMAIL_HASHES")
     firebase_project_id: str = Field(default="nexus-advait-pm", alias="FIREBASE_PROJECT_ID")
     require_email_verification: bool = Field(
         default=False, alias="NEXUS_REQUIRE_EMAIL_VERIFICATION"
@@ -87,13 +88,14 @@ class Settings(BaseSettings):
             )
         )
 
-    @property
-    def demo_owner_email_set(self) -> set[str]:
-        return {
-            email.strip().lower()
-            for email in self.demo_owner_emails.split(",")
-            if email.strip()
+    def private_demo_allowed(self, email: str) -> bool:
+        digest = sha256(email.strip().lower().encode("utf-8")).hexdigest()
+        configured = {
+            value.strip().lower()
+            for value in self.demo_owner_email_hashes.split(",")
+            if value.strip()
         }
+        return digest in configured
 
 
 @lru_cache
