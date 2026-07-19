@@ -19,6 +19,7 @@ class SecurityHeadersMiddleware:
                         (b"cross-origin-opener-policy", b"same-origin"),
                         (b"cross-origin-resource-policy", b"same-site"),
                         (b"x-permitted-cross-domain-policies", b"none"),
+                        (b"x-dns-prefetch-control", b"off"),
                         (
                             b"permissions-policy",
                             b"camera=(), microphone=(), geolocation=()",

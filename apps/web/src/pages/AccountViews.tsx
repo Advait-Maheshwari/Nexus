@@ -225,7 +225,9 @@ export function ControlCenterView({
         ) : null}
         {activeModule === "ideas" ? <IdeasView session={session} /> : null}
         {activeModule === "journal" ? <JournalView session={session} /> : null}
-        {activeModule === "integrations" ? <IntegrationsView data={missionData} /> : null}
+        {activeModule === "integrations" ? (
+          <IntegrationsView data={missionData} session={session} />
+        ) : null}
         {activeModule === "profile" ? (
           <ProfileView session={session} onSessionChange={onSessionChange} embedded />
         ) : null}

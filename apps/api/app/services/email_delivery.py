@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import smtplib
+import ssl
 from dataclasses import dataclass
 from email.message import EmailMessage
 
@@ -52,7 +53,7 @@ def _send_smtp(message: AccountEmail) -> None:
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as client:
         client.ehlo()
         if settings.smtp_starttls:
-            client.starttls()
+            client.starttls(context=ssl.create_default_context())
             client.ehlo()
         if settings.smtp_username:
             client.login(settings.smtp_username, settings.smtp_password or "")

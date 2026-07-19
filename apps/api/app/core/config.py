@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     api_url: AnyHttpUrl | str = Field(default="http://localhost:8000", alias="NEXUS_API_URL")
     web_url: AnyHttpUrl | str = Field(default="http://localhost:5173", alias="NEXUS_WEB_URL")
     cors_origins_extra: str = Field(default="", alias="NEXUS_CORS_ORIGINS")
+    allowed_hosts_extra: str = Field(default="", alias="NEXUS_ALLOWED_HOSTS")
     database_url: str = "postgresql+asyncpg://nexus:nexus@localhost:5432/nexus"
     jwt_secret_key: str = Field(default="change-me", alias="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
@@ -22,6 +23,9 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = Field(default=14, alias="REFRESH_TOKEN_EXPIRE_DAYS")
     refresh_cookie_name: str = Field(default="nexus_refresh", alias="REFRESH_COOKIE_NAME")
     auth_backend: str = Field(default="local", alias="NEXUS_AUTH_BACKEND")
+    allow_password_registration: bool = Field(
+        default=True, alias="NEXUS_ALLOW_PASSWORD_REGISTRATION"
+    )
     demo_owner_email_hashes: str = Field(default="", alias="NEXUS_DEMO_OWNER_EMAIL_HASHES")
     firebase_project_id: str = Field(default="nexus-advait-pm", alias="FIREBASE_PROJECT_ID")
     require_email_verification: bool = Field(
@@ -51,12 +55,20 @@ class Settings(BaseSettings):
             raise ValueError("Production JWT_SECRET_KEY must contain at least 32 characters")
         if self.auth_backend not in {"local", "database"}:
             raise ValueError("NEXUS_AUTH_BACKEND must be local or database")
+        if self.env.lower() == "production" and self.auth_backend != "database":
+            raise ValueError("Production requires NEXUS_AUTH_BACKEND=database")
         if self.email_delivery_mode not in {"disabled", "console", "smtp"}:
             raise ValueError("NEXUS_EMAIL_DELIVERY_MODE must be disabled, console, or smtp")
         if self.env.lower() == "production" and self.email_delivery_mode == "console":
             raise ValueError("Console email delivery cannot be used in production")
         if self.require_email_verification and self.email_delivery_mode == "disabled":
             raise ValueError("Email delivery is required when email verification is enabled")
+        if self.env.lower() == "production" and self.allow_password_registration and (
+            not self.require_email_verification or self.email_delivery_mode != "smtp"
+        ):
+            raise ValueError(
+                "Production password registration requires verified SMTP email delivery"
+            )
         if self.email_delivery_mode == "smtp" and (
             not self.smtp_host or not self.email_from_address
         ):
@@ -96,6 +108,26 @@ class Settings(BaseSettings):
             if value.strip()
         }
         return digest in configured
+
+    @property
+    def allowed_hosts(self) -> list[str]:
+        configured = [host.strip().lower() for host in self.allowed_hosts_extra.split(",")]
+        url_hosts = [
+            urlsplit(str(url)).hostname
+            for url in (self.api_url, self.web_url)
+        ]
+        return list(
+            dict.fromkeys(
+                [
+                    "localhost",
+                    "127.0.0.1",
+                    "test",
+                    "testserver",
+                    *[host for host in url_hosts if host],
+                    *[host for host in configured if host],
+                ]
+            )
+        )
 
 
 @lru_cache

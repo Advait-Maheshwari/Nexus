@@ -52,6 +52,11 @@ async def register(
     session: AsyncSession = Depends(get_session),
 ) -> TokenResponse | AuthActionResponse:
     if settings.auth_backend == "database":
+        if not settings.allow_password_registration:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Password registration is temporarily unavailable; use Google sign-in",
+            )
         issued = await register_user(request, session)
         if isinstance(issued, VerificationIssue):
             response.status_code = status.HTTP_202_ACCEPTED

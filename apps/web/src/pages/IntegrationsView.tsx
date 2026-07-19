@@ -26,6 +26,7 @@ import {
 } from "@/lib/localAi";
 import type { GitHubRepositoryActivity } from "@/types/integrations";
 import type { MissionData } from "@/types/domain";
+import type { NexusSession } from "@/types/auth";
 
 const emptyActivity: GitHubRepositoryActivity = {
   repository: "",
@@ -34,7 +35,7 @@ const emptyActivity: GitHubRepositoryActivity = {
   commits: []
 };
 
-export function IntegrationsView({ data }: { data: MissionData }) {
+export function IntegrationsView({ data, session }: { data: MissionData; session: NexusSession }) {
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
   const [activity, setActivity] = useState(emptyActivity);
@@ -47,7 +48,7 @@ export function IntegrationsView({ data }: { data: MissionData }) {
     setLoading(true);
     setError("");
     try {
-      setActivity(await fetchGitHubActivity(owner.trim(), repo.trim()));
+      setActivity(await fetchGitHubActivity(owner.trim(), repo.trim(), session.accessToken));
     } catch (reason) {
       setActivity({ ...emptyActivity, repository: `${owner.trim()}/${repo.trim()}` });
       setError(reason instanceof Error ? reason.message : "GitHub activity is unavailable.");
@@ -87,8 +88,8 @@ export function IntegrationsView({ data }: { data: MissionData }) {
         </form>
 
         <div className="mt-6 space-y-3 border-t border-white/10 pt-5">
-          <PolicyLine icon={<ShieldCheck size={16} />} text="Public repositories work without credentials." />
-          <PolicyLine icon={<KeyRound size={16} />} text="Private access uses your local GITHUB_TOKEN." />
+          <PolicyLine icon={<ShieldCheck size={16} />} text="Repository requests require your Nexus session." />
+          <PolicyLine icon={<KeyRound size={16} />} text="Private access uses a server-side credential." />
           <PolicyLine icon={<CheckCircle2 size={16} />} text="No paid API or hosted connector required." />
         </div>
       </aside>

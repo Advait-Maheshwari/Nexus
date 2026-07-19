@@ -427,10 +427,12 @@ export async function fetchMissionControl(accessToken: string): Promise<MissionD
 
 export async function fetchGitHubActivity(
   owner: string,
-  repo: string
+  repo: string,
+  accessToken: string
 ): Promise<GitHubRepositoryActivity> {
   const response = await fetch(
-    `${API_URL}/api/v1/integrations/github/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/activity`
+    `${API_URL}/api/v1/integrations/github/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/activity`,
+    { headers: authHeaders(accessToken) }
   );
   if (!response.ok) {
     throw new Error(`GitHub integration failed with ${response.status}`);
