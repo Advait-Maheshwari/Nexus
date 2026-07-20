@@ -51,10 +51,18 @@
 - CodeQL runs extended Python and TypeScript security queries on pushes, pull requests, and weekly.
 - Pull requests reject newly introduced dependencies with known high-severity vulnerabilities.
 
-## Launch Work Remaining
+## Verified Launch State
+
+- Production uses Google-first signup; password registration remains disabled until verified SMTP
+  is deliberately configured.
+- The encrypted Neon backup and disposable PostgreSQL 18 restore drill passed in GitHub Actions run
+  `29738241789`, including Alembic schema verification and encrypted artifact retention.
+- Render readiness, disabled production API documentation, strict CORS, Firebase CSP, CI, and both
+  CodeQL language scans were verified on the deployed release.
+
+## Future Scale Hardening
 
 - Replace process-local throttling with distributed rate limiting before horizontal scaling.
-- Configure user-owned SMTP and enable required email verification before public password signup.
-- Run the encrypted backup tooling and document a successful isolated restore drill.
-- Complete an external security review before public SaaS launch.
-- Configure a same-site production domain before broad public SaaS availability.
+- Configure user-owned SMTP and required email verification before enabling password signup.
+- Adopt a same-site production domain when a permanent zero-cost option is available.
+- Commission an independent penetration test before commercial SaaS expansion.

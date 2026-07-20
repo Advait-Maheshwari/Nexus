@@ -63,7 +63,7 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 
 ## Phase 5: Secure Launch
 
-- Status: in progress.
+- Status: complete for the current zero-cost Google-first release.
 - Full-name and password policy enforcement.
 - JWT issuer, audience, expiry, type, and membership validation.
 - Verified Firebase token exchange into Nexus workspace sessions.
@@ -84,6 +84,10 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 - Project-goal team accountability with task ownership and lagging-team recovery guidance.
 - Production-grade City/Galaxy camera, semantic, density, and responsive layout hardening.
 - Bundled zero-cost profile-picture presets with server-side path allowlisting.
+- Hardened Render API and Firebase frontend verified live with fail-closed production settings.
+- Extended CodeQL scans pass for Python and TypeScript; pull requests enforce dependency review.
+- Encrypted Neon backup and isolated PostgreSQL 18 restore drill completed successfully.
+- Production signup is Google-first; password registration stays disabled until optional verified`n  SMTP exists.
 
 ## Permanent Constraint: Zero Cost
 

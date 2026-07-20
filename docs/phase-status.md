@@ -132,7 +132,11 @@ delivery, and file upload automation.
 - Final desktop and 375px phone QA passed for City, Galaxy, profile presets, and project guidance
   with nonblank WebGL scenes, no horizontal overflow, and no browser console errors.
 
-Remaining launch work is operator-only Phase 5 hardening: configure SMTP and enable verification
-in production, execute and record a Neon backup/restore drill, recheck the live Render/Firebase
-deployment, adopt a same-site domain when one is available, and finish the external security
-review.
+Phase 5 is complete for the current zero-cost Google-first release. Render and Firebase are live,
+production password registration is fail-closed, CodeQL passes for Python and TypeScript, and the
+encrypted Neon backup was restored and schema-verified against disposable PostgreSQL 18 in GitHub
+Actions run `29738241789`.
+
+Optional future scale hardening includes user-owned verified SMTP before enabling password signup,
+a same-site custom domain when a permanent zero-cost option exists, distributed throttling before
+horizontal scaling, and an independent penetration test before commercial SaaS expansion.
