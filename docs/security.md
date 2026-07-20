@@ -47,6 +47,9 @@
 - Authenticated and workspace responses use `Cache-Control: no-store`.
 - Every request receives a correlation ID and emits a bounded structured request log without
   credentials or request bodies.
+- GitHub Actions dependencies are pinned to immutable commit SHAs to prevent mutable-tag supply-chain changes.
+- CodeQL runs extended Python and TypeScript security queries on pushes, pull requests, and weekly.
+- Pull requests reject newly introduced dependencies with known high-severity vulnerabilities.
 
 ## Launch Work Remaining
 
