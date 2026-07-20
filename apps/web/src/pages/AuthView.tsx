@@ -24,9 +24,14 @@ import type { NexusSession } from "@/types/auth";
 
 type AuthMode = "login" | "register" | "forgot" | "reset";
 
+const passwordRegistrationEnabled =
+  import.meta.env.DEV || import.meta.env.VITE_ALLOW_PASSWORD_REGISTRATION === "true";
+
 export function AuthView({ onAuthenticated }: { onAuthenticated: (session: NexusSession) => void }) {
   const initialResetToken = readActionToken("reset_password");
-  const [mode, setMode] = useState<AuthMode>(initialResetToken ? "reset" : "register");
+  const [mode, setMode] = useState<AuthMode>(
+    initialResetToken ? "reset" : passwordRegistrationEnabled ? "register" : "login"
+  );
   const [resetToken] = useState(initialResetToken);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -150,7 +155,7 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
         </div>
 
         <div className="p-6 sm:p-10">
-          {isPrimaryAuth ? (
+          {isPrimaryAuth && passwordRegistrationEnabled ? (
             <div className="flex rounded-md border border-white/10 bg-white/[0.04] p-1">
               <ModeButton active={mode === "register"} onClick={() => chooseMode("register")}>
                 Sign Up
@@ -159,7 +164,7 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
                 Log In
               </ModeButton>
             </div>
-          ) : (
+          ) : !isPrimaryAuth ? (
             <button
               type="button"
               onClick={() => chooseMode("login")}
@@ -167,7 +172,7 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
             >
               <ArrowLeft size={16} /> Back to login
             </button>
-          )}
+          ) : null}
 
           <form onSubmit={submit} className="mt-8 space-y-4">
             <div>
@@ -175,6 +180,11 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
                 {modeEyebrow(mode)}
               </p>
               <h2 className="mt-2 text-2xl font-semibold text-white">{modeHeading(mode)}</h2>
+              {!passwordRegistrationEnabled && mode === "login" ? (
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  New to Nexus? Continue with Google to create your secure workspace.
+                </p>
+              ) : null}
             </div>
             {mode === "register" ? (
               <AuthInput
