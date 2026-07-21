@@ -63,6 +63,48 @@ export interface Recommendation {
   actionLabel: string;
 }
 
+export interface ExecutionAction {
+  taskId?: string;
+  projectId?: string;
+  projectName: string;
+  title: string;
+  reason: string;
+  actionType: "unblock" | "recover_deadline" | "protect_deadline" | "continue" | "start";
+  priority: Priority;
+  score: number;
+  confidence: number;
+  dueDate?: string;
+  dependencyCount: number;
+}
+
+export interface RiskSignal {
+  key: string;
+  severity: "critical" | "high" | "medium" | "low";
+  title: string;
+  detail: string;
+  projectId?: string;
+  taskId?: string;
+}
+
+export interface PortfolioForecast {
+  status: "empty" | "on_track" | "watch" | "at_risk";
+  scheduleConfidence: number;
+  completionPercent: number;
+  remainingMinutes: number;
+  overdueTasks: number;
+  blockedTasks: number;
+  summary: string;
+}
+
+export interface ExecutionIntelligence {
+  generatedAt: string;
+  provider: string;
+  headline: string;
+  nextActions: ExecutionAction[];
+  riskSignals: RiskSignal[];
+  forecast: PortfolioForecast;
+}
+
 export interface MissionData {
   metrics: Metric[];
   projects: ProjectSummary[];
@@ -71,4 +113,5 @@ export interface MissionData {
   aiRecommendations: Recommendation[];
   activity: string[];
   timeline: TimelineNode[];
+  executionIntelligence: ExecutionIntelligence;
 }

@@ -84,5 +84,10 @@ async def test_mission_control_uses_only_the_authenticated_workspace() -> None:
         assert summary.metrics[3].value == "1"
         assert summary.today_mission == ["Run deployment checks"]
         assert all("Hidden" not in item for item in summary.today_mission)
+        assert all(
+            action.project_name != "Hidden Project"
+            for action in summary.execution_intelligence.next_actions
+        )
+        assert summary.execution_intelligence.forecast.completion_percent == 50
 
     await engine.dispose()

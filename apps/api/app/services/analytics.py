@@ -9,9 +9,10 @@ from app.models.activity_log import ActivityLog
 from app.models.enums import Priority, WorkStatus
 from app.models.feature import Feature
 from app.models.project import Project
-from app.models.task import Task
+from app.models.task import Task, TaskDependency
 from app.schemas.analytics import AIRecommendation, MetricCard, MissionControlSummary
 from app.schemas.project import ProjectSummary
+from app.services.execution_intelligence import ExecutionTask, build_execution_intelligence
 from app.services.local_store import LocalStore
 
 
@@ -83,17 +84,59 @@ async def build_database_mission_control(
             )
         )
 
-    open_tasks = (
+    workspace_tasks = (
         await session.scalars(
-            select(Task)
-            .where(
-                Task.workspace_id == auth.workspace_id,
-                Task.status != WorkStatus.done.value,
-            )
-            .order_by(Task.due_date.asc().nullslast(), Task.updated_at.desc())
-            .limit(12)
+            select(Task).where(Task.workspace_id == auth.workspace_id)
         )
     ).all()
+    task_by_id = {task.id: task for task in workspace_tasks}
+    task_ids = list(task_by_id)
+    dependencies = (
+        (
+            await session.scalars(
+                select(TaskDependency).where(
+                    TaskDependency.task_id.in_(task_ids),
+                    TaskDependency.depends_on_task_id.in_(task_ids),
+                )
+            )
+        ).all()
+        if task_ids
+        else []
+    )
+    dependency_titles: dict[str, list[str]] = {}
+    for dependency in dependencies:
+        prerequisite = task_by_id.get(dependency.depends_on_task_id)
+        if prerequisite and prerequisite.status not in {
+            WorkStatus.done.value,
+            WorkStatus.archived.value,
+        }:
+            dependency_titles.setdefault(dependency.task_id, []).append(prerequisite.title)
+
+    project_name_by_id = {project.id: project.name for project in projects}
+    execution_intelligence = build_execution_intelligence(
+        summaries,
+        [
+            ExecutionTask(
+                id=task.id,
+                project_id=task.project_id,
+                project_name=project_name_by_id.get(task.project_id, "Unknown project"),
+                title=task.title,
+                status=_enum_value(task.status),
+                priority=_enum_value(task.priority),
+                estimate_minutes=task.estimate_minutes,
+                time_spent_minutes=task.time_spent_minutes,
+                due_date=task.due_date,
+                blocked_reason=task.blocked_reason,
+                dependency_titles=tuple(sorted(dependency_titles.get(task.id, []))),
+            )
+            for task in workspace_tasks
+        ],
+    )
+    open_tasks = [
+        task
+        for task in workspace_tasks
+        if task.status not in {WorkStatus.done.value, WorkStatus.archived.value}
+    ]
     open_tasks.sort(
         key=lambda task: (
             task.status != WorkStatus.blocked,
@@ -157,6 +200,7 @@ async def build_database_mission_control(
         today_mission=today_mission,
         ai_recommendations=recommendations,
         activity=activity,
+        execution_intelligence=execution_intelligence,
     )
 
 
@@ -204,6 +248,10 @@ def _database_recommendations(
     return recommendations[:3]
 
 
+def _enum_value(value: Priority | WorkStatus | str) -> str:
+    return value.value if isinstance(value, (Priority, WorkStatus)) else value
+
+
 def _priority_rank(priority: Priority | str) -> int:
     value = priority.value if isinstance(priority, Priority) else priority
     return {
@@ -218,6 +266,7 @@ def build_local_mission_control(store: LocalStore) -> MissionControlSummary:
     project_records = store.list_projects()
     summaries: list[ProjectSummary] = []
     open_tasks = []
+    all_tasks = []
     total_tasks = 0
     done_tasks = 0
     blocked_tasks = 0
@@ -229,6 +278,7 @@ def build_local_mission_control(store: LocalStore) -> MissionControlSummary:
         task_done = sum(task.status == WorkStatus.done for task in tasks)
         task_blocked = sum(task.status == WorkStatus.blocked for task in tasks)
         spent = sum(task.time_spent_minutes for task in tasks)
+        all_tasks.extend(tasks)
         total_tasks += len(tasks)
         done_tasks += task_done
         blocked_tasks += task_blocked
@@ -272,6 +322,25 @@ def build_local_mission_control(store: LocalStore) -> MissionControlSummary:
         if summaries
         else 100
     )
+    project_name_by_id = {project.id: project.name for project in project_records}
+    execution_intelligence = build_execution_intelligence(
+        summaries,
+        [
+            ExecutionTask(
+                id=task.id,
+                project_id=task.project_id,
+                project_name=project_name_by_id.get(task.project_id, "Unknown project"),
+                title=task.title,
+                status=_enum_value(task.status),
+                priority=_enum_value(task.priority),
+                estimate_minutes=task.estimate_minutes,
+                time_spent_minutes=task.time_spent_minutes,
+                due_date=task.due_date,
+                blocked_reason=task.blocked_reason,
+            )
+            for task in all_tasks
+        ],
+    )
 
     return MissionControlSummary(
         metrics=[
@@ -304,4 +373,5 @@ def build_local_mission_control(store: LocalStore) -> MissionControlSummary:
         today_mission=today_mission,
         ai_recommendations=_database_recommendations(summaries, blocked_tasks, total_tasks),
         activity=[],
+        execution_intelligence=execution_intelligence,
     )

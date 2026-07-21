@@ -14,7 +14,23 @@ const emptyMissionData: MissionData = {
   todayMission: [],
   aiRecommendations: [],
   activity: [],
-  timeline: []
+  timeline: [],
+  executionIntelligence: {
+    generatedAt: "",
+    provider: "nexus_local_heuristic_v1",
+    headline: "No execution signal is available yet.",
+    nextActions: [],
+    riskSignals: [],
+    forecast: {
+      status: "empty",
+      scheduleConfidence: 0,
+      completionPercent: 0,
+      remainingMinutes: 0,
+      overdueTasks: 0,
+      blockedTasks: 0,
+      summary: "Create a project and one finishable task to establish a forecast."
+    }
+  }
 };
 
 export function useMissionData(session: NexusSession | null) {

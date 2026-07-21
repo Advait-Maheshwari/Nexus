@@ -1,4 +1,4 @@
-import type { MissionData, ProjectSummary } from "@/types/domain";
+import type { ExecutionIntelligence, MissionData, ProjectSummary } from "@/types/domain";
 import type {
   NexusAccount,
   NexusRole,
@@ -384,12 +384,49 @@ interface ApiRecommendation {
   action_label: string;
 }
 
+interface ApiExecutionIntelligence {
+  generated_at: string;
+  provider: string;
+  headline: string;
+  next_actions: Array<{
+    task_id?: string | null;
+    project_id?: string | null;
+    project_name: string;
+    title: string;
+    reason: string;
+    action_type: ExecutionIntelligence["nextActions"][number]["actionType"];
+    priority: ProjectSummary["priority"];
+    score: number;
+    confidence: number;
+    due_date?: string | null;
+    dependency_count: number;
+  }>;
+  risk_signals: Array<{
+    key: string;
+    severity: ExecutionIntelligence["riskSignals"][number]["severity"];
+    title: string;
+    detail: string;
+    project_id?: string | null;
+    task_id?: string | null;
+  }>;
+  forecast: {
+    status: ExecutionIntelligence["forecast"]["status"];
+    schedule_confidence: number;
+    completion_percent: number;
+    remaining_minutes: number;
+    overdue_tasks: number;
+    blocked_tasks: number;
+    summary: string;
+  };
+}
+
 interface ApiMissionControl {
   metrics: MissionData["metrics"];
   projects: ApiProjectSummary[];
   today_mission: string[];
   ai_recommendations: ApiRecommendation[];
   activity: string[];
+  execution_intelligence?: ApiExecutionIntelligence;
 }
 
 export async function fetchMissionControl(accessToken: string): Promise<MissionData> {
@@ -421,7 +458,67 @@ export async function fetchMissionControl(accessToken: string): Promise<MissionD
       actionLabel: recommendation.action_label
     })),
     activity: payload.activity,
-    timeline: []
+    timeline: [],
+    executionIntelligence: mapExecutionIntelligence(payload.execution_intelligence)
+  };
+}
+
+function mapExecutionIntelligence(
+  payload?: ApiExecutionIntelligence
+): ExecutionIntelligence {
+  if (!payload) {
+    return {
+      generatedAt: "",
+      provider: "nexus_local_heuristic_v1",
+      headline: "Execution intelligence is synchronizing with the Nexus API.",
+      nextActions: [],
+      riskSignals: [],
+      forecast: {
+        status: "empty",
+        scheduleConfidence: 0,
+        completionPercent: 0,
+        remainingMinutes: 0,
+        overdueTasks: 0,
+        blockedTasks: 0,
+        summary: "Live forecasting will appear after the API update is available."
+      }
+    };
+  }
+
+  return {
+    generatedAt: payload.generated_at,
+    provider: payload.provider,
+    headline: payload.headline,
+    nextActions: payload.next_actions.map((action) => ({
+      taskId: action.task_id ?? undefined,
+      projectId: action.project_id ?? undefined,
+      projectName: action.project_name,
+      title: action.title,
+      reason: action.reason,
+      actionType: action.action_type,
+      priority: action.priority,
+      score: action.score,
+      confidence: action.confidence,
+      dueDate: action.due_date ?? undefined,
+      dependencyCount: action.dependency_count
+    })),
+    riskSignals: payload.risk_signals.map((signal) => ({
+      key: signal.key,
+      severity: signal.severity,
+      title: signal.title,
+      detail: signal.detail,
+      projectId: signal.project_id ?? undefined,
+      taskId: signal.task_id ?? undefined
+    })),
+    forecast: {
+      status: payload.forecast.status,
+      scheduleConfidence: payload.forecast.schedule_confidence,
+      completionPercent: payload.forecast.completion_percent,
+      remainingMinutes: payload.forecast.remaining_minutes,
+      overdueTasks: payload.forecast.overdue_tasks,
+      blockedTasks: payload.forecast.blocked_tasks,
+      summary: payload.forecast.summary
+    }
   };
 }
 

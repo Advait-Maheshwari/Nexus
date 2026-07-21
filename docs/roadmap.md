@@ -87,7 +87,21 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 - Hardened Render API and Firebase frontend verified live with fail-closed production settings.
 - Extended CodeQL scans pass for Python and TypeScript; pull requests enforce dependency review.
 - Encrypted Neon backup and isolated PostgreSQL 18 restore drill completed successfully.
-- Production signup is Google-first; password registration stays disabled until optional verified`n  SMTP exists.
+- Production signup is Google-first; password registration stays disabled until optional verified
+  SMTP exists.
+
+## Phase 6: Operational Intelligence
+
+- Status: in progress.
+- Tenant-scoped execution intelligence generated from live project and task data.
+- Dependency-aware next-action ranking with an explanation for every recommendation.
+- Portfolio schedule confidence, remaining-effort forecast, and deadline-risk signals.
+- Team capacity, assignment balance, and lagging-owner recovery guidance.
+- Auditable automation rules with conservative defaults and explicit user control.
+- Daily and weekly briefings produced locally with deterministic heuristics.
+- Optional bring-your-own-key AI adapters remain disabled by default.
+- Desktop command workflows stay primary; mobile provides focused review and action controls.
+- No paid inference, hosting, storage, or integration is required.
 
 ## Permanent Constraint: Zero Cost
 
