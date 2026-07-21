@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -34,6 +34,15 @@ export function GalaxyView({ data }: { data: MissionData }) {
   const selectedPlanet = selectedProject?.planets.find(
     (planet) => planet.id === selectedPlanetId
   );
+
+  useEffect(() => {
+    if (data.projects.length !== 1 || selectedProjectId) return;
+
+    const [project] = data.projects;
+    setSelectedProjectId(project.id);
+    setSelectedPlanetId(project.planets[0]?.id ?? "");
+  }, [data.projects, selectedProjectId]);
+
   const linkedProjects = useMemo(() => {
     if (!selectedProject) {
       return [];
@@ -162,6 +171,14 @@ export function GalaxyView({ data }: { data: MissionData }) {
                     </div>
                   </button>
                 ))}
+                {selectedProject.planets.length === 0 ? (
+                  <div className="rounded-md border border-dashed border-cyan/25 bg-cyan/[0.04] p-3">
+                    <p className="text-sm font-semibold text-white">First planet is ready to form</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-400">
+                      Add a feature to this project. Nexus will turn it into a planet and its tasks into moons.
+                    </p>
+                  </div>
+                ) : null}
               </div>
               {selectedPlanet ? (
                 <>

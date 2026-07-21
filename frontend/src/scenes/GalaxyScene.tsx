@@ -64,7 +64,13 @@ function ProjectStar({
         1,
         1.72
       );
-      const focusScale = selected ? 1.14 : focusMode ? 0.48 : 0.34;
+      const focusScale = selected
+        ? 1.16
+        : focusMode
+          ? 0.62
+          : project.planets.length === 0
+            ? 0.9
+            : 0.62;
       group.current.scale.setScalar(focusScale * Math.min(distanceScale, focusMode ? 1.26 : 1.08));
     }
     if (orbit.current) {
@@ -181,6 +187,9 @@ function ProjectStar({
             />
           ))}
         </group>
+        {planets.length === 0 ? (
+          <FormingSystem accent={project.accent} selected={selected} />
+        ) : null}
         <Billboard position={[0, -0.42, 0]}>
           <Text
             fontSize={selected ? 0.07 : focusMode ? 0.052 : 0.038}
@@ -203,6 +212,77 @@ function ProjectStar({
           </Text>
         </Billboard>
       </Float>
+    </group>
+  );
+}
+
+function FormingSystem({ accent, selected }: { accent: string; selected: boolean }) {
+  const group = useRef<THREE.Group>(null);
+  const particleCount = selected ? 18 : 12;
+
+  useFrame(({ clock }) => {
+    if (!group.current) return;
+    group.current.rotation.y = clock.getElapsedTime() * 0.24;
+  });
+
+  return (
+    <group ref={group}>
+      <mesh rotation={[Math.PI / 2.2, 0, 0]}>
+        <torusGeometry args={[0.62, selected ? 0.006 : 0.003, 12, 128]} />
+        <meshBasicMaterial color={accent} transparent opacity={selected ? 0.42 : 0.24} />
+      </mesh>
+      {Array.from({ length: particleCount }, (_, index) => {
+        const angle = (index / particleCount) * Math.PI * 2;
+        const radius = 0.42 + (index % 4) * 0.075;
+        return (
+          <mesh
+            key={"forming-particle-" + index}
+            position={[
+              Math.cos(angle) * radius,
+              Math.sin(angle * 2.4) * 0.045,
+              Math.sin(angle) * radius
+            ]}
+          >
+            <sphereGeometry args={[index % 5 === 0 ? 0.018 : 0.008, 10, 10]} />
+            <meshBasicMaterial
+              color={index % 5 === 0 ? "#dff8ff" : accent}
+              transparent
+              opacity={0.72}
+            />
+          </mesh>
+        );
+      })}
+      <mesh position={[0.62, 0, 0]}>
+        <icosahedronGeometry args={[selected ? 0.07 : 0.05, 2]} />
+        <meshStandardMaterial
+          color={accent}
+          emissive={accent}
+          emissiveIntensity={0.34}
+          roughness={0.82}
+          wireframe
+        />
+      </mesh>
+      <Billboard position={[0, selected ? 0.38 : 0.31, 0]}>
+        <Text
+          fontSize={selected ? 0.035 : 0.026}
+          color="#dff8ff"
+          anchorX="center"
+          anchorY="middle"
+          maxWidth={0.9}
+        >
+          FORMING SYSTEM
+        </Text>
+        <Text
+          position={[0, -0.055, 0]}
+          fontSize={selected ? 0.021 : 0.016}
+          color="#94a3b8"
+          anchorX="center"
+          anchorY="middle"
+          maxWidth={1.1}
+        >
+          add a feature to form the first planet
+        </Text>
+      </Billboard>
     </group>
   );
 }
@@ -669,6 +749,12 @@ function calculateGalaxyFrame(
   selectedProject?: ProjectSummary
 ): GalaxyFrame {
   if (selectedProject) {
+    if (selectedProject.planets.length === 0) {
+      return {
+        center: new THREE.Vector3(...selectedProject.coordinates),
+        radius: 1.45
+      };
+    }
     const largestOrbit = Math.max(0.8, ...selectedProject.planets.map((planet) => planet.orbitRadius));
     return {
       center: new THREE.Vector3(...selectedProject.coordinates),
@@ -678,6 +764,13 @@ function calculateGalaxyFrame(
 
   if (projects.length === 0) {
     return { center: new THREE.Vector3(), radius: 3.8 };
+  }
+
+  if (projects.length === 1 && projects[0].planets.length === 0) {
+    return {
+      center: new THREE.Vector3(...projects[0].coordinates),
+      radius: 1.75
+    };
   }
 
   const bounds = new THREE.Box3();
