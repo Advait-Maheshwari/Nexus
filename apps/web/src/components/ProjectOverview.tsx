@@ -55,6 +55,7 @@ interface TeamDelivery {
 export function ProjectOverview({
   projectId,
   projectName,
+  accessToken,
   projectProgress = 0,
   healthScore = 100,
   features = [],
@@ -62,12 +63,17 @@ export function ProjectOverview({
 }: {
   projectId: string;
   projectName: string;
+  accessToken: string;
   projectProgress?: number;
   healthScore?: number;
   features?: WorkspaceFeature[];
   tasks?: WorkspaceTask[];
 }) {
-  const { blueprint, save } = useProjectBlueprint(projectId, projectName);
+  const { blueprint, save, loading, saving, error } = useProjectBlueprint(
+    projectId,
+    projectName,
+    accessToken
+  );
   const [draft, setDraft] = useState(blueprint);
   const [editing, setEditing] = useState(false);
 
@@ -99,9 +105,10 @@ export function ProjectOverview({
     setEditing(true);
   }
 
-  function saveDraft() {
-    save(draft);
-    setEditing(false);
+  async function saveDraft() {
+    if (await save(draft)) {
+      setEditing(false);
+    }
   }
 
   function toggleGoal(goalId: string) {
@@ -223,7 +230,8 @@ export function ProjectOverview({
                 icon={<Save size={16} />}
                 aria-label="Save project blueprint"
                 title="Save blueprint"
-                onClick={saveDraft}
+                disabled={saving}
+                onClick={() => void saveDraft()}
               />
             </>
           ) : (
@@ -233,12 +241,23 @@ export function ProjectOverview({
               icon={<Pencil size={16} />}
               aria-label="Edit project blueprint"
               title="Edit blueprint"
+              disabled={loading || saving}
               onClick={beginEditing}
             />
           )}
         </div>
       </div>
 
+      {error ? (
+        <p role="alert" className="mt-4 rounded-md border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
+          {error}
+        </p>
+      ) : null}
+      {loading ? (
+        <p role="status" className="mt-4 text-sm text-slate-400">
+          Loading the server-owned execution plan...
+        </p>
+      ) : null}
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="rounded-md border border-cyan/20 bg-cyan/[0.055] p-4">
           <div className="flex items-center gap-2 text-cyan">
@@ -342,7 +361,7 @@ export function ProjectOverview({
                   <div className="flex items-start gap-3">
                     <button
                       type="button"
-                      disabled={editing}
+                      disabled={editing || saving}
                       onClick={() => toggleGoal(goal.id)}
                       className={goal.completed ? "mt-0.5 text-success" : "mt-0.5 text-slate-500"}
                       aria-label={goal.completed ? "Mark goal incomplete" : "Mark goal complete"}
@@ -504,7 +523,7 @@ export function ProjectOverview({
                       <button
                         type="button"
                         onClick={() => advanceStep(step.id)}
-                        disabled={step.status === "done"}
+                        disabled={step.status === "done" || saving}
                         className={cn(
                           "rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.12em] md:mt-3 md:w-full",
                           step.status === "done"

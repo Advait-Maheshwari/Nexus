@@ -1,4 +1,6 @@
+import type { ProjectBlueprint } from "@/types/blueprint";
 import type { ExecutionIntelligence, MissionData, ProjectSummary } from "@/types/domain";
+import type { Preferences } from "@/types/preferences";
 import type {
   NexusAccount,
   NexusRole,
@@ -638,6 +640,125 @@ export async function createWorkspaceProject(input: {
   };
 }
 
+export async function fetchProjectBlueprint(
+  projectId: string,
+  accessToken: string
+): Promise<ProjectBlueprint> {
+  const response = await fetch(`${API_URL}/api/v1/projects/${projectId}/blueprint`, {
+    headers: authHeaders(accessToken)
+  });
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Project blueprint loading failed"));
+  }
+  return mapBlueprint(await response.json());
+}
+
+export async function updateProjectBlueprint(
+  projectId: string,
+  blueprint: ProjectBlueprint,
+  accessToken: string
+): Promise<ProjectBlueprint> {
+  const response = await fetch(`${API_URL}/api/v1/projects/${projectId}/blueprint`, {
+    method: "PUT",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify({
+      vision: blueprint.vision,
+      definition_of_done: blueprint.definitionOfDone,
+      strategy: blueprint.strategy,
+      constraints: blueprint.constraints,
+      goals: blueprint.goals,
+      steps: blueprint.steps,
+      teams: blueprint.teams.map((team) => ({
+        id: team.id,
+        name: team.name,
+        lead: team.lead,
+        responsibility: team.responsibility,
+        task_ids: team.taskIds
+      }))
+    })
+  });
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Project blueprint saving failed"));
+  }
+  return mapBlueprint(await response.json());
+}
+
+export async function fetchPreferences(accessToken: string): Promise<Preferences> {
+  const response = await fetch(`${API_URL}/api/v1/preferences`, {
+    headers: authHeaders(accessToken)
+  });
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Preferences loading failed"));
+  }
+  const value = await response.json();
+  return {
+    reducedMotion: value.reduced_motion,
+    compactInterface: value.compact_interface,
+    autoBriefing: value.auto_briefing
+  };
+}
+
+export async function updatePreferences(
+  accessToken: string,
+  preferences: Preferences
+): Promise<Preferences> {
+  const response = await fetch(`${API_URL}/api/v1/preferences`, {
+    method: "PUT",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify({
+      reduced_motion: preferences.reducedMotion,
+      compact_interface: preferences.compactInterface,
+      auto_briefing: preferences.autoBriefing
+    })
+  });
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Preferences saving failed"));
+  }
+  const value = await response.json();
+  return {
+    reducedMotion: value.reduced_motion,
+    compactInterface: value.compact_interface,
+    autoBriefing: value.auto_briefing
+  };
+}
+
+function mapBlueprint(value: {
+  project_id: string;
+  vision: string;
+  definition_of_done: string;
+  strategy: string;
+  constraints: string[];
+  goals: ProjectBlueprint["goals"];
+  steps: ProjectBlueprint["steps"];
+  teams: Array<{
+    id: string;
+    name: string;
+    lead: string;
+    responsibility: string;
+    task_ids: string[];
+  }>;
+  version: number;
+  updated_at: string;
+}): ProjectBlueprint {
+  return {
+    projectId: value.project_id,
+    vision: value.vision,
+    definitionOfDone: value.definition_of_done,
+    strategy: value.strategy,
+    constraints: value.constraints,
+    goals: value.goals,
+    steps: value.steps,
+    teams: value.teams.map((team) => ({
+      id: team.id,
+      name: team.name,
+      lead: team.lead,
+      responsibility: team.responsibility,
+      taskIds: team.task_ids
+    })),
+    version: value.version,
+    updatedAt: value.updated_at
+  };
+}
 export async function listWorkspaceFeatures(
   projectId: string,
   accessToken: string

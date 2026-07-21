@@ -30,5 +30,6 @@ export interface ProjectBlueprint {
   goals: ProjectGoal[];
   steps: ProjectStep[];
   teams: ProjectTeam[];
+  version: number;
   updatedAt: string;
 }

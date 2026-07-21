@@ -32,6 +32,7 @@ import {
   deleteAccount,
   enterPrivateDemo,
   fetchAccount,
+  fetchPreferences,
   fetchWorkspaceUsage,
   listWorkspaceMembers,
   listWorkspaces,
@@ -39,8 +40,10 @@ import {
   mergeAccount,
   switchWorkspace,
   updateWorkspaceMemberRole,
-  updateAccount
+  updateAccount,
+  updatePreferences
 } from "@/lib/api";
+import { clearLegacyPreferences, readLegacyPreferences } from "@/lib/legacyStateMigration";
 import { cn } from "@/lib/utils";
 import { IntegrationsView } from "@/pages/IntegrationsView";
 import { IdeasView, JournalView } from "@/pages/PlanningViews";
@@ -53,20 +56,8 @@ import type {
   WorkspaceUsage
 } from "@/types/auth";
 import type { MissionData } from "@/types/domain";
+import { defaultPreferences, type Preferences } from "@/types/preferences";
 
-const PREFERENCES_KEY = "nexus.preferences.v1";
-
-interface Preferences {
-  reducedMotion: boolean;
-  compactInterface: boolean;
-  autoBriefing: boolean;
-}
-
-const defaults: Preferences = {
-  reducedMotion: false,
-  compactInterface: false,
-  autoBriefing: true
-};
 
 const avatarPresets = [
   { label: "Orbit", path: "/avatars/orbit.svg" },
@@ -664,14 +655,9 @@ function SettingsPanel({
   onSessionRevoked: () => void;
   embedded?: boolean;
 }) {
-  const [preferences, setPreferences] = useState<Preferences>(() => {
-    try {
-      return { ...defaults, ...JSON.parse(localStorage.getItem(PREFERENCES_KEY) ?? "{}") };
-    } catch {
-      return defaults;
-    }
-  });
+  const [preferences, setPreferences] = useState<Preferences>(defaultPreferences);
   const [saved, setSaved] = useState(false);
+  const [preferenceBusy, setPreferenceBusy] = useState(true);
   const [account, setAccount] = useState<NexusAccount | null>(null);
   const [accountStatus, setAccountStatus] = useState("");
   const [accountBusy, setAccountBusy] = useState(true);
@@ -687,9 +673,25 @@ function SettingsPanel({
   useEffect(() => {
     let active = true;
     setAccountBusy(true);
-    void fetchAccount(session.accessToken)
-      .then((nextAccount) => {
-        if (active) setAccount(nextAccount);
+    setPreferenceBusy(true);
+    void Promise.all([
+      fetchAccount(session.accessToken),
+      fetchPreferences(session.accessToken)
+    ])
+      .then(async ([nextAccount, serverPreferences]) => {
+        const legacy = readLegacyPreferences();
+        const nextPreferences = legacy
+          ? await updatePreferences(session.accessToken, {
+              reducedMotion: legacy.reducedMotion ?? serverPreferences.reducedMotion,
+              compactInterface: legacy.compactInterface ?? serverPreferences.compactInterface,
+              autoBriefing: legacy.autoBriefing ?? serverPreferences.autoBriefing
+            })
+          : serverPreferences;
+        if (legacy) clearLegacyPreferences();
+        if (active) {
+          setAccount(nextAccount);
+          setPreferences(nextPreferences);
+        }
       })
       .catch((error) => {
         if (active) {
@@ -697,17 +699,28 @@ function SettingsPanel({
         }
       })
       .finally(() => {
-        if (active) setAccountBusy(false);
+        if (active) {
+          setAccountBusy(false);
+          setPreferenceBusy(false);
+        }
       });
     return () => {
       active = false;
     };
   }, [session.accessToken]);
 
-  function save() {
-    localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 1600);
+  async function save() {
+    setPreferenceBusy(true);
+    setAccountStatus("");
+    try {
+      setPreferences(await updatePreferences(session.accessToken, preferences));
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 1600);
+    } catch (error) {
+      setAccountStatus(error instanceof Error ? error.message : "Settings failed to save.");
+    } finally {
+      setPreferenceBusy(false);
+    }
   }
 
   async function openPrivateDemo() {
@@ -809,7 +822,7 @@ function SettingsPanel({
         ) : null}
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button icon={<Save size={16} />} onClick={save}>
+        <Button icon={<Save size={16} />} disabled={preferenceBusy} onClick={() => void save()}>
           {saved ? "Saved" : "Save Settings"}
         </Button>
         {accountStatus ? <p role="status" className="text-sm text-slate-400">{accountStatus}</p> : null}

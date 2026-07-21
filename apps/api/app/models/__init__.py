@@ -7,6 +7,7 @@ from app.models.idea import Idea
 from app.models.journal import JournalEntry
 from app.models.milestone import Milestone
 from app.models.project import Project
+from app.models.project_blueprint import ProjectBlueprint
 from app.models.task import Task, TaskDependency
 from app.models.time_entry import TimeEntry
 from app.models.user import User
@@ -23,6 +24,7 @@ __all__ = [
     "JournalEntry",
     "Milestone",
     "Project",
+    "ProjectBlueprint",
     "Task",
     "TaskDependency",
     "TimeEntry",

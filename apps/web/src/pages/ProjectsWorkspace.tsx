@@ -157,6 +157,7 @@ export function ProjectsView({ session }: { session: NexusSession }) {
             <ProjectOverview
               projectId={workspace.selectedProject.id}
               projectName={workspace.selectedProject.name}
+              accessToken={session.accessToken}
               projectProgress={workspace.selectedProject.progress}
               healthScore={workspace.selectedProject.healthScore}
               features={workspace.features}

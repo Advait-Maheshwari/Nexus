@@ -24,6 +24,7 @@ from app.models.idea import Idea
 from app.models.journal import JournalEntry
 from app.models.milestone import Milestone
 from app.models.project import Project
+from app.models.project_blueprint import ProjectBlueprint
 from app.models.task import Task, TaskDependency
 from app.models.time_entry import TimeEntry
 from app.models.user import User
@@ -492,6 +493,9 @@ async def _delete_project_graph(session: AsyncSession, project_ids: list[str]) -
     await session.execute(delete(JournalEntry).where(JournalEntry.project_id.in_(project_ids)))
     await session.execute(delete(Task).where(Task.project_id.in_(project_ids)))
     await session.execute(delete(Feature).where(Feature.project_id.in_(project_ids)))
+    await session.execute(
+        delete(ProjectBlueprint).where(ProjectBlueprint.project_id.in_(project_ids))
+    )
     await session.execute(delete(Project).where(Project.id.in_(project_ids)))
 
 

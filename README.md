@@ -24,6 +24,8 @@ Nexus is a client/server monorepo with one controlled contract boundary:
 
 The client communicates with the server only through versioned `/api/v1` HTTP endpoints. The client never connects directly to PostgreSQL, Neon, SMTP, Firebase Admin, or server credentials.
 
+Project execution blueprints, team assignments, and interface preferences are server-owned. See [`docs/client-server-architecture.md`](docs/client-server-architecture.md) for the authority matrix and browser-storage policy.
+
 ## Local Development
 
 Install frontend dependencies:

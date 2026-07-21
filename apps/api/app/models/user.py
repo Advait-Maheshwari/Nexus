@@ -25,6 +25,9 @@ class User(IdMixin, TimestampMixin, Base):
     password_hash: Mapped[str | None] = mapped_column(String(255))
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    reduced_motion: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    compact_interface: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    auto_briefing: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     memberships: Mapped[list["WorkspaceMember"]] = relationship(back_populates="user")
     sessions: Mapped[list["UserSession"]] = relationship(
