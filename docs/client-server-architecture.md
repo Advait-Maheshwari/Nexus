@@ -5,7 +5,7 @@ service authorizes, validates, stores, and computes it.
 
 ## Runtime Boundary
 
-| Concern | Client (`apps/web`) | Server (`apps/api`) |
+| Concern | Client (`frontend`) | Server (`backend`) |
 | --- | --- | --- |
 | Rendering and interaction | React, R3F, responsive UI | No |
 | Authentication state | Short-lived access token in session storage; refresh cookie is HTTP-only | Identity verification, session revocation, roles |

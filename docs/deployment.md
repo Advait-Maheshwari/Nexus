@@ -20,7 +20,7 @@ The public URL will be:
 The repository includes `netlify.toml`.
 
 - Build command: `npm run build`
-- Publish directory: `apps/web/dist`
+- Publish directory: `frontend/dist`
 - Node version: `20`
 
 Netlify deployment requires connecting the GitHub repository to a user-owned free Netlify account.

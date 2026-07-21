@@ -22,7 +22,7 @@ services:
 
   api:
     build:
-      context: ../apps/api
+      context: ../backend
       dockerfile: Dockerfile
     env_file:
       - ../.env.example
@@ -39,7 +39,7 @@ services:
   web:
     build:
       context: ..
-      dockerfile: apps/web/Dockerfile
+      dockerfile: frontend/Dockerfile
     environment:
       VITE_API_URL: http://localhost:8000
     ports:

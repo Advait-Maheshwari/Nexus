@@ -14,11 +14,11 @@ Nexus has a hard zero-cost constraint from Phase 1 through the final personal-us
 Desktop / mobile browser
         |
         v
-Client application (apps/web)
+Client application (frontend)
         |
         | HTTPS + JSON through /api/v1
         v
-Server application (apps/api)
+Server application (backend)
         |
         +-- PostgreSQL / Neon
         +-- Firebase token verification
@@ -35,15 +35,14 @@ Client-safe contracts (packages/shared) describe transport data only.
 - The browser reaches server features only through versioned `/api/v1` endpoints; it never reaches a database directly.
 - `packages/shared` may expose serializable types and constants, but it may not import client UI or server runtime modules.
 - Firebase proves identity; the server still issues the Nexus session and enforces workspace permissions.
-- Browser storage is limited to session and preference state; project data remains authoritative on the API.
+- Browser storage is limited to short-lived session state; preferences and project data remain authoritative on the API.
 - Render hosts the server and Firebase Hosting serves the client within the zero-cost policy.
 
 ### Repository Layout
 
 ```txt
-apps/
-  web/          # client application
-  api/          # server application
+frontend/       # React, TypeScript, Vite, and 3D client application
+backend/        # FastAPI, SQLAlchemy, Alembic, and server tests
 packages/
   shared/       # browser-safe transport contracts
 infra/          # local client/server dependencies
@@ -51,7 +50,7 @@ ops/            # server operations, backup, and recovery tools
 docs/           # architecture and operating guidance
 ```
 
-The established `web` and `api` folder names are retained because deployment and CI already consume them; their architectural roles are client and server respectively.
+The top-level frontend and backend folders make the runtime boundary visible and keep everyday navigation simple. Deployment and CI use these same paths.
 
 ```txt
 User

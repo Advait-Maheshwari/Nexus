@@ -3,7 +3,7 @@ services:
     name: nexus-api
     runtime: docker
     plan: free
-    rootDir: apps/api
+    rootDir: backend
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/v1/ready
     envVars:

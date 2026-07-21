@@ -16,8 +16,8 @@ Nexus must cost `0` from Phase 1 through the final personal-use phase. Core func
 
 Nexus is a client/server monorepo with one controlled contract boundary:
 
-- `apps/web` is the client: React, TypeScript, Vite, Three.js, React Three Fiber, TailwindCSS, and the browser-safe API client.
-- `apps/api` is the server: FastAPI, SQLAlchemy, Alembic, authentication, authorization, tenant isolation, persistence, analytics, and integrations.
+- `frontend` is the client: React, TypeScript, Vite, Three.js, React Three Fiber, TailwindCSS, and the browser-safe API client.
+- `backend` is the server: FastAPI, SQLAlchemy, Alembic, authentication, authorization, tenant isolation, persistence, analytics, and integrations.
 - `packages/shared` contains client-safe TypeScript contracts. It contains no database, secret, or server runtime code.
 - `infra`: Docker Compose for PostgreSQL, Redis, API, and web.
 - `docs`: product architecture, roadmap, and design system notes.
@@ -40,12 +40,20 @@ Run the client from the repository root:
 npm run dev:client
 ```
 
-Install the server once:
+Install the server once on Windows PowerShell:
+
+```powershell
+python -m venv backend/.venv
+backend\.venv\Scripts\Activate.ps1
+python -m pip install -e "backend[dev]"
+```
+
+On macOS or Linux:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e "apps/api[dev]"
+python -m venv backend/.venv
+source backend/.venv/bin/activate
+python -m pip install -e "backend[dev]"
 ```
 
 Then run the server from the repository root:

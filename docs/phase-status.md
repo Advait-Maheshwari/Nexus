@@ -121,8 +121,8 @@ delivery, and file upload automation.
 - The project guidance engine now includes editable delivery teams, team leads, responsibilities,
   exclusive task assignments, unassigned-work detection, and computed on-track/watch/lagging
   signals that feed the recommended next move.
-- The monorepo now has an explicit client/server contract: `apps/web` owns browser presentation,
-  `apps/api` owns security and business rules, and `packages/shared` stays transport-only.
+- The monorepo now has an explicit client/server contract: `frontend` owns browser presentation,
+  `backend` owns security and business rules, and `packages/shared` stays transport-only.
 - City Builder now starts with a complete-city framing, supports a 20-unit zoom range and full
   orbit/pan control, and includes peripheral neighborhoods, parks, city gates, and moving transit.
 - Galaxy now uses corrected camera targeting, stable selected-system spacing, semantic feature
