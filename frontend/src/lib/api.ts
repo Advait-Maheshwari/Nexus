@@ -1,5 +1,10 @@
 import type { ProjectBlueprint } from "@/types/blueprint";
-import type { ExecutionIntelligence, MissionData, ProjectSummary } from "@/types/domain";
+import type {
+  ExecutionIntelligence,
+  MissionData,
+  ProjectSummary,
+  TeamIntelligence
+} from "@/types/domain";
 import type { Preferences } from "@/types/preferences";
 import type {
   NexusAccount,
@@ -422,6 +427,34 @@ interface ApiExecutionIntelligence {
   };
 }
 
+interface ApiTeamIntelligence {
+  generated_at: string;
+  provider: string;
+  headline: string;
+  total_teams: number;
+  lagging_teams: number;
+  unassigned_tasks: number;
+  signals: Array<{
+    project_id: string;
+    project_name: string;
+    team_id: string;
+    team_name: string;
+    lead: string;
+    responsibility: string;
+    state: TeamIntelligence["signals"][number]["state"];
+    assigned_task_count: number;
+    assigned_task_titles: string[];
+    open_task_count: number;
+    completed_task_count: number;
+    blocked_task_count: number;
+    overdue_task_count: number;
+    remaining_minutes: number;
+    completion_percent: number;
+    capacity_score: number;
+    recovery_action: string;
+  }>;
+}
+
 interface ApiMissionControl {
   metrics: MissionData["metrics"];
   projects: ApiProjectSummary[];
@@ -429,6 +462,7 @@ interface ApiMissionControl {
   ai_recommendations: ApiRecommendation[];
   activity: string[];
   execution_intelligence?: ApiExecutionIntelligence;
+  team_intelligence?: ApiTeamIntelligence;
 }
 
 export async function fetchMissionControl(accessToken: string): Promise<MissionData> {
@@ -461,7 +495,8 @@ export async function fetchMissionControl(accessToken: string): Promise<MissionD
     })),
     activity: payload.activity,
     timeline: [],
-    executionIntelligence: mapExecutionIntelligence(payload.execution_intelligence)
+    executionIntelligence: mapExecutionIntelligence(payload.execution_intelligence),
+    teamIntelligence: mapTeamIntelligence(payload.team_intelligence)
   };
 }
 
@@ -521,6 +556,48 @@ function mapExecutionIntelligence(
       blockedTasks: payload.forecast.blocked_tasks,
       summary: payload.forecast.summary
     }
+  };
+}
+
+function mapTeamIntelligence(payload?: ApiTeamIntelligence): TeamIntelligence {
+  if (!payload) {
+    return {
+      generatedAt: "",
+      provider: "nexus_local_team_heuristic_v1",
+      headline: "Team intelligence is synchronizing with the Nexus API.",
+      totalTeams: 0,
+      laggingTeams: 0,
+      unassignedTasks: 0,
+      signals: []
+    };
+  }
+
+  return {
+    generatedAt: payload.generated_at,
+    provider: payload.provider,
+    headline: payload.headline,
+    totalTeams: payload.total_teams,
+    laggingTeams: payload.lagging_teams,
+    unassignedTasks: payload.unassigned_tasks,
+    signals: payload.signals.map((signal) => ({
+      projectId: signal.project_id,
+      projectName: signal.project_name,
+      teamId: signal.team_id,
+      teamName: signal.team_name,
+      lead: signal.lead,
+      responsibility: signal.responsibility,
+      state: signal.state,
+      assignedTaskCount: signal.assigned_task_count,
+      assignedTaskTitles: signal.assigned_task_titles,
+      openTaskCount: signal.open_task_count,
+      completedTaskCount: signal.completed_task_count,
+      blockedTaskCount: signal.blocked_task_count,
+      overdueTaskCount: signal.overdue_task_count,
+      remainingMinutes: signal.remaining_minutes,
+      completionPercent: signal.completion_percent,
+      capacityScore: signal.capacity_score,
+      recoveryAction: signal.recovery_action
+    }))
   };
 }
 

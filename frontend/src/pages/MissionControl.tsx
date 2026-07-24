@@ -8,6 +8,8 @@ import {
   Radar,
   ShieldCheck,
   TriangleAlert,
+  UserRound,
+  Users,
   Waypoints
 } from "lucide-react";
 
@@ -16,7 +18,12 @@ import { ProjectOrbitCard } from "@/components/ProjectOrbitCard";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { createLocalBriefing, downloadTextFile } from "@/lib/localAi";
-import type { ExecutionAction, MissionData, RiskSignal } from "@/types/domain";
+import type {
+  ExecutionAction,
+  MissionData,
+  RiskSignal,
+  TeamDeliverySignal
+} from "@/types/domain";
 
 const GalaxyScene = lazy(() => import("@/scenes/GalaxyScene"));
 
@@ -141,6 +148,8 @@ export function MissionControl({ data }: { data: MissionData }) {
           </div>
         </section>
 
+        <TeamIntelligencePanel data={data} />
+
         <section className="grid gap-4 xl:grid-cols-2">
           <SignalList
             eyebrow="Today's mission"
@@ -158,6 +167,130 @@ export function MissionControl({ data }: { data: MissionData }) {
         </section>
       </div>
     </div>
+  );
+}
+
+function TeamIntelligencePanel({ data }: { data: MissionData }) {
+  const intelligence = data.teamIntelligence;
+
+  return (
+    <section className="glass-panel rounded-lg p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="max-w-3xl">
+          <div className="flex items-center gap-2">
+            <Users size={18} className="text-violet" />
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet">
+              Team intelligence
+            </p>
+          </div>
+          <h2 className="mt-2 text-xl font-semibold text-white">Ownership & Capacity</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">{intelligence.headline}</p>
+        </div>
+        <div className="flex flex-wrap gap-2 font-mono text-[11px] uppercase">
+          <span className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-slate-300">
+            {intelligence.totalTeams} teams
+          </span>
+          <span
+            className={cn(
+              "rounded-md border px-2.5 py-1.5",
+              intelligence.laggingTeams
+                ? "border-risk/30 bg-risk/10 text-risk"
+                : "border-success/25 bg-success/10 text-success"
+            )}
+          >
+            {intelligence.laggingTeams} lagging
+          </span>
+          <span
+            className={cn(
+              "rounded-md border px-2.5 py-1.5",
+              intelligence.unassignedTasks
+                ? "border-solar/30 bg-solar/10 text-solar"
+                : "border-white/10 bg-white/[0.04] text-slate-300"
+            )}
+          >
+            {intelligence.unassignedTasks} unowned tasks
+          </span>
+        </div>
+      </div>
+
+      {intelligence.signals.length > 0 ? (
+        <div className="mt-5 divide-y divide-white/10 border-y border-white/10">
+          {intelligence.signals.slice(0, 8).map((signal) => (
+            <TeamSignalRow
+              key={`${signal.projectId}-${signal.teamId}`}
+              signal={signal}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 flex min-h-24 items-center gap-3 border-y border-white/10 px-1 text-sm text-slate-400">
+          <UserRound size={19} className="shrink-0 text-violet" />
+          {intelligence.unassignedTasks > 0
+            ? "Open Project Overview, define the responsible team, and assign every active task."
+            : "Team delivery signals will appear after a project has a team and assigned tasks."}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function TeamSignalRow({ signal }: { signal: TeamDeliverySignal }) {
+  const state = teamState(signal.state);
+
+  return (
+    <article className="grid gap-4 py-4 lg:grid-cols-[minmax(210px,0.72fr)_minmax(280px,1fr)_minmax(260px,0.9fr)] lg:items-start">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-semibold text-white">{signal.teamName}</h3>
+          <span className={cn("rounded-full border px-2 py-0.5 text-[10px] uppercase", state.badgeClass)}>
+            {state.label}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-slate-500">{signal.projectName}</p>
+        <div className="mt-2 flex items-center gap-2 text-sm text-slate-300">
+          <UserRound size={14} className="shrink-0 text-violet" />
+          <span>{signal.lead}</span>
+        </div>
+      </div>
+
+      <div className="min-w-0">
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="text-slate-500">Estimated delivery capacity</span>
+          <span className={cn("font-mono tabular-nums", state.textClass)}>
+            {signal.capacityScore}/100
+          </span>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div
+            className={cn("h-full rounded-full", state.barClass)}
+            style={{ width: `${signal.capacityScore}%` }}
+          />
+        </div>
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[11px] uppercase text-slate-500">
+          <span>{signal.completionPercent}% complete</span>
+          <span>{signal.openTaskCount} open</span>
+          <span>{formatMinutes(signal.remainingMinutes)} left</span>
+          {signal.blockedTaskCount > 0 ? (
+            <span className="text-risk">{signal.blockedTaskCount} blocked</span>
+          ) : null}
+          {signal.overdueTaskCount > 0 ? (
+            <span className="text-solar">{signal.overdueTaskCount} overdue</span>
+          ) : null}
+        </div>
+        <p className="mt-2 break-words text-xs leading-5 text-slate-400">
+          {signal.assignedTaskTitles.length
+            ? signal.assignedTaskTitles.join(" / ")
+            : "No tasks assigned"}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+          Recovery move
+        </p>
+        <p className="mt-2 text-sm leading-5 text-slate-300">{signal.recoveryAction}</p>
+      </div>
+    </article>
   );
 }
 
@@ -377,6 +510,39 @@ function forecastStatus(status: MissionData["executionIntelligence"]["forecast"]
     textClass: "text-success",
     iconClass: "text-success",
     badgeClass: "border-success/30 bg-success/10 text-success",
+    barClass: "bg-success"
+  };
+}
+
+function teamState(state: TeamDeliverySignal["state"]) {
+  if (state === "lagging") {
+    return {
+      label: "Lagging",
+      badgeClass: "border-risk/30 bg-risk/10 text-risk",
+      textClass: "text-risk",
+      barClass: "bg-risk"
+    };
+  }
+  if (state === "watch") {
+    return {
+      label: "Watch",
+      badgeClass: "border-solar/30 bg-solar/10 text-solar",
+      textClass: "text-solar",
+      barClass: "bg-solar"
+    };
+  }
+  if (state === "unassigned") {
+    return {
+      label: "No work",
+      badgeClass: "border-white/15 bg-white/[0.04] text-slate-400",
+      textClass: "text-slate-400",
+      barClass: "bg-slate-500"
+    };
+  }
+  return {
+    label: "On track",
+    badgeClass: "border-success/30 bg-success/10 text-success",
+    textClass: "text-success",
     barClass: "bg-success"
   };
 }

@@ -93,12 +93,14 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 ## Phase 6: Operational Intelligence
 
 - Status: in progress.
-- Tenant-scoped execution intelligence generated from live project and task data.
-- Dependency-aware next-action ranking with an explanation for every recommendation.
-- Portfolio schedule confidence, remaining-effort forecast, and deadline-risk signals.
-- Team capacity, assignment balance, and lagging-owner recovery guidance.
+- Completed: tenant-scoped execution intelligence generated from live project and task data.
+- Completed: dependency-aware next-action ranking with an explanation for every recommendation.
+- Completed: portfolio schedule confidence, remaining-effort forecast, and deadline-risk signals.
+- Completed: server-owned team capacity, assignment balance, lagging-owner recovery guidance,
+  and unowned-work detection.
+- Completed: deterministic briefing and export content now includes team recovery signals.
 - Auditable automation rules with conservative defaults and explicit user control.
-- Daily and weekly briefings produced locally with deterministic heuristics.
+- Server-owned daily and weekly briefing snapshots with deterministic heuristics.
 - Optional bring-your-own-key AI adapters remain disabled by default.
 - Desktop command workflows stay primary; mobile provides focused review and action controls.
 - No paid inference, hosting, storage, or integration is required.

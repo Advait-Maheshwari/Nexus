@@ -50,6 +50,16 @@ export function createLocalBriefing(data: MissionData): LocalBriefing {
     weakestFeature,
     slowestHealthyProject
   });
+  const laggingTeam = data.teamIntelligence.signals.find(
+    (signal) => signal.state === "lagging"
+  );
+  if (laggingTeam) {
+    actionPlan.unshift(laggingTeam.recoveryAction);
+  } else if (data.teamIntelligence.unassignedTasks > 0) {
+    actionPlan.unshift(
+      `Assign ${data.teamIntelligence.unassignedTasks} unowned task${data.teamIntelligence.unassignedTasks === 1 ? "" : "s"} before adding scope.`
+    );
+  }
 
   return {
     headline: hasProjects
@@ -67,7 +77,9 @@ export function createLocalBriefing(data: MissionData): LocalBriefing {
       ? `${soonestDeadline.name} has the closest deadline (${soonestDeadline.deadline}) at ${soonestDeadline.progress}% completion. Keep scope tight until it crosses 60%.`
       : "No hard deadline is visible yet. Add one if the project needs time pressure.",
     bottleneck:
-      mostBlocked && mostBlocked.blockedTaskCount > 0
+      laggingTeam
+        ? `${laggingTeam.teamName} on ${laggingTeam.projectName} is lagging. ${laggingTeam.recoveryAction}`
+        : mostBlocked && mostBlocked.blockedTaskCount > 0
         ? `${mostBlocked.name} has ${mostBlocked.blockedTaskCount} blocker${mostBlocked.blockedTaskCount === 1 ? "" : "s"}; resolve that before expanding the roadmap.`
         : "No major blocker cluster detected from the current project graph.",
     healthNarrative: !hasProjects
@@ -77,8 +89,11 @@ export function createLocalBriefing(data: MissionData): LocalBriefing {
         : averageHealth >= 68
           ? "Portfolio health is usable but uneven. Clear blockers and stabilize low-progress features."
           : "Portfolio health is under pressure. Reduce scope and recover one project before expanding.",
-    weeklyReview:
-      "This week should protect the zero-cost policy, close visible blockers, and move one project through a complete project-feature-task loop.",
+    weeklyReview: laggingTeam
+      ? `This week should recover ${laggingTeam.teamName}, assign every open task, and protect the zero-cost policy while closing one project-feature-task loop.`
+      : data.teamIntelligence.unassignedTasks > 0
+        ? `This week should assign ${data.teamIntelligence.unassignedTasks} unowned task${data.teamIntelligence.unassignedTasks === 1 ? "" : "s"}, close visible blockers, and protect the zero-cost policy.`
+        : "This week should protect the zero-cost policy, close visible blockers, and move one project through a complete project-feature-task loop.",
     report: buildReport(data, averageProgress, averageHealth, totalBlocked, actionPlan)
   };
 }
@@ -211,10 +226,25 @@ function buildReport(
     `Average progress: ${averageProgress}%`,
     `Average health: ${averageHealth}/100`,
     `Blocked tasks: ${totalBlocked}`,
+    `Lagging teams: ${data.teamIntelligence.laggingTeams}`,
+    `Unowned tasks: ${data.teamIntelligence.unassignedTasks}`,
     "",
     "## Next Moves",
     "",
     ...actionPlan.map((move, index) => `${index + 1}. ${move}`),
+    "",
+    "## Team Delivery",
+    "",
+    data.teamIntelligence.headline,
+    ...data.teamIntelligence.signals.flatMap((signal) => [
+      `### ${signal.teamName} / ${signal.projectName}`,
+      `Lead: ${signal.lead}`,
+      `State: ${signal.state}`,
+      `Capacity: ${signal.capacityScore}/100`,
+      `Assigned: ${signal.assignedTaskTitles.join(", ") || "None"}`,
+      `Recovery: ${signal.recoveryAction}`,
+      ""
+    ]),
     "",
     "## Projects",
     "",

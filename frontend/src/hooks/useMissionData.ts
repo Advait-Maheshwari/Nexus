@@ -30,6 +30,15 @@ const emptyMissionData: MissionData = {
       blockedTasks: 0,
       summary: "Create a project and one finishable task to establish a forecast."
     }
+  },
+  teamIntelligence: {
+    generatedAt: "",
+    provider: "nexus_local_team_heuristic_v1",
+    headline: "Team intelligence starts when the first project has tracked work.",
+    totalTeams: 0,
+    laggingTeams: 0,
+    unassignedTasks: 0,
+    signals: []
   }
 };
 

@@ -105,6 +105,38 @@ export interface ExecutionIntelligence {
   forecast: PortfolioForecast;
 }
 
+export type TeamDeliveryState = "on_track" | "watch" | "lagging" | "unassigned";
+
+export interface TeamDeliverySignal {
+  projectId: string;
+  projectName: string;
+  teamId: string;
+  teamName: string;
+  lead: string;
+  responsibility: string;
+  state: TeamDeliveryState;
+  assignedTaskCount: number;
+  assignedTaskTitles: string[];
+  openTaskCount: number;
+  completedTaskCount: number;
+  blockedTaskCount: number;
+  overdueTaskCount: number;
+  remainingMinutes: number;
+  completionPercent: number;
+  capacityScore: number;
+  recoveryAction: string;
+}
+
+export interface TeamIntelligence {
+  generatedAt: string;
+  provider: string;
+  headline: string;
+  totalTeams: number;
+  laggingTeams: number;
+  unassignedTasks: number;
+  signals: TeamDeliverySignal[];
+}
+
 export interface MissionData {
   metrics: Metric[];
   projects: ProjectSummary[];
@@ -114,4 +146,5 @@ export interface MissionData {
   activity: string[];
   timeline: TimelineNode[];
   executionIntelligence: ExecutionIntelligence;
+  teamIntelligence: TeamIntelligence;
 }

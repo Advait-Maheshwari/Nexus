@@ -140,3 +140,31 @@ Actions run `29738241789`.
 Optional future scale hardening includes user-owned verified SMTP before enabling password signup,
 a same-site custom domain when a permanent zero-cost option exists, distributed throttling before
 horizontal scaling, and an independent penetration test before commercial SaaS expansion.
+
+## Phase 6 Checkpoint
+
+Status: in progress.
+
+Completed:
+
+- Mission Control ranks tenant-scoped next actions with dependency, deadline, blocker, priority,
+  effort, and confidence explanations.
+- Portfolio forecasts expose schedule confidence, remaining effort, overdue work, blocked paths,
+  and completion from live server data.
+- Project blueprints retain editable teams, leads, responsibilities, and exclusive task ownership.
+- The server now calculates portfolio-wide team delivery state, estimated capacity, assignment
+  balance, lagging-team recovery actions, and unowned-work totals.
+- Mission Control presents team intelligence as a scan-friendly desktop table that stacks without
+  horizontal overflow at the 375px phone breakpoint.
+- Local daily and weekly briefing exports include team recovery and assignment signals.
+- Firebase Hosting was synchronized with the current source after deployment drift; the private
+  owner demo and forming-system Galaxy state are present in the live bundle.
+- Validation passed with `52` backend tests, Ruff, TypeScript, a production build, desktop QA,
+  375px phone QA, a nonblank WebGL canvas, and no browser console errors.
+
+Remaining:
+
+- Auditable automation rules with explicit enablement, dry-run previews, and conservative limits.
+- Server-owned daily and weekly briefing snapshots and review history.
+- Optional bring-your-own-key AI adapters that remain disabled until a user configures them.
+- Final Phase 6 production verification across Render, Firebase, and live tenant data.

@@ -63,6 +63,36 @@ class ExecutionIntelligence(BaseModel):
     forecast: PortfolioForecast
 
 
+class TeamDeliverySignal(BaseModel):
+    project_id: str
+    project_name: str
+    team_id: str
+    team_name: str
+    lead: str
+    responsibility: str
+    state: Literal["on_track", "watch", "lagging", "unassigned"]
+    assigned_task_count: int
+    assigned_task_titles: list[str]
+    open_task_count: int
+    completed_task_count: int
+    blocked_task_count: int
+    overdue_task_count: int
+    remaining_minutes: int
+    completion_percent: int
+    capacity_score: int
+    recovery_action: str
+
+
+class TeamIntelligence(BaseModel):
+    generated_at: datetime
+    provider: str
+    headline: str
+    total_teams: int
+    lagging_teams: int
+    unassigned_tasks: int
+    signals: list[TeamDeliverySignal]
+
+
 class MissionControlSummary(BaseModel):
     metrics: list[MetricCard]
     projects: list[ProjectSummary]
@@ -70,4 +100,5 @@ class MissionControlSummary(BaseModel):
     ai_recommendations: list[AIRecommendation]
     activity: list[str]
     execution_intelligence: ExecutionIntelligence
+    team_intelligence: TeamIntelligence
 

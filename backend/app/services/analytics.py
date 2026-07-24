@@ -9,11 +9,13 @@ from app.models.activity_log import ActivityLog
 from app.models.enums import Priority, WorkStatus
 from app.models.feature import Feature
 from app.models.project import Project
+from app.models.project_blueprint import ProjectBlueprint
 from app.models.task import Task, TaskDependency
 from app.schemas.analytics import AIRecommendation, MetricCard, MissionControlSummary
 from app.schemas.project import ProjectSummary
 from app.services.execution_intelligence import ExecutionTask, build_execution_intelligence
 from app.services.local_store import LocalStore
+from app.services.team_intelligence import build_team_intelligence
 
 
 async def build_database_mission_control(
@@ -113,24 +115,34 @@ async def build_database_mission_control(
             dependency_titles.setdefault(dependency.task_id, []).append(prerequisite.title)
 
     project_name_by_id = {project.id: project.name for project in projects}
-    execution_intelligence = build_execution_intelligence(
-        summaries,
-        [
-            ExecutionTask(
-                id=task.id,
-                project_id=task.project_id,
-                project_name=project_name_by_id.get(task.project_id, "Unknown project"),
-                title=task.title,
-                status=_enum_value(task.status),
-                priority=_enum_value(task.priority),
-                estimate_minutes=task.estimate_minutes,
-                time_spent_minutes=task.time_spent_minutes,
-                due_date=task.due_date,
-                blocked_reason=task.blocked_reason,
-                dependency_titles=tuple(sorted(dependency_titles.get(task.id, []))),
+    execution_tasks = [
+        ExecutionTask(
+            id=task.id,
+            project_id=task.project_id,
+            project_name=project_name_by_id.get(task.project_id, "Unknown project"),
+            title=task.title,
+            status=_enum_value(task.status),
+            priority=_enum_value(task.priority),
+            estimate_minutes=task.estimate_minutes,
+            time_spent_minutes=task.time_spent_minutes,
+            due_date=task.due_date,
+            blocked_reason=task.blocked_reason,
+            dependency_titles=tuple(sorted(dependency_titles.get(task.id, []))),
+        )
+        for task in workspace_tasks
+    ]
+    execution_intelligence = build_execution_intelligence(summaries, execution_tasks)
+    blueprints = (
+        await session.scalars(
+            select(ProjectBlueprint).where(
+                ProjectBlueprint.workspace_id == auth.workspace_id,
             )
-            for task in workspace_tasks
-        ],
+        )
+    ).all()
+    team_intelligence = build_team_intelligence(
+        summaries,
+        execution_tasks,
+        {blueprint.project_id: blueprint.teams for blueprint in blueprints},
     )
     open_tasks = [
         task
@@ -201,6 +213,7 @@ async def build_database_mission_control(
         ai_recommendations=recommendations,
         activity=activity,
         execution_intelligence=execution_intelligence,
+        team_intelligence=team_intelligence,
     )
 
 
@@ -323,24 +336,23 @@ def build_local_mission_control(store: LocalStore) -> MissionControlSummary:
         else 100
     )
     project_name_by_id = {project.id: project.name for project in project_records}
-    execution_intelligence = build_execution_intelligence(
-        summaries,
-        [
-            ExecutionTask(
-                id=task.id,
-                project_id=task.project_id,
-                project_name=project_name_by_id.get(task.project_id, "Unknown project"),
-                title=task.title,
-                status=_enum_value(task.status),
-                priority=_enum_value(task.priority),
-                estimate_minutes=task.estimate_minutes,
-                time_spent_minutes=task.time_spent_minutes,
-                due_date=task.due_date,
-                blocked_reason=task.blocked_reason,
-            )
-            for task in all_tasks
-        ],
-    )
+    execution_tasks = [
+        ExecutionTask(
+            id=task.id,
+            project_id=task.project_id,
+            project_name=project_name_by_id.get(task.project_id, "Unknown project"),
+            title=task.title,
+            status=_enum_value(task.status),
+            priority=_enum_value(task.priority),
+            estimate_minutes=task.estimate_minutes,
+            time_spent_minutes=task.time_spent_minutes,
+            due_date=task.due_date,
+            blocked_reason=task.blocked_reason,
+        )
+        for task in all_tasks
+    ]
+    execution_intelligence = build_execution_intelligence(summaries, execution_tasks)
+    team_intelligence = build_team_intelligence(summaries, execution_tasks, {})
 
     return MissionControlSummary(
         metrics=[
@@ -374,4 +386,5 @@ def build_local_mission_control(store: LocalStore) -> MissionControlSummary:
         ai_recommendations=_database_recommendations(summaries, blocked_tasks, total_tasks),
         activity=[],
         execution_intelligence=execution_intelligence,
+        team_intelligence=team_intelligence,
     )
