@@ -16,6 +16,14 @@ import type {
   WorkspaceUsage
 } from "@/types/auth";
 import type { GitHubRepositoryActivity } from "@/types/integrations";
+import type {
+  AutomationPreview,
+  AutomationRule,
+  AutomationRun,
+  BriefingSnapshot,
+  BriefingType,
+  OperationsOverview
+} from "@/types/operations";
 import type { WorkspaceFeature, WorkspaceProject, WorkspaceTask } from "@/types/workspace";
 import type {
   JournalRecord,
@@ -497,6 +505,259 @@ export async function fetchMissionControl(accessToken: string): Promise<MissionD
     timeline: [],
     executionIntelligence: mapExecutionIntelligence(payload.execution_intelligence),
     teamIntelligence: mapTeamIntelligence(payload.team_intelligence)
+  };
+}
+
+interface ApiBriefingSnapshot {
+  id: string;
+  briefing_type: BriefingType;
+  period_key: string;
+  provider: string;
+  content: {
+    headline: string;
+    focus: string;
+    next_task: string;
+    bottleneck: string;
+    health_narrative: string;
+    action_plan: string[];
+    project_count: number;
+    risk_count: number;
+    blocked_task_count: number;
+    team_headline: string;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+interface ApiAutomationRule {
+  id: string;
+  name: string;
+  briefing_type: BriefingType;
+  cadence: BriefingType;
+  enabled: boolean;
+  max_runs_per_period: number;
+  last_run_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ApiAutomationPreview {
+  rule_id: string;
+  period_key: string;
+  due: boolean;
+  would_create_snapshot: boolean;
+  reason: string;
+  action_summary: string;
+}
+
+interface ApiAutomationRun {
+  id: string;
+  rule_id: string;
+  mode: "execute";
+  status: "completed" | "skipped";
+  period_key: string;
+  output_snapshot_id?: string | null;
+  decision: Record<string, unknown>;
+  created_at: string;
+}
+
+interface ApiOperationsOverview {
+  snapshots: ApiBriefingSnapshot[];
+  rules: ApiAutomationRule[];
+  recent_runs: ApiAutomationRun[];
+  providers: Array<{
+    provider: "local" | "openai" | "anthropic" | "google";
+    label: string;
+    configured: boolean;
+    enabled: boolean;
+    execution_mode: "active" | "disabled";
+    detail: string;
+  }>;
+}
+
+export async function fetchOperations(accessToken: string): Promise<OperationsOverview> {
+  const response = await fetch(`${API_URL}/api/v1/operations`, {
+    headers: authHeaders(accessToken)
+  });
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Operational intelligence failed to load"));
+  }
+  return mapOperations(await response.json());
+}
+
+export async function generateBriefingSnapshot(
+  accessToken: string,
+  briefingType: BriefingType,
+  refreshExisting = false
+): Promise<BriefingSnapshot> {
+  const response = await fetch(`${API_URL}/api/v1/operations/briefings`, {
+    method: "POST",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify({
+      briefing_type: briefingType,
+      refresh_existing: refreshExisting
+    })
+  });
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Briefing snapshot could not be generated"));
+  }
+  return mapBriefingSnapshot(await response.json());
+}
+
+export async function createAutomationRule(
+  accessToken: string,
+  input: { name: string; briefingType: BriefingType }
+): Promise<AutomationRule> {
+  const response = await fetch(`${API_URL}/api/v1/operations/automation-rules`, {
+    method: "POST",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify({
+      name: input.name,
+      briefing_type: input.briefingType,
+      cadence: input.briefingType
+    })
+  });
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Automation rule could not be created"));
+  }
+  return mapAutomationRule(await response.json());
+}
+
+export async function updateAutomationRule(
+  accessToken: string,
+  ruleId: string,
+  input: { name?: string; enabled?: boolean }
+): Promise<AutomationRule> {
+  const response = await fetch(`${API_URL}/api/v1/operations/automation-rules/${ruleId}`, {
+    method: "PATCH",
+    headers: authHeaders(accessToken, true),
+    body: JSON.stringify(input)
+  });
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Automation rule could not be updated"));
+  }
+  return mapAutomationRule(await response.json());
+}
+
+export async function deleteAutomationRule(
+  accessToken: string,
+  ruleId: string
+): Promise<void> {
+  const response = await fetch(`${API_URL}/api/v1/operations/automation-rules/${ruleId}`, {
+    method: "DELETE",
+    headers: authHeaders(accessToken)
+  });
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Automation rule could not be deleted"));
+  }
+}
+
+export async function previewAutomationRule(
+  accessToken: string,
+  ruleId: string
+): Promise<AutomationPreview> {
+  const response = await fetch(
+    `${API_URL}/api/v1/operations/automation-rules/${ruleId}/preview`,
+    {
+      method: "POST",
+      headers: authHeaders(accessToken)
+    }
+  );
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Automation preview failed"));
+  }
+  const payload = (await response.json()) as ApiAutomationPreview;
+  return {
+    ruleId: payload.rule_id,
+    periodKey: payload.period_key,
+    due: payload.due,
+    wouldCreateSnapshot: payload.would_create_snapshot,
+    reason: payload.reason,
+    actionSummary: payload.action_summary
+  };
+}
+
+export async function executeAutomationRule(
+  accessToken: string,
+  ruleId: string
+): Promise<AutomationRun> {
+  const response = await fetch(
+    `${API_URL}/api/v1/operations/automation-rules/${ruleId}/execute`,
+    {
+      method: "POST",
+      headers: authHeaders(accessToken, true),
+      body: JSON.stringify({ confirm: true })
+    }
+  );
+  if (!response.ok) {
+    throw new Error(await apiError(response, "Automation execution failed"));
+  }
+  return mapAutomationRun(await response.json());
+}
+
+function mapOperations(payload: ApiOperationsOverview): OperationsOverview {
+  return {
+    snapshots: payload.snapshots.map(mapBriefingSnapshot),
+    rules: payload.rules.map(mapAutomationRule),
+    recentRuns: payload.recent_runs.map(mapAutomationRun),
+    providers: payload.providers.map((provider) => ({
+      provider: provider.provider,
+      label: provider.label,
+      configured: provider.configured,
+      enabled: provider.enabled,
+      executionMode: provider.execution_mode,
+      detail: provider.detail
+    }))
+  };
+}
+
+function mapBriefingSnapshot(payload: ApiBriefingSnapshot): BriefingSnapshot {
+  return {
+    id: payload.id,
+    briefingType: payload.briefing_type,
+    periodKey: payload.period_key,
+    provider: payload.provider,
+    content: {
+      headline: payload.content.headline,
+      focus: payload.content.focus,
+      nextTask: payload.content.next_task,
+      bottleneck: payload.content.bottleneck,
+      healthNarrative: payload.content.health_narrative,
+      actionPlan: payload.content.action_plan,
+      projectCount: payload.content.project_count,
+      riskCount: payload.content.risk_count,
+      blockedTaskCount: payload.content.blocked_task_count,
+      teamHeadline: payload.content.team_headline
+    },
+    createdAt: payload.created_at,
+    updatedAt: payload.updated_at
+  };
+}
+
+function mapAutomationRule(payload: ApiAutomationRule): AutomationRule {
+  return {
+    id: payload.id,
+    name: payload.name,
+    briefingType: payload.briefing_type,
+    cadence: payload.cadence,
+    enabled: payload.enabled,
+    maxRunsPerPeriod: payload.max_runs_per_period,
+    lastRunAt: payload.last_run_at ?? undefined,
+    createdAt: payload.created_at,
+    updatedAt: payload.updated_at
+  };
+}
+
+function mapAutomationRun(payload: ApiAutomationRun): AutomationRun {
+  return {
+    id: payload.id,
+    ruleId: payload.rule_id,
+    mode: payload.mode,
+    status: payload.status,
+    periodKey: payload.period_key,
+    outputSnapshotId: payload.output_snapshot_id ?? undefined,
+    decision: payload.decision,
+    createdAt: payload.created_at
   };
 }
 

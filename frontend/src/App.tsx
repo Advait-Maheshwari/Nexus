@@ -105,7 +105,9 @@ function App() {
         setSession(null);
       }}
     >
-      {activeView === "mission" ? <MissionControl data={missionData} /> : null}
+      {activeView === "mission" ? (
+        <MissionControl data={missionData} session={session} />
+      ) : null}
       {activeView === "projects" ? <ProjectsView session={session} /> : null}
       {activeView === "galaxy" ? <GalaxyView data={missionData} /> : null}
       {activeView === "analytics" ? <AnalyticsView data={missionData} /> : null}

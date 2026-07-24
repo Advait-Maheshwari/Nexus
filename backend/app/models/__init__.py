@@ -6,6 +6,7 @@ from app.models.feature import Feature
 from app.models.idea import Idea
 from app.models.journal import JournalEntry
 from app.models.milestone import Milestone
+from app.models.operations import AutomationRule, AutomationRun, BriefingSnapshot
 from app.models.project import Project
 from app.models.project_blueprint import ProjectBlueprint
 from app.models.task import Task, TaskDependency
@@ -23,6 +24,9 @@ __all__ = [
     "Idea",
     "JournalEntry",
     "Milestone",
+    "AutomationRule",
+    "AutomationRun",
+    "BriefingSnapshot",
     "Project",
     "ProjectBlueprint",
     "Task",

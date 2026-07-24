@@ -13,10 +13,15 @@ service authorizes, validates, stores, and computes it.
 | Goals, steps, and teams | Editing experience | Validation, tenant isolation, persistence, audit log |
 | Preferences | Applies returned values to the UI | Per-user persistence |
 | Analytics and guidance | Presentation | Rollups and deterministic intelligence |
+| Briefings and automation | Capture, preview, approve, and review receipts | Period snapshots, limits, execution receipts, tenant isolation |
 | Secrets and providers | Never stored or used directly | Environment-only adapters |
 
 Every durable route is versioned under `/api/v1`, requires an authenticated context, and
 filters records by the active workspace. Write routes additionally enforce role permissions.
+
+Operational automation is intentionally narrow. A rule may generate a deterministic daily or
+weekly snapshot after an administrator previews and approves it. It cannot mutate project data,
+and every execution stores a receipt. This avoids a paid scheduler and prevents invisible actions.
 
 ## Browser Storage Policy
 

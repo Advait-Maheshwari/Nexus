@@ -22,6 +22,7 @@ import {
   Trash2,
   UserCircle,
   Users,
+  Workflow,
   X
 } from "lucide-react";
 
@@ -46,6 +47,7 @@ import {
 import { clearLegacyPreferences, readLegacyPreferences } from "@/lib/legacyStateMigration";
 import { cn } from "@/lib/utils";
 import { IntegrationsView } from "@/pages/IntegrationsView";
+import { OperationsView } from "@/pages/OperationsView";
 import { IdeasView, JournalView } from "@/pages/PlanningViews";
 import type {
   NexusAccount,
@@ -79,6 +81,7 @@ type ControlModule =
   | "ideas"
   | "journal"
   | "integrations"
+  | "automation"
   | "profile"
   | "security";
 
@@ -117,6 +120,12 @@ const controlModules: Array<{
     label: "Integrations",
     description: "GitHub, calendar, drive, chat, and future app links.",
     icon: Github
+  },
+  {
+    key: "automation",
+    label: "Automation",
+    description: "Briefing rules, approval previews, audit receipts, and AI providers.",
+    icon: Workflow
   },
   {
     key: "profile",
@@ -219,6 +228,7 @@ export function ControlCenterView({
         {activeModule === "integrations" ? (
           <IntegrationsView data={missionData} session={session} />
         ) : null}
+        {activeModule === "automation" ? <OperationsView session={session} /> : null}
         {activeModule === "profile" ? (
           <ProfileView session={session} onSessionChange={onSessionChange} embedded />
         ) : null}

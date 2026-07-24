@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { MetricTile } from "@/components/MetricTile";
+import { OperationalBriefings } from "@/components/OperationalBriefings";
 import { ProjectOrbitCard } from "@/components/ProjectOrbitCard";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
@@ -24,10 +25,17 @@ import type {
   RiskSignal,
   TeamDeliverySignal
 } from "@/types/domain";
+import type { NexusSession } from "@/types/auth";
 
 const GalaxyScene = lazy(() => import("@/scenes/GalaxyScene"));
 
-export function MissionControl({ data }: { data: MissionData }) {
+export function MissionControl({
+  data,
+  session
+}: {
+  data: MissionData;
+  session: NexusSession;
+}) {
   const briefing = useMemo(() => createLocalBriefing(data), [data]);
   const intelligence = data.executionIntelligence;
 
@@ -147,6 +155,8 @@ export function MissionControl({ data }: { data: MissionData }) {
             </div>
           </div>
         </section>
+
+        <OperationalBriefings session={session} />
 
         <TeamIntelligencePanel data={data} />
 

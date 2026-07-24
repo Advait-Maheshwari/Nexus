@@ -99,9 +99,12 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 - Completed: server-owned team capacity, assignment balance, lagging-owner recovery guidance,
   and unowned-work detection.
 - Completed: deterministic briefing and export content now includes team recovery signals.
-- Auditable automation rules with conservative defaults and explicit user control.
-- Server-owned daily and weekly briefing snapshots with deterministic heuristics.
-- Optional bring-your-own-key AI adapters remain disabled by default.
+- Completed: auditable briefing automation rules start disabled, require a dry-run preview and
+  explicit approval, allow one run per period, never mutate project data, and retain run receipts.
+- Completed: server-owned daily and weekly briefing snapshots retain one refreshable review per
+  workspace period with tenant-scoped history.
+- Completed: optional environment-only bring-your-own-key provider adapters fail closed and remain
+  disabled by default; the browser receives capability status but never receives a secret.
 - Desktop command workflows stay primary; mobile provides focused review and action controls.
 - No paid inference, hosting, storage, or integration is required.
 

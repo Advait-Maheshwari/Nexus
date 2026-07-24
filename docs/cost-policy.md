@@ -38,6 +38,11 @@ AI features should ship in this order:
 
 The app should remain useful even when every external AI key is empty.
 
+Cloud-provider keys are accepted only through the server environment. Provider status may be
+shown in the browser, but key material must never be returned, persisted in browser storage, or
+included in an automation receipt. External adapters remain disabled until execution budgets,
+provider-specific audit logging, and an explicit operator enablement policy are implemented.
+
 ## Default Runtime Rule
 
 The default Nexus runtime must work with:

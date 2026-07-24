@@ -23,6 +23,7 @@ from app.models.feature import Feature
 from app.models.idea import Idea
 from app.models.journal import JournalEntry
 from app.models.milestone import Milestone
+from app.models.operations import AutomationRule, AutomationRun, BriefingSnapshot
 from app.models.project import Project
 from app.models.project_blueprint import ProjectBlueprint
 from app.models.task import Task, TaskDependency
@@ -412,6 +413,18 @@ async def delete_account(
         invitation_conditions.append(WorkspaceInvitation.workspace_id.in_(owned_workspace_ids))
     await session.execute(delete(WorkspaceInvitation).where(or_(*invitation_conditions)))
     await session.execute(delete(AccountActionToken).where(AccountActionToken.user_id == user.id))
+    if owned_workspace_ids:
+        await session.execute(
+            delete(AutomationRun).where(AutomationRun.workspace_id.in_(owned_workspace_ids))
+        )
+        await session.execute(
+            delete(AutomationRule).where(AutomationRule.workspace_id.in_(owned_workspace_ids))
+        )
+        await session.execute(
+            delete(BriefingSnapshot).where(
+                BriefingSnapshot.workspace_id.in_(owned_workspace_ids)
+            )
+        )
     await session.execute(delete(UserSession).where(UserSession.user_id == user.id))
     await session.execute(delete(WorkspaceMember).where(WorkspaceMember.user_id == user.id))
     if owned_workspace_ids:

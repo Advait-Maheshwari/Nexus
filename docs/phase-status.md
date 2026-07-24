@@ -164,7 +164,25 @@ Completed:
 
 Remaining:
 
-- Auditable automation rules with explicit enablement, dry-run previews, and conservative limits.
-- Server-owned daily and weekly briefing snapshots and review history.
-- Optional bring-your-own-key AI adapters that remain disabled until a user configures them.
 - Final Phase 6 production verification across Render, Firebase, and live tenant data.
+
+## Phase 6 Operational Intelligence
+
+Implementation checkpoint:
+
+- Daily briefings and weekly reviews are now server-owned, tenant-scoped snapshots with stable
+  period keys, source fingerprints, deterministic content, and refreshable history.
+- Automation rules are limited to six per free workspace, begin disabled, require administrator
+  control, expose a write-free preview, require an explicit approval request, and run at most once
+  per period.
+- Automation never changes a project, feature, task, deadline, priority, or assignment. Every
+  approved execution records a durable receipt and whether a snapshot was created or safely
+  skipped.
+- Mission Control captures and reviews briefing history without adding another primary navigation
+  destination. Automation and provider controls live in Control Center.
+- Local heuristics remain active at zero cost. OpenAI, Claude, and Gemini adapters are server-only,
+  never expose keys to the browser, and fail closed while external execution is disabled.
+- The relational change is carried by Alembic revision `20260724_0007`; account deletion removes
+  owned operational history before deleting the workspace.
+- Validation currently passes with `55` backend tests, one intentional skip, Ruff, TypeScript, and
+  the production frontend build.
