@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     env: str = Field(default="local", alias="NEXUS_ENV")
-    api_url: AnyHttpUrl | str = Field(default="http://localhost:8000", alias="NEXUS_API_URL")
+    api_url: AnyHttpUrl | str = Field(default="http://localhost:8001", alias="NEXUS_API_URL")
     web_url: AnyHttpUrl | str = Field(default="http://localhost:5173", alias="NEXUS_WEB_URL")
     cors_origins_extra: str = Field(default="", alias="NEXUS_CORS_ORIGINS")
     allowed_hosts_extra: str = Field(default="", alias="NEXUS_ALLOWED_HOSTS")
@@ -99,6 +99,12 @@ class Settings(BaseSettings):
                 ]
             )
         )
+
+    @property
+    def cors_origin_regex(self) -> str | None:
+        if self.env.lower() == "production":
+            return None
+        return r"^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?$"
 
     def private_demo_allowed(self, email: str) -> bool:
         digest = sha256(email.strip().lower().encode("utf-8")).hexdigest()

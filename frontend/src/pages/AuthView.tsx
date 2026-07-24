@@ -21,7 +21,7 @@ import {
   resetAccountPassword,
   verifyAccountEmail
 } from "@/lib/api";
-import { signInWithGoogle } from "@/lib/firebase";
+import { resumeGoogleSession, signInWithGoogle } from "@/lib/firebase";
 import type { NexusSession } from "@/types/auth";
 
 type AuthMode = "login" | "register" | "forgot" | "reset";
@@ -136,7 +136,12 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
     setError("");
     setNotice("");
     try {
-      const ownerSession = await signInWithGoogle();
+      const ownerSession = await resumeGoogleSession();
+      if (!ownerSession) {
+        throw new Error(
+          "Use Continue with Google once to verify the owner account, then open Private Demo."
+        );
+      }
       const demoSession = await enterPrivateDemo(ownerSession.accessToken);
       onAuthenticated({
         ...demoSession,

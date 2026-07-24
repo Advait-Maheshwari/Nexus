@@ -90,8 +90,12 @@ def verify(web_url: str, api_url: str, timeout: float) -> list[str]:
     bundles = [fetch(script, timeout).body.decode("utf-8", errors="replace") for script in scripts]
     if not any(api_origin in bundle for bundle in bundles):
         failures.append(f"No JavaScript bundle references the API origin {api_origin}")
-    if any(":8000" in bundle for bundle in bundles):
-        failures.append("A production JavaScript bundle contains the local :8000 API fallback")
+    if any(
+        local_port in bundle
+        for bundle in bundles
+        for local_port in (":8000", ":8001")
+    ):
+        failures.append("A production JavaScript bundle contains a local API fallback")
     return failures
 
 

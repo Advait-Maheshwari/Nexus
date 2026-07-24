@@ -31,7 +31,7 @@ import type {
   ProjectMilestone
 } from "@/types/planning";
 
-const localApiUrl = `${window.location.protocol}//${window.location.hostname}:8000`;
+const localApiUrl = `${window.location.protocol}//${window.location.hostname}:8001`;
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
 const API_URL = (configuredApiUrl || (import.meta.env.DEV ? localApiUrl : "")).replace(/\/$/, "");
 

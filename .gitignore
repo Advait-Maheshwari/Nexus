@@ -26,4 +26,5 @@ backups/
 coverage/
 playwright-report/
 test-results/
+.runtime/
 work-web-server*.log

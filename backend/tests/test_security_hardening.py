@@ -1,4 +1,5 @@
 import ssl
+import re
 
 import httpx
 import pytest
@@ -31,6 +32,26 @@ def test_production_password_registration_requires_verified_smtp() -> None:
             NEXUS_REQUIRE_EMAIL_VERIFICATION=False,
             NEXUS_EMAIL_DELIVERY_MODE="disabled",
         )
+
+
+def test_local_cors_accepts_dynamic_vite_ports() -> None:
+    local_settings = Settings(NEXUS_ENV="local")
+
+    assert local_settings.cors_origin_regex is not None
+    assert re.fullmatch(local_settings.cors_origin_regex, "http://localhost:5174")
+    assert re.fullmatch(local_settings.cors_origin_regex, "http://127.0.0.1:4176")
+
+
+def test_production_cors_has_no_localhost_regex() -> None:
+    production_settings = Settings(
+        NEXUS_ENV="production",
+        JWT_SECRET_KEY="x" * 32,
+        NEXUS_AUTH_BACKEND="database",
+        NEXUS_ALLOW_PASSWORD_REGISTRATION=False,
+        NEXUS_EMAIL_DELIVERY_MODE="disabled",
+    )
+
+    assert production_settings.cors_origin_regex is None
 
 
 def test_smtp_starttls_uses_verified_certificate_context(

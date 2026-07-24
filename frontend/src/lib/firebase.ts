@@ -3,7 +3,8 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  signOut
+  signOut,
+  type User
 } from "firebase/auth";
 
 import type { NexusSession } from "@/types/auth";
@@ -37,17 +38,17 @@ export async function signInWithGoogle(): Promise<NexusSession> {
   provider.setCustomParameters({ prompt: "select_account" });
   try {
     const credential = await signInWithPopup(auth, provider);
-    const accessToken = await credential.user.getIdToken();
-    const profile = {
-      displayName: credential.user.displayName ?? undefined,
-      email: credential.user.email ?? undefined,
-      photoUrl: credential.user.photoURL ?? undefined
-    };
-    return {
-      ...(await exchangeFirebaseToken(accessToken)),
-      identityProvider: "google",
-      ...profile
-    };
+    return await exchangeGoogleUser(credential.user);
+  } catch (reason) {
+    throw new Error(googleAuthErrorMessage(reason));
+  }
+}
+
+export async function resumeGoogleSession(): Promise<NexusSession | null> {
+  await auth.authStateReady();
+  if (!auth.currentUser) return null;
+  try {
+    return await exchangeGoogleUser(auth.currentUser);
   } catch (reason) {
     throw new Error(googleAuthErrorMessage(reason));
   }
@@ -57,6 +58,17 @@ export async function signOutFirebase(): Promise<void> {
   if (auth.currentUser) {
     await signOut(auth);
   }
+}
+
+async function exchangeGoogleUser(user: User): Promise<NexusSession> {
+  const accessToken = await user.getIdToken();
+  return {
+    ...(await exchangeFirebaseToken(accessToken)),
+    identityProvider: "google",
+    displayName: user.displayName ?? undefined,
+    email: user.email ?? undefined,
+    photoUrl: user.photoURL ?? undefined
+  };
 }
 
 function googleAuthErrorMessage(reason: unknown): string {
@@ -79,6 +91,9 @@ function googleAuthErrorMessage(reason: unknown): string {
   }
   if (code === "auth/network-request-failed") {
     return "Google could not be reached. Check your connection or privacy extensions and try again.";
+  }
+  if (code === "auth/internal-error") {
+    return "Google sign-in could not initialize. Refresh Nexus and try again.";
   }
   return reason instanceof Error ? reason.message : "Google sign-in is unavailable.";
 }

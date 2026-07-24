@@ -94,7 +94,7 @@ python ops/verify_deployment.py
 
 It requires the Render readiness endpoint to confirm database-backed readiness, checks API and
 Firebase security headers, and inspects the emitted JavaScript for the deployed API origin. It
-fails when a production bundle still references the local `:8000` endpoint.
+fails when a production bundle still references any local development API endpoint.
 
 ## Zero-Cost Workspace Limits
 

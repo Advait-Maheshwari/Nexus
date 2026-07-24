@@ -58,4 +58,4 @@ def test_verify_deployment_rejects_stale_or_local_bundle(monkeypatch) -> None:
     failures = verify_deployment.verify(WEB_URL, API_URL, 1)
 
     assert any("No JavaScript bundle references" in failure for failure in failures)
-    assert any("local :8000 API fallback" in failure for failure in failures)
+    assert any("local API fallback" in failure for failure in failures)

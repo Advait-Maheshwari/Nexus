@@ -15,7 +15,7 @@ export default defineConfig(({ command }) => {
           if (isProductionBuild) return html;
           return html.replace(
             "connect-src 'self'",
-            "connect-src 'self' http://localhost:8000 http://127.0.0.1:8000"
+            "connect-src 'self' http://localhost:8001 http://127.0.0.1:8001"
           );
         }
       }
