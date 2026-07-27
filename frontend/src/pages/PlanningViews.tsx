@@ -268,6 +268,7 @@ function PlanningShell({
           <div className="mt-2 flex items-center gap-3 text-white">{icon}<h2 className="text-2xl font-semibold">{title}</h2></div>
         </div>
         <select
+          aria-label="Project"
           value={workspace.selectedProjectId}
           onChange={(event) => workspace.selectProject(event.target.value)}
           className="h-10 min-w-48 rounded-md border border-white/10 bg-navy px-3 text-sm text-white"

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -30,17 +30,29 @@ export function GalaxyView({ data }: { data: MissionData }) {
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedPlanetId, setSelectedPlanetId] = useState("");
   const [sceneRevision, setSceneRevision] = useState(0);
+  const initializedSelection = useRef(false);
   const selectedProject = data.projects.find((project) => project.id === selectedProjectId);
   const selectedPlanet = selectedProject?.planets.find(
     (planet) => planet.id === selectedPlanetId
   );
 
   useEffect(() => {
-    if (data.projects.length !== 1 || selectedProjectId) return;
+    if (initializedSelection.current || data.projects.length === 0) return;
 
     const [project] = data.projects;
+    initializedSelection.current = true;
     setSelectedProjectId(project.id);
     setSelectedPlanetId(project.planets[0]?.id ?? "");
+  }, [data.projects]);
+
+  useEffect(() => {
+    if (!selectedProjectId || data.projects.some((project) => project.id === selectedProjectId)) {
+      return;
+    }
+    const [project] = data.projects;
+    setSelectedProjectId(project?.id ?? "");
+    setSelectedPlanetId(project?.planets[0]?.id ?? "");
+    setSceneRevision((revision) => revision + 1);
   }, [data.projects, selectedProjectId]);
 
   const linkedProjects = useMemo(() => {
@@ -69,9 +81,12 @@ export function GalaxyView({ data }: { data: MissionData }) {
 
   return (
     <section className="grid min-h-[calc(100vh-8rem)] min-w-0 w-full gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="relative min-h-[520px] min-w-0 w-full overflow-hidden rounded-lg border border-white/10 bg-void xl:h-[calc(100vh-8rem)] xl:min-h-[620px] xl:max-h-[820px] xl:self-start">
+      <div className="relative h-[clamp(520px,72vh,820px)] min-w-0 w-full overflow-hidden rounded-lg border border-white/10 bg-void xl:h-[calc(100vh-7rem)] xl:min-h-[620px] xl:max-h-[820px] xl:self-start">
         <Suspense fallback={<div className="h-full w-full bg-void" />}>
           <GalaxyScene
+            key={data.projects
+              .map((project) => `${project.id}:${project.planets.length}`)
+              .join("|")}
             projects={data.projects}
             relationships={data.relationships}
             selectedProjectId={selectedProjectId}

@@ -64,8 +64,8 @@ export function IntegrationsView({ data, session }: { data: MissionData; session
   }
 
   return (
-    <section className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-      <aside className="glass-panel rounded-lg p-5">
+    <section className="grid min-w-0 gap-4 2xl:grid-cols-[320px_minmax(0,1fr)]">
+      <aside className="glass-panel min-w-0 rounded-lg p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">Phase 3</p>
@@ -94,17 +94,19 @@ export function IntegrationsView({ data, session }: { data: MissionData; session
         </div>
       </aside>
 
-      <div className="space-y-4">
-        <section className="glass-panel rounded-lg p-5">
+      <div className="min-w-0 space-y-4">
+        <section className="glass-panel min-w-0 rounded-lg p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="font-mono text-xs uppercase tracking-[0.22em] text-violet">
                 Repository Signal
               </p>
-              <h2 className="mt-2 text-2xl font-semibold text-white">{activity.repository}</h2>
+              <h2 className="mt-2 break-all text-2xl font-semibold text-white">
+                {activity.repository || "No repository selected"}
+              </h2>
             </div>
-            <div className="text-right">
-              <span className="rounded-full border border-cyan/25 bg-cyan/10 px-3 py-1 text-xs text-cyan">
+            <div className="min-w-0 max-w-full text-left sm:text-right">
+              <span className="inline-flex max-w-full rounded-full border border-cyan/25 bg-cyan/10 px-3 py-1 text-xs leading-5 text-cyan">
                 {activity.source === "github" ? "GitHub connected" : "Not connected"}
               </span>
               {activity.rateLimitRemaining !== undefined ? (
@@ -155,7 +157,7 @@ export function IntegrationsView({ data, session }: { data: MissionData; session
           </div>
         </section>
 
-        <section className="glass-panel rounded-lg p-5">
+        <section className="glass-panel min-w-0 rounded-lg p-5">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-cyan">
               Free Integration Cockpit
@@ -167,7 +169,7 @@ export function IntegrationsView({ data, session }: { data: MissionData; session
             </p>
           </div>
 
-          <div className="mt-5 grid gap-3 lg:grid-cols-2">
+          <div className="mt-5 grid min-w-0 gap-3 2xl:grid-cols-2">
             <IntegrationCard
               icon={<Github size={18} />}
               title="GitHub Issues & PRs"
@@ -253,20 +255,18 @@ function IntegrationCard({
   onAction: () => void;
 }) {
   return (
-    <article className="rounded-md border border-white/10 bg-white/[0.04] p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-cyan/25 bg-cyan/10 text-cyan">
-            {icon}
-          </span>
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-white">{title}</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-400">{body}</p>
-          </div>
-        </div>
-        <span className="shrink-0 rounded-full border border-success/25 bg-success/10 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-success">
-          {status}
+    <article className="min-w-0 rounded-md border border-white/10 bg-white/[0.04] p-4">
+      <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-3">
+        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-cyan/25 bg-cyan/10 text-cyan">
+          {icon}
         </span>
+        <div className="min-w-0">
+          <h3 className="break-words text-sm font-semibold leading-5 text-white">{title}</h3>
+          <span className="mt-2 inline-flex max-w-full rounded-full border border-success/25 bg-success/10 px-2 py-1 text-[10px] uppercase leading-4 tracking-[0.12em] text-success">
+            {status}
+          </span>
+          <p className="mt-3 break-words text-sm leading-6 text-slate-400">{body}</p>
+        </div>
       </div>
       <Button
         type="button"

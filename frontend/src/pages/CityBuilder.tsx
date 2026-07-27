@@ -38,14 +38,14 @@ export function CityBuilderView({ data }: { data: MissionData }) {
           </div>
           <Factory className="text-solar" size={22} />
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-1 rounded-md border border-white/10 bg-white/[0.035] p-1">
+        <div className="mt-3 grid grid-cols-3 gap-1 overflow-hidden rounded-md border border-white/10 bg-white/[0.035] p-1">
           {(["risk", "health", "progress"] as const).map((item) => (
             <button
               key={item}
               type="button"
               onClick={() => setSort(item)}
               className={cn(
-                "h-8 rounded text-[10px] uppercase tracking-[0.12em] transition",
+                "h-8 min-w-0 overflow-hidden rounded px-1 text-[9px] uppercase tracking-[0.06em] transition sm:text-[10px] sm:tracking-[0.12em]",
                 sort === item ? "bg-solar/15 text-solar" : "text-slate-500 hover:text-white"
               )}
             >
@@ -71,14 +71,14 @@ export function CityBuilderView({ data }: { data: MissionData }) {
                   : "border-white/10 bg-white/[0.035] hover:border-white/20 hover:bg-white/[0.06]"
               )}
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-cyan">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <span className="min-w-0 break-words font-mono text-[11px] uppercase tracking-[0.16em] text-cyan">
                   {project.codename}
                 </span>
                 <StatusPill health={project.health} />
               </div>
-              <strong className="mt-2 block text-sm text-white">{project.name}</strong>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              <strong className="mt-2 block break-words text-sm text-white">{project.name}</strong>
+              <div className="mt-3 grid grid-cols-3 gap-1.5 text-center sm:gap-2">
                 <MiniCityMetric label="Power" value={`${project.progress}%`} />
                 <MiniCityMetric label="Towers" value={project.featureCount} />
                 <MiniCityMetric label="Alerts" value={project.blockedTaskCount} />
@@ -88,10 +88,15 @@ export function CityBuilderView({ data }: { data: MissionData }) {
         </div>
       </aside>
 
-      <div className="relative min-h-[560px] min-w-0 w-full overflow-hidden rounded-lg border border-white/10 bg-void">
+      <div className="relative h-[clamp(560px,74vh,820px)] min-w-0 w-full overflow-hidden rounded-lg border border-white/10 bg-void">
         {selected ? (
           <Suspense fallback={<div className="h-full bg-void" />}>
-            <CityScene project={selected} mode={mode} resetSignal={sceneRevision} />
+            <CityScene
+              key={`${selected.id}:${selected.planets.length}`}
+              project={selected}
+              mode={mode}
+              resetSignal={sceneRevision}
+            />
           </Suspense>
         ) : (
           <div className="absolute inset-0 grid place-items-center p-6 text-center">
@@ -102,7 +107,7 @@ export function CityBuilderView({ data }: { data: MissionData }) {
             </div>
           </div>
         )}
-        <div className="pointer-events-none absolute left-4 top-4">
+        <div className="pointer-events-none absolute left-4 right-4 top-4 max-w-md">
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-solar">City Builder</p>
           <h2 className="mt-1 text-2xl font-semibold text-white">
             {selected ? `${selected.name} City` : "Project City"}
@@ -111,7 +116,7 @@ export function CityBuilderView({ data }: { data: MissionData }) {
             Features become districts. Tasks become towers. Blockers become visible damage.
           </p>
         </div>
-        <div className="absolute bottom-4 right-4 flex flex-wrap justify-end gap-2">
+        <div className="absolute bottom-4 left-4 right-4 flex flex-wrap justify-end gap-2">
           <button
             type="button"
             title="Reset camera"

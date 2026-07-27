@@ -154,6 +154,10 @@ export function ControlCenterView({
 }) {
   const [activeModule, setActiveModule] = useState<ControlModule>("settings");
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [activeModule]);
+
   return (
     <section className="grid min-h-[calc(100vh-8rem)] min-w-0 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="glass-panel min-w-0 overflow-hidden rounded-lg p-3">

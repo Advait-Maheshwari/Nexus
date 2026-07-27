@@ -1,9 +1,10 @@
-import { Billboard, Grid, Line, OrbitControls, Text } from "@react-three/drei";
+import { Billboard, Grid, Line, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import type { ComponentRef, MutableRefObject } from "react";
 import * as THREE from "three";
 
+import { SceneText as Text } from "@/scenes/SceneText";
 import type { FeaturePlanet, ProjectSummary } from "@/types/domain";
 
 export type CityViewMode = "overview" | "street" | "risk";
@@ -72,11 +73,70 @@ function ProjectCity({ project, mode }: { project: ProjectSummary; mode: CityVie
           mode={mode}
         />
       ))}
+      {districts.length === 0 ? <FoundationDistrict style={style} /> : null}
 
       <OuterCityDetails style={style} project={project} />
 
       {mode === "street" ? <StreetScanner accent={style.accent} /> : null}
 
+    </group>
+  );
+}
+
+function FoundationDistrict({ style }: { style: CityStyle }) {
+  return (
+    <group position={[0, 0.02, 0]}>
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.9, 1.34, 64]} />
+        <meshStandardMaterial
+          color="#07111f"
+          emissive={style.accent}
+          emissiveIntensity={0.2}
+          roughness={0.72}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      {Array.from({ length: 8 }, (_, index) => {
+        const angle = (index / 8) * Math.PI * 2;
+        return (
+          <mesh
+            key={`foundation-${index}`}
+            position={[Math.cos(angle) * 1.12, 0.11, Math.sin(angle) * 1.12]}
+            rotation={[0, -angle, 0]}
+            castShadow
+          >
+            <boxGeometry args={[0.28, 0.2 + (index % 3) * 0.08, 0.22]} />
+            <meshStandardMaterial
+              color={index % 2 === 0 ? style.accent : style.secondary}
+              emissive={style.accent}
+              emissiveIntensity={0.18}
+              metalness={0.2}
+              roughness={0.58}
+            />
+          </mesh>
+        );
+      })}
+      <Billboard position={[0, 0.76, 0]}>
+        <Text
+          fontSize={0.09}
+          color="#dff8ff"
+          anchorX="center"
+          anchorY="middle"
+          maxWidth={1.8}
+        >
+          FOUNDATION DISTRICT
+        </Text>
+        <Text
+          position={[0, -0.13, 0]}
+          fontSize={0.052}
+          color="#94a3b8"
+          anchorX="center"
+          anchorY="middle"
+          maxWidth={2.2}
+        >
+          add a feature to raise the first district
+        </Text>
+      </Billboard>
     </group>
   );
 }
@@ -504,7 +564,7 @@ function ConstructionCrane({ accent, progress }: { accent: string; progress: num
 function TransitLines({ districts, style, mode }: { districts: DistrictPlan[]; style: CityStyle; mode: CityViewMode }) {
   const pulse = useRef<THREE.Group>(null);
   useFrame(({ clock }) => {
-    if (!pulse.current) return;
+    if (!pulse.current || districts.length === 0) return;
     pulse.current.children.forEach((child, index) => {
       const district = districts[index % districts.length];
       const phase = (clock.getElapsedTime() * 0.42 + index * 0.19) % 1;
@@ -908,7 +968,16 @@ export default function CityScene({
   const maxDistance = mode === "street" ? 18 : mode === "risk" ? 40 : 42;
 
   return (
-    <Canvas camera={{ position: [5.4, 4.15, 6.1], fov: 52 }} dpr={[1, 1.75]} shadows>
+    <Canvas
+      camera={{ position: [5.4, 4.15, 6.1], fov: 52 }}
+      dpr={[1, 1.75]}
+      gl={{
+        alpha: false,
+        antialias: true,
+        powerPreference: "high-performance"
+      }}
+      shadows
+    >
       <color attach="background" args={["#02040a"]} />
       <fog attach="fog" args={["#02040a", 35, 90]} />
       <ambientLight intensity={0.64} />

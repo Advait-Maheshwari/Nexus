@@ -1000,6 +1000,7 @@ export async function updateProjectBlueprint(
     method: "PUT",
     headers: authHeaders(accessToken, true),
     body: JSON.stringify({
+      version: blueprint.version,
       vision: blueprint.vision,
       definition_of_done: blueprint.definitionOfDone,
       strategy: blueprint.strategy,

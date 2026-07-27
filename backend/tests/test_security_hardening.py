@@ -103,6 +103,22 @@ async def test_github_activity_requires_nexus_authentication() -> None:
 
 
 @pytest.mark.asyncio
+async def test_browser_preflight_allows_put_for_server_owned_configuration() -> None:
+    transport = httpx.ASGITransport(app=create_app())
+    headers = {
+        "Origin": "http://localhost:5173",
+        "Access-Control-Request-Method": "PUT",
+        "Access-Control-Request-Headers": "authorization,content-type",
+    }
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.options("/api/v1/projects/example/blueprint", headers=headers)
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert "PUT" in response.headers["access-control-allow-methods"]
+
+
+@pytest.mark.asyncio
 async def test_untrusted_host_is_rejected() -> None:
     transport = httpx.ASGITransport(app=create_app())
     async with httpx.AsyncClient(transport=transport, base_url="http://attacker.example") as client:

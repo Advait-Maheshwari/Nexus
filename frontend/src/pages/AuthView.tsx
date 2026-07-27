@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   ArrowLeft,
   Chrome,
-  FlaskConical,
   KeyRound,
   LogIn,
   MailCheck,
@@ -15,13 +14,12 @@ import {
 import { Button } from "@/components/ui/Button";
 import {
   authenticate,
-  enterPrivateDemo,
   requestPasswordReset,
   resendAccountVerification,
   resetAccountPassword,
   verifyAccountEmail
 } from "@/lib/api";
-import { resumeGoogleSession, signInWithGoogle } from "@/lib/firebase";
+import { signInWithGoogle } from "@/lib/firebase";
 import type { NexusSession } from "@/types/auth";
 
 type AuthMode = "login" | "register" | "forgot" | "reset";
@@ -126,32 +124,6 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
       onAuthenticated(await signInWithGoogle());
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Google sign-in is unavailable.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function continueWithPrivateDemo() {
-    setLoading(true);
-    setError("");
-    setNotice("");
-    try {
-      const ownerSession = await resumeGoogleSession();
-      if (!ownerSession) {
-        throw new Error(
-          "Use Continue with Google once to verify the owner account, then open Private Demo."
-        );
-      }
-      const demoSession = await enterPrivateDemo(ownerSession.accessToken);
-      onAuthenticated({
-        ...demoSession,
-        identityProvider: "google",
-        displayName: ownerSession.displayName,
-        email: ownerSession.email,
-        photoUrl: ownerSession.photoUrl
-      });
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Private demo is unavailable.");
     } finally {
       setLoading(false);
     }
@@ -295,16 +267,6 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
                 onClick={continueWithGoogle}
               >
                 Continue with Google
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                icon={<FlaskConical size={16} />}
-                disabled={loading}
-                onClick={continueWithPrivateDemo}
-              >
-                Open Private Demo
               </Button>
             </>
           ) : null}

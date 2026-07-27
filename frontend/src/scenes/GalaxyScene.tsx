@@ -1,9 +1,10 @@
-import { Billboard, Float, Line, OrbitControls, Stars, Text } from "@react-three/drei";
+import { Billboard, Float, Line, OrbitControls, Stars } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import type { ComponentRef, MutableRefObject } from "react";
 import * as THREE from "three";
 
+import { SceneText as Text } from "@/scenes/SceneText";
 import type { FeaturePlanet, ProjectRelationship, ProjectSummary, WorkStatus } from "@/types/domain";
 
 const statusColor: Record<WorkStatus, string> = {
@@ -860,6 +861,11 @@ export function GalaxyScene({
     <Canvas
       camera={{ position: [0, 2.8, 16], fov: 58 }}
       dpr={[1, 1.8]}
+      gl={{
+        alpha: false,
+        antialias: true,
+        powerPreference: "high-performance"
+      }}
     >
       <color attach="background" args={["#02040a"]} />
       <fog attach="fog" args={["#02040a", 90, 190]} />

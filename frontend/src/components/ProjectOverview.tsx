@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Check,
   CheckCircle2,
+  ChevronDown,
   Circle,
   Compass,
   Flag,
@@ -76,6 +77,7 @@ export function ProjectOverview({
   );
   const [draft, setDraft] = useState(blueprint);
   const [editing, setEditing] = useState(false);
+  const [supportingGuidanceOpen, setSupportingGuidanceOpen] = useState(false);
 
   const completion = useMemo(() => calculateCompletion(blueprint), [blueprint]);
   const guidance = useMemo(
@@ -102,6 +104,7 @@ export function ProjectOverview({
 
   function beginEditing() {
     setDraft(blueprint);
+    setSupportingGuidanceOpen(true);
     setEditing(true);
   }
 
@@ -325,7 +328,31 @@ export function ProjectOverview({
         />
       </div>
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+      {!editing ? (
+        <div className="mt-4 flex justify-end">
+          <Button
+            variant="ghost"
+            icon={
+              <ChevronDown
+                size={16}
+                className={cn("transition-transform", supportingGuidanceOpen && "rotate-180")}
+              />
+            }
+            aria-expanded={supportingGuidanceOpen}
+            onClick={() => setSupportingGuidanceOpen((open) => !open)}
+          >
+            {supportingGuidanceOpen ? "Hide guidance and risks" : "Show guidance and risks"}
+          </Button>
+        </div>
+      ) : null}
+
+      <div
+        className={cn(
+          "mt-5 grid gap-5",
+          (editing || supportingGuidanceOpen) &&
+            "xl:grid-cols-[minmax(0,1fr)_360px]"
+        )}
+      >
         <div className="space-y-5">
           <div>
             <div className="flex items-center justify-between gap-3">
@@ -543,7 +570,7 @@ export function ProjectOverview({
           </div>
         </div>
 
-        <aside className="space-y-4">
+        {editing || supportingGuidanceOpen ? <aside className="space-y-4">
           <section className="rounded-md border border-white/10 bg-white/[0.04] p-4">
             <div className="flex items-center gap-2 text-violet">
               <Sparkles size={18} />
@@ -645,7 +672,7 @@ export function ProjectOverview({
               ))}
             </div>
           </section>
-        </aside>
+        </aside> : null}
       </div>
 
       <section className="mt-5 border-t border-white/10 pt-5">

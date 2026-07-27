@@ -3,7 +3,6 @@ import {
   BarChart3,
   CalendarDays,
   CircuitBoard,
-  Cloud,
   Factory,
   LogOut,
   MoreHorizontal,
@@ -70,7 +69,6 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
   const closeMobileMenuRef = useRef<HTMLButtonElement>(null);
   const activeItem = navItems.find((item) => item.key === activeView);
   const mobileMoreActive = mobileMoreItems.some((item) => item.key === activeView);
-  const workspaceLabel = "Cloud workspace";
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -98,17 +96,17 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
     <div className="relative min-h-screen overflow-hidden bg-void text-slate-100">
       <div className="grid-field pointer-events-none absolute inset-0 opacity-30" />
 
-      <aside className="no-scrollbar glass-panel fixed left-3 top-3 z-30 hidden h-[calc(100vh-1.5rem)] w-[248px] overflow-y-auto rounded-lg p-3 lg:flex lg:flex-col">
-        <div className="mb-4 flex items-center gap-3 rounded-md border border-cyan/25 bg-cyan/10 p-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-cyan/30 bg-cyan/10">
-            <Sparkles className="text-cyan" size={22} />
+      <aside className="no-scrollbar glass-panel fixed left-3 top-3 z-30 hidden h-[calc(100vh-1.5rem)] w-[220px] overflow-y-auto rounded-lg p-3 lg:flex lg:flex-col">
+        <div className="mb-3 flex items-center gap-3 border-b border-white/10 px-2 pb-4 pt-1">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-cyan/30 bg-cyan/10">
+            <Sparkles className="text-cyan" size={20} />
           </span>
           <div className="min-w-0">
             <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-cyan">Nexus</p>
             <p className="truncate text-sm font-semibold text-white">Command OS</p>
           </div>
         </div>
-        <nav className="flex flex-1 flex-col gap-5">
+        <nav className="flex flex-1 flex-col gap-4">
           {navGroups.map((group) => (
             <div key={group.label}>
               <p className="mb-2 px-2 font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
@@ -126,7 +124,7 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
                       aria-current={isActive ? "page" : undefined}
                       onClick={() => selectView(item.key)}
                       className={cn(
-                        "group flex min-h-12 w-full items-center gap-3 rounded-md border px-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan",
+                        "group flex min-h-11 w-full items-center gap-3 rounded-md border px-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan",
                         isActive
                           ? "border-cyan/45 bg-cyan/15 text-cyan shadow-glow"
                           : "border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.06] hover:text-white"
@@ -146,7 +144,6 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
                         <span className="block truncate text-sm font-semibold text-white">
                           {item.label}
                         </span>
-                        <span className="block truncate text-xs text-slate-500">{item.helper}</span>
                       </span>
                     </button>
                   );
@@ -156,40 +153,21 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
           ))}
         </nav>
 
-        <div className="mt-4 space-y-2">
-          <div className="rounded-md border border-success/20 bg-success/10 p-3">
-            <div className="flex items-center gap-2 text-success">
-              <ShieldCheck size={16} />
-              <span className="text-xs font-semibold uppercase tracking-[0.14em]">Zero cost</span>
-            </div>
-            <p className="mt-2 text-xs leading-5 text-slate-400">
-              Free hosting-first policy. Paid services stay opt-in.
-            </p>
-          </div>
-          <div className="rounded-md border border-white/10 bg-white/[0.035] p-3">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Active workspace</p>
-            <p className="mt-1 truncate text-xs font-semibold text-white">{workspaceLabel}</p>
-          </div>
+        <div className="mt-3 flex items-center gap-2 border-t border-white/10 px-2 pt-4 text-xs text-success">
+          <ShieldCheck size={15} />
+          <span className="font-semibold">Zero-cost policy active</span>
         </div>
       </aside>
 
-      <header className="fixed left-0 right-0 top-0 z-20 border-b border-white/10 bg-void/55 px-4 py-3 backdrop-blur-xl lg:left-[272px]">
+      <header className="fixed left-0 right-0 top-0 z-20 border-b border-white/10 bg-void/55 px-4 py-3 backdrop-blur-xl lg:left-[244px]">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="font-mono text-xs uppercase tracking-[0.28em] text-cyan">Nexus</p>
             <h1 className="truncate text-xl font-semibold text-white sm:text-2xl">
               {activeItem?.label ?? "Mission Control"}
             </h1>
-            <p className="mt-1 hidden truncate text-xs text-slate-500 sm:block">
-              {activeItem?.helper ?? "Project command system"}
-            </p>
           </div>
           <div className="hidden items-center gap-2 sm:flex">
-            <HeaderPill
-              icon={<Cloud size={14} />}
-              label={workspaceLabel}
-            />
-            <HeaderPill icon={<ShieldCheck size={14} />} label="$0 policy" tone="success" />
             <Button
               icon={<Sparkles size={16} />}
               variant="primary"
@@ -216,7 +194,7 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
         </div>
       </header>
 
-      <main className="relative z-10 min-h-screen px-4 pb-28 pt-24 lg:pb-6 lg:pl-[288px]">
+      <main className="relative z-10 min-h-screen px-4 pb-28 pt-20 lg:pb-6 lg:pl-[260px]">
         {children}
       </main>
 
@@ -328,29 +306,5 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
         </button>
       </nav>
     </div>
-  );
-}
-
-function HeaderPill({
-  icon,
-  label,
-  tone = "default"
-}: {
-  icon: React.ReactNode;
-  label: string;
-  tone?: "default" | "success";
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-flex h-10 items-center gap-2 rounded-md border px-3 text-xs font-medium",
-        tone === "success"
-          ? "border-success/25 bg-success/10 text-success"
-          : "border-white/10 bg-white/[0.04] text-slate-300"
-      )}
-    >
-      {icon}
-      {label}
-    </span>
   );
 }
