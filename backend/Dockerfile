@@ -6,7 +6,8 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir -e .
+RUN python -m pip install --no-cache-dir --upgrade "pip>=26.1.2" "setuptools>=83.0.0" \
+    && python -m pip install --no-cache-dir -e .
 
 COPY app ./app
 COPY alembic.ini ./alembic.ini

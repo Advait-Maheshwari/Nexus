@@ -5,8 +5,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 import httpx
+import jwt
 from fastapi import HTTPException, status
-from jose import JWTError, jwt
+from jwt import InvalidTokenError
 
 from app.core.config import settings
 
@@ -33,7 +34,7 @@ class FirebaseTokenVerifier:
     async def verify(self, id_token: str) -> FirebaseIdentity:
         try:
             header = jwt.get_unverified_header(id_token)
-        except JWTError as error:
+        except InvalidTokenError as error:
             raise _invalid_token() from error
         if header.get("alg") != "RS256" or not header.get("kid"):
             raise _invalid_token()
@@ -53,9 +54,8 @@ class FirebaseTokenVerifier:
                 algorithms=["RS256"],
                 audience=settings.firebase_project_id,
                 issuer=f"https://securetoken.google.com/{settings.firebase_project_id}",
-                options={"verify_at_hash": False},
             )
-        except JWTError as error:
+        except InvalidTokenError as error:
             raise _invalid_token() from error
 
         uid = str(payload.get("sub", "")).strip()

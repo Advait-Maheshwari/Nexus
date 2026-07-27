@@ -5,9 +5,10 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
+from jwt import InvalidTokenError
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -81,8 +82,8 @@ async def require_auth_context(
         user_id = str(payload["sub"])
         workspace_id = str(payload["workspace_id"])
         if payload.get("type") != "access":
-            raise JWTError("Unexpected token type")
-    except (JWTError, KeyError, TypeError, ValueError) as error:
+            raise InvalidTokenError("Unexpected token type")
+    except (InvalidTokenError, KeyError, TypeError, ValueError) as error:
         raise _unauthorized("Invalid or expired session") from error
 
     if settings.auth_backend != "database":

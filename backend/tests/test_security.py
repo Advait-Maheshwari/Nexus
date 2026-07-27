@@ -1,7 +1,8 @@
 import pytest
+import jwt
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
-from jose import JWTError, jwt
+from jwt import InvalidTokenError
 from pydantic import ValidationError
 
 from app.core.config import Settings, settings
@@ -63,7 +64,7 @@ def test_access_token_is_bound_to_nexus_audience_and_issuer() -> None:
     assert payload["type"] == "access"
     assert payload["workspace_id"] == "workspace-1"
 
-    with pytest.raises(JWTError):
+    with pytest.raises(InvalidTokenError):
         jwt.decode(
             token,
             settings.jwt_secret_key,

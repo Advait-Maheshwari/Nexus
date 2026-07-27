@@ -5,6 +5,8 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from pydantic import AnyHttpUrl, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEVELOPMENT_JWT_SECRET = "nexus-development-only-secret-key"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -15,7 +17,7 @@ class Settings(BaseSettings):
     cors_origins_extra: str = Field(default="", alias="NEXUS_CORS_ORIGINS")
     allowed_hosts_extra: str = Field(default="", alias="NEXUS_ALLOWED_HOSTS")
     database_url: str = "postgresql+asyncpg://nexus:nexus@localhost:5432/nexus"
-    jwt_secret_key: str = Field(default="change-me", alias="JWT_SECRET_KEY")
+    jwt_secret_key: str = Field(default=DEVELOPMENT_JWT_SECRET, alias="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     jwt_issuer: str = Field(default="nexus-api", alias="JWT_ISSUER")
     jwt_audience: str = Field(default="nexus-web", alias="JWT_AUDIENCE")
@@ -50,7 +52,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_production_security(self) -> "Settings":
         if self.env.lower() == "production" and (
-            self.jwt_secret_key == "change-me" or len(self.jwt_secret_key) < 32
+            self.jwt_secret_key == DEVELOPMENT_JWT_SECRET or len(self.jwt_secret_key) < 32
         ):
             raise ValueError("Production JWT_SECRET_KEY must contain at least 32 characters")
         if self.auth_backend not in {"local", "database"}:

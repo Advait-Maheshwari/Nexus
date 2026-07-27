@@ -1,6 +1,6 @@
 import pytest
 from fastapi import HTTPException
-from jose import jwt
+import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
