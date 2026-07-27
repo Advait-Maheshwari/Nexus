@@ -92,7 +92,7 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 
 ## Phase 6: Operational Intelligence
 
-- Status: in progress.
+- Status: complete for the current zero-cost production release.
 - Completed: tenant-scoped execution intelligence generated from live project and task data.
 - Completed: dependency-aware next-action ranking with an explanation for every recommendation.
 - Completed: portfolio schedule confidence, remaining-effort forecast, and deadline-risk signals.
@@ -105,6 +105,10 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
   workspace period with tenant-scoped history.
 - Completed: optional environment-only bring-your-own-key provider adapters fail closed and remain
   disabled by default; the browser receives capability status but never receives a secret.
+- Completed: the Render backend deployed from the explicit `backend` root with both Phase 6
+  migrations applied; Firebase and Render passed the production deployment verifier.
+- Completed: the live readiness endpoint confirms database access, while the operations endpoint
+  rejects unauthenticated requests at the intended security boundary.
 - Desktop command workflows stay primary; mobile provides focused review and action controls.
 - No paid inference, hosting, storage, or integration is required.
 

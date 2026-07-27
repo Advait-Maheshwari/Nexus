@@ -143,7 +143,7 @@ horizontal scaling, and an independent penetration test before commercial SaaS e
 
 ## Phase 6 Checkpoint
 
-Status: in progress.
+Status: complete for the current zero-cost production release.
 
 Completed:
 
@@ -159,12 +159,13 @@ Completed:
 - Local daily and weekly briefing exports include team recovery and assignment signals.
 - Firebase Hosting was synchronized with the current source after deployment drift; the private
   owner demo and forming-system Galaxy state are present in the live bundle.
-- Validation passed with `52` backend tests, Ruff, TypeScript, a production build, desktop QA,
-  375px phone QA, a nonblank WebGL canvas, and no browser console errors.
-
-Remaining:
-
-- Final Phase 6 production verification across Render, Firebase, and live tenant data.
+- Render now builds from the explicit `backend` service root and successfully deployed commit
+  `4de3939` on the free plan after applying Alembic revisions `20260721_0006` and `20260724_0007`.
+- Final production verification passed against Firebase Hosting and Render: the database-backed
+  readiness probe returns `200`, the protected operations route returns `401` without a session,
+  and the repository deployment verifier reports both services healthy.
+- Validation passed with `57` backend tests, one intentional skip, Ruff, TypeScript, a production
+  build, desktop QA, 375px phone QA, a nonblank WebGL canvas, and no browser console errors.
 
 ## Phase 6 Operational Intelligence
 
@@ -184,5 +185,5 @@ Implementation checkpoint:
   never expose keys to the browser, and fail closed while external execution is disabled.
 - The relational change is carried by Alembic revision `20260724_0007`; account deletion removes
   owned operational history before deleting the workspace.
-- Validation currently passes with `55` backend tests, one intentional skip, Ruff, TypeScript, and
+- Validation currently passes with `57` backend tests, one intentional skip, Ruff, TypeScript, and
   the production frontend build.
