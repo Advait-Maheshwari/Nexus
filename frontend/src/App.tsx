@@ -8,7 +8,7 @@ import {
   switchWorkspace,
   validateSession
 } from "@/lib/api";
-import { signOutFirebase } from "@/lib/firebase";
+import { resumeGoogleSession, signOutFirebase } from "@/lib/firebase";
 import { AuthView } from "@/pages/AuthView";
 import { ControlCenterView } from "@/pages/AccountViews";
 import { CityBuilderView } from "@/pages/CityBuilder";
@@ -40,17 +40,11 @@ function App() {
   useEffect(() => {
     let active = true;
     const saved = loadSession();
-    if (!saved) {
-      setSessionReady(true);
-      return () => {
-        active = false;
-      };
-    }
 
-    void validateSession(saved)
-      .then((validated) => activateInvitation(validated))
+    void restoreSession(saved)
+      .then((validated) => (validated ? activateInvitation(validated) : null))
       .then((validated) => {
-        if (!active) return;
+        if (!active || !validated) return;
         persistSession(validated);
         setSession(validated);
       })
@@ -133,6 +127,19 @@ function App() {
 
 function persistSession(session: NexusSession) {
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+async function restoreSession(saved: NexusSession | null): Promise<NexusSession | null> {
+  if (saved) {
+    try {
+      return await validateSession(saved);
+    } catch {
+      if (saved.identityProvider !== "google") {
+        throw new Error("Saved session is no longer valid");
+      }
+    }
+  }
+  return resumeGoogleSession();
 }
 
 async function activateInvitation(session: NexusSession): Promise<NexusSession> {

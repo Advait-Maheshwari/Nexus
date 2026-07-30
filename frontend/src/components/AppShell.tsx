@@ -194,8 +194,8 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
         </div>
       </header>
 
-      <main className="relative z-10 min-h-screen px-4 pb-28 pt-20 lg:pb-6 lg:pl-[260px]">
-        {children}
+      <main className="relative z-10 min-h-screen w-full max-w-full overflow-x-hidden px-4 pb-28 pt-20 lg:pb-6 lg:pl-[260px]">
+        <div className="min-w-0 max-w-full">{children}</div>
       </main>
 
       {mobileMenuOpen ? (

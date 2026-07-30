@@ -130,6 +130,7 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
   }
 
   const isPrimaryAuth = mode === "login" || mode === "register";
+  const googleOnlyRegistration = mode === "register" && !passwordRegistrationEnabled;
   const showResend = mode === "login" && error.toLowerCase().includes("verification");
 
   return (
@@ -155,7 +156,7 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
         </div>
 
         <div className="p-6 sm:p-10">
-          {isPrimaryAuth && passwordRegistrationEnabled ? (
+          {isPrimaryAuth ? (
             <div className="flex rounded-md border border-white/10 bg-white/[0.04] p-1">
               <ModeButton active={mode === "register"} onClick={() => chooseMode("register")}>
                 Sign Up
@@ -182,11 +183,15 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
               <h2 className="mt-2 text-2xl font-semibold text-white">{modeHeading(mode)}</h2>
               {!passwordRegistrationEnabled && mode === "login" ? (
                 <p className="mt-2 text-sm leading-6 text-slate-400">
-                  New to Nexus? Continue with Google to create your secure workspace.
+                  Use your Nexus password, or continue with the Google account connected to your workspace.
+                </p>
+              ) : googleOnlyRegistration ? (
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  Create your isolated Nexus workspace with Google. No payment method is required.
                 </p>
               ) : null}
             </div>
-            {mode === "register" ? (
+            {mode === "register" && passwordRegistrationEnabled ? (
               <AuthInput
                 label="Full name"
                 value={fullName}
@@ -196,10 +201,10 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
                 autoComplete="name"
               />
             ) : null}
-            {mode !== "reset" ? (
+            {mode !== "reset" && !googleOnlyRegistration ? (
               <AuthInput label="Email" type="email" value={email} onChange={setEmail} />
             ) : null}
-            {mode !== "forgot" ? (
+            {mode !== "forgot" && !googleOnlyRegistration ? (
               <AuthInput
                 label={mode === "reset" ? "New password" : "Password"}
                 type="password"
@@ -240,22 +245,24 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
                 Resend Verification
               </Button>
             ) : null}
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={loading}
-              className="w-full"
-              icon={modeIcon(mode)}
-            >
-              {modeAction(mode)}
-            </Button>
+            {!googleOnlyRegistration ? (
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={loading}
+                className="w-full"
+                icon={modeIcon(mode)}
+              >
+                {modeAction(mode)}
+              </Button>
+            ) : null}
           </form>
 
           {isPrimaryAuth ? (
             <>
               <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-[0.16em] text-slate-600">
                 <span className="h-px flex-1 bg-white/10" />
-                Cloud identity
+                {googleOnlyRegistration ? "Secure registration" : "Cloud identity"}
                 <span className="h-px flex-1 bg-white/10" />
               </div>
               <Button
@@ -266,7 +273,7 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
                 disabled={loading}
                 onClick={continueWithGoogle}
               >
-                Continue with Google
+                {googleOnlyRegistration ? "Sign Up with Google" : "Continue with Google"}
               </Button>
             </>
           ) : null}

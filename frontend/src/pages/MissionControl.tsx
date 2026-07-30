@@ -40,7 +40,7 @@ export function MissionControl({
   const intelligence = data.executionIntelligence;
 
   return (
-    <div className="relative min-h-[calc(100vh-6rem)]">
+    <div className="relative min-h-[calc(100vh-6rem)] min-w-0 max-w-full">
       <section className="absolute inset-x-0 top-0 h-[48vh] min-h-[320px] overflow-hidden rounded-lg border border-white/10 bg-void/80 shadow-violet">
         <Suspense fallback={<div className="h-full w-full bg-void" />}>
           <GalaxyScene projects={data.projects} relationships={data.relationships} />
@@ -48,14 +48,14 @@ export function MissionControl({
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,transparent_0%,rgba(2,4,10,0.1)_38%,rgba(2,4,10,0.82)_100%)]" />
       </section>
 
-      <div className="relative space-y-4">
-        <section className="grid gap-3 pt-[42vh] sm:grid-cols-2 xl:grid-cols-4">
+      <div className="relative min-w-0 max-w-full space-y-4">
+        <section className="grid min-w-0 max-w-full gap-3 pt-[42vh] sm:grid-cols-2 xl:grid-cols-4">
           {data.metrics.map((metric, index) => (
             <MetricTile key={metric.label} metric={metric} index={index} />
           ))}
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="grid min-w-0 max-w-full gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
@@ -69,7 +69,7 @@ export function MissionControl({
               </span>
             </div>
             {data.projects.length > 0 ? (
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid min-w-0 gap-3 md:grid-cols-2">
                 {data.projects.map((project) => (
                   <ProjectOrbitCard key={project.id} project={project} />
                 ))}
@@ -84,7 +84,7 @@ export function MissionControl({
           <ForecastPanel data={data} />
         </section>
 
-        <section className="glass-panel rounded-lg p-4 sm:p-5">
+        <section className="glass-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="max-w-3xl">
               <div className="flex items-center gap-2">
@@ -113,7 +113,7 @@ export function MissionControl({
             </div>
           </div>
 
-          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.75fr)]">
+          <div className="mt-5 grid min-w-0 max-w-full gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.75fr)]">
             <div>
               <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
                 Ranked queue
@@ -160,7 +160,7 @@ export function MissionControl({
 
         <TeamIntelligencePanel data={data} />
 
-        <section className="grid gap-4 xl:grid-cols-2">
+        <section className="grid min-w-0 max-w-full gap-4 xl:grid-cols-2">
           <SignalList
             eyebrow="Today's mission"
             title="Focused Queue"

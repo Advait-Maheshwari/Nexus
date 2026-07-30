@@ -1560,13 +1560,13 @@ function mergeProject(
   liveFeatures?: WorkspaceFeature[]
 ): ProjectSummary {
   const angle = index * 2.399963;
-  const radius = index === 0 ? 0 : 4.5 + Math.sqrt(index) * 3.2;
+  const radius = index === 0 ? 0 : 2.9 + Math.sqrt(index) * 1.65;
   const accents = ["#48e5ff", "#8b7cff", "#53e3a6", "#ffd166", "#ff6b8a"];
 
   return {
     coordinates: [
       Math.cos(angle) * radius,
-      ((index % 3) - 1) * 1.8,
+      ((index % 3) - 1) * 1.05,
       Math.sin(angle) * radius
     ] as [number, number, number],
     accent: accents[index % accents.length],

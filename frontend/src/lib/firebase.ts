@@ -13,7 +13,7 @@ import { exchangeFirebaseToken } from "@/lib/api";
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? "AIzaSyChJSRE-5owbu7elTb5RjRgFLHth9orsSM",
   authDomain:
-    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? "nexus-advait-pm.firebaseapp.com",
+    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? defaultAuthDomain(),
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? "nexus-advait-pm",
   storageBucket:
     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? "nexus-advait-pm.firebasestorage.app",
@@ -26,6 +26,17 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
+
+function defaultAuthDomain(): string {
+  const host = window.location.hostname.toLowerCase();
+  if (
+    host === "nexus-advait-pm.web.app" ||
+    host === "nexus-advait-pm.firebaseapp.com"
+  ) {
+    return host;
+  }
+  return "nexus-advait-pm.firebaseapp.com";
+}
 
 export async function signInWithGoogle(): Promise<NexusSession> {
   if (window.location.hostname === "127.0.0.1") {
