@@ -70,6 +70,7 @@ class TeamDeliverySignal(BaseModel):
     team_name: str
     lead: str
     responsibility: str
+    subteam_count: int = 0
     state: Literal["on_track", "watch", "lagging", "unassigned"]
     assigned_task_count: int
     assigned_task_titles: list[str]

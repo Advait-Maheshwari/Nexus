@@ -397,7 +397,7 @@ export function ProjectOverview({
           />
           <ReadinessMetric
             icon={<ShieldCheck size={17} />}
-            label="Health score"
+            label="Goal-aware health"
             value={`${healthScore}`}
             width={healthScore}
           />

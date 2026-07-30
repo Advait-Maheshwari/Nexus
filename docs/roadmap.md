@@ -114,17 +114,19 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 
 ## Phase 7: Calm UX and Goal-Aware Collaboration
 
-- Status: active.
-- Make the post-login workspace calmer by showing the next move first and keeping deeper
+- Status: complete for the current zero-cost production release.
+- The post-login workspace is calmer by showing the next move first and keeping deeper
   intelligence behind explicit review sections.
-- Calculate project health from the editable project goal, definition of done, completion route,
+- Project health is calculated from the editable project goal, definition of done, completion route,
   active steps, ownership, blockers, deadlines, and live task progress.
-- Add sub-teams under each project team so Nexus can show which group owns which lane, who is
+- Sub-teams under each project team show which group owns which lane, who is
   lagging, and where work is unassigned.
-- Keep Mission Control focused on desktop/laptop command workflows while preserving responsive
+- Mission Control stays focused on desktop/laptop command workflows while preserving responsive
   phone review paths.
-- Maintain the zero-cost policy: no paid AI, paid assets, paid analytics, or paid collaboration
+- The zero-cost policy remains intact: no paid AI, paid assets, paid analytics, or paid collaboration
   provider is required.
+- Desktop and 375px phone QA passed with collapsed review sections, nonblank WebGL canvases, no
+  horizontal overflow, and no browser console errors.
 
 ## Permanent Constraint: Zero Cost
 

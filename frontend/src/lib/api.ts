@@ -449,6 +449,7 @@ interface ApiTeamIntelligence {
     team_name: string;
     lead: string;
     responsibility: string;
+    subteam_count?: number;
     state: TeamIntelligence["signals"][number]["state"];
     assigned_task_count: number;
     assigned_task_titles: string[];
@@ -847,6 +848,7 @@ function mapTeamIntelligence(payload?: ApiTeamIntelligence): TeamIntelligence {
       teamName: signal.team_name,
       lead: signal.lead,
       responsibility: signal.responsibility,
+      subteamCount: signal.subteam_count ?? 0,
       state: signal.state,
       assignedTaskCount: signal.assigned_task_count,
       assignedTaskTitles: signal.assigned_task_titles,

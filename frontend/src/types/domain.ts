@@ -114,6 +114,7 @@ export interface TeamDeliverySignal {
   teamName: string;
   lead: string;
   responsibility: string;
+  subteamCount: number;
   state: TeamDeliveryState;
   assignedTaskCount: number;
   assignedTaskTitles: string[];

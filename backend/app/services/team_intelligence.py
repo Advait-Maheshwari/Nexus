@@ -173,6 +173,7 @@ def _build_team_signal(
             raw_team.get("responsibility"),
             "Delivery responsibility has not been defined.",
         ),
+        subteam_count=_subteam_count(raw_team),
         state=state,
         assigned_task_count=len(tracked_tasks),
         assigned_task_titles=[task.title for task in tracked_tasks[:4]],
@@ -208,6 +209,13 @@ def _team_task_ids(raw_team: dict) -> list[str]:
         for task_id in [*direct_ids, *subteam_ids]
         if isinstance(task_id, str)
     ]
+
+
+def _subteam_count(raw_team: dict) -> int:
+    subteams = raw_team.get("subteams", [])
+    if not isinstance(subteams, list):
+        return 0
+    return sum(isinstance(subteam, dict) for subteam in subteams)
 
 
 def _recovery_action(

@@ -190,17 +190,20 @@ Implementation checkpoint:
 
 ## Phase 7 Checkpoint
 
-Status: active.
+Status: complete for the current zero-cost production release.
 
-In progress:
+Completed:
 
-- Mission Control is being simplified around a calm "next move first" layout so the first
+- Mission Control now uses a calm "next move first" layout so the first
   post-login screen does not overwhelm the user with every signal at once.
 - Project health now uses the editable project goal, definition of done, strategy, completion
   route, goal completion, task progress, ownership, blockers, and deadlines instead of only raw
   task counts.
 - Project teams now support nested sub-teams with separate leads, responsibilities, and exclusive
   task assignments.
-- Nexus's own built-in project blueprint now treats Phase 7 as the active work and splits delivery
+- Nexus's own built-in project blueprint now marks Phase 7 complete and splits delivery
   ownership across product, experience, platform, security, deployment, and recovery lanes.
 - The zero-cost policy remains mandatory for every default workflow.
+- Validation passed with Ruff, `60` backend tests, one intentional PostgreSQL skip, TypeScript,
+  the production frontend build, desktop browser QA, 375px phone browser QA, no horizontal
+  overflow, no browser console errors, and rendered WebGL canvases.

@@ -82,6 +82,7 @@ def test_team_intelligence_identifies_lagging_team_and_unowned_work() -> None:
     assert "need recovery" in intelligence.headline
     signal = intelligence.signals[0]
     assert signal.state == "lagging"
+    assert signal.subteam_count == 1
     assert signal.completion_percent == 50
     assert signal.blocked_task_count == 1
     assert signal.assigned_task_titles == ["Secure authentication", "Release backend"]

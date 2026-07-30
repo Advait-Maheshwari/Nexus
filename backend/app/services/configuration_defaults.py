@@ -156,7 +156,7 @@ def _nexus_blueprint() -> ProjectBlueprintWrite:
             _step(
                 "Phase 7: Calm UX and Goal-Aware Collaboration",
                 "Reduce post-login overload, score health against project goals, and make teams/sub-teams accountable for delivery.",
-                "active",
+                "done",
                 "critical",
             ),
         ],

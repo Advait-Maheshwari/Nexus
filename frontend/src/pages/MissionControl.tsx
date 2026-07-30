@@ -389,6 +389,7 @@ function TeamSignalRow({ signal }: { signal: TeamDeliverySignal }) {
         </div>
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[11px] uppercase text-slate-500">
           <span>{signal.completionPercent}% complete</span>
+          {signal.subteamCount > 0 ? <span>{signal.subteamCount} sub-teams</span> : null}
           <span>{signal.openTaskCount} open</span>
           <span>{formatMinutes(signal.remainingMinutes)} left</span>
           {signal.blockedTaskCount > 0 ? (
