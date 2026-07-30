@@ -7,6 +7,7 @@ import type {
 } from "@/types/domain";
 import type { Preferences } from "@/types/preferences";
 import type {
+  AdminWorkspaceDashboard,
   NexusAccount,
   NexusRole,
   NexusSession,
@@ -432,6 +433,50 @@ interface ApiExecutionIntelligence {
     overdue_tasks: number;
     blocked_tasks: number;
     summary: string;
+  };
+}
+
+export async function fetchAdminWorkspaceDashboard(
+  accessToken: string
+): Promise<AdminWorkspaceDashboard> {
+  const response = await fetch(`${API_URL}/api/v1/admin/workspace`, {
+    credentials: "include",
+    headers: authHeaders(accessToken)
+  });
+  if (!response.ok) throw new Error(await apiError(response, "Admin dashboard loading failed"));
+  const payload = (await response.json()) as ApiAdminWorkspaceDashboard;
+  return {
+    workspaceId: payload.workspace_id,
+    workspaceName: payload.workspace_name,
+    generatedAt: payload.generated_at,
+    totalUsers: payload.total_users,
+    activeSessionCount: payload.active_session_count,
+    users: payload.users.map((user) => ({
+      userId: user.user_id,
+      fullName: user.full_name,
+      email: user.email,
+      avatarUrl: user.avatar_url ?? undefined,
+      role: user.role,
+      joinedAt: user.joined_at,
+      accountCreatedAt: user.account_created_at,
+      accountUpdatedAt: user.account_updated_at,
+      isActive: user.is_active,
+      emailVerified: user.email_verified,
+      passwordEnabled: user.password_enabled,
+      googleEnabled: user.google_enabled,
+      lastLoginAt: user.last_login_at ?? undefined,
+      activeSessionCount: user.active_session_count,
+      totalSessionCount: user.total_session_count
+    })),
+    activeSessions: payload.active_sessions.map((stored) => ({
+      id: stored.id,
+      userId: stored.user_id,
+      createdAt: stored.created_at,
+      expiresAt: stored.expires_at,
+      revokedAt: stored.revoked_at ?? undefined,
+      active: stored.active,
+      current: stored.current
+    }))
   };
 }
 
@@ -1435,6 +1480,40 @@ interface ApiTokenPayload {
 interface ApiAuthActionPayload {
   message: string;
   verification_required?: boolean;
+}
+
+interface ApiAdminWorkspaceDashboard {
+  workspace_id: string;
+  workspace_name: string;
+  generated_at: string;
+  total_users: number;
+  active_session_count: number;
+  users: Array<{
+    user_id: string;
+    full_name: string;
+    email: string;
+    avatar_url?: string | null;
+    role: NexusRole;
+    joined_at: string;
+    account_created_at: string;
+    account_updated_at: string;
+    is_active: boolean;
+    email_verified: boolean;
+    password_enabled: boolean;
+    google_enabled: boolean;
+    last_login_at?: string | null;
+    active_session_count: number;
+    total_session_count: number;
+  }>;
+  active_sessions: Array<{
+    id: string;
+    user_id: string;
+    created_at: string;
+    expires_at: string;
+    revoked_at?: string | null;
+    active: boolean;
+    current: boolean;
+  }>;
 }
 
 interface ApiAccountPayload {

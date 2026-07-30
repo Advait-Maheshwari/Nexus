@@ -60,3 +60,41 @@ export interface WorkspaceInvitation {
   revokedAt?: string;
   inviteToken?: string;
 }
+
+export interface AdminSessionSummary {
+  id: string;
+  userId: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt?: string;
+  active: boolean;
+  current: boolean;
+}
+
+export interface AdminWorkspaceUser {
+  userId: string;
+  fullName: string;
+  email: string;
+  avatarUrl?: string;
+  role: NexusRole;
+  joinedAt: string;
+  accountCreatedAt: string;
+  accountUpdatedAt: string;
+  isActive: boolean;
+  emailVerified: boolean;
+  passwordEnabled: boolean;
+  googleEnabled: boolean;
+  lastLoginAt?: string;
+  activeSessionCount: number;
+  totalSessionCount: number;
+}
+
+export interface AdminWorkspaceDashboard {
+  workspaceId: string;
+  workspaceName: string;
+  generatedAt: string;
+  totalUsers: number;
+  activeSessionCount: number;
+  users: AdminWorkspaceUser[];
+  activeSessions: AdminSessionSummary[];
+}

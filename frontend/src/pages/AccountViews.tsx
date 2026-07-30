@@ -46,6 +46,7 @@ import {
 } from "@/lib/api";
 import { clearLegacyPreferences, readLegacyPreferences } from "@/lib/legacyStateMigration";
 import { cn } from "@/lib/utils";
+import { AdminDashboard } from "@/pages/AdminDashboard";
 import { IntegrationsView } from "@/pages/IntegrationsView";
 import { OperationsView } from "@/pages/OperationsView";
 import { IdeasView, JournalView } from "@/pages/PlanningViews";
@@ -78,6 +79,7 @@ function resolveAvatarUrl(value?: string) {
 type ControlModule =
   | "settings"
   | "team"
+  | "admin"
   | "ideas"
   | "journal"
   | "integrations"
@@ -96,6 +98,12 @@ const controlModules: Array<{
     label: "Team",
     description: "Workspace members, roles, invitations, and free-plan usage.",
     icon: Users
+  },
+  {
+    key: "admin",
+    label: "Admin",
+    description: "Owner-only user inventory, active sessions, and login telemetry.",
+    icon: Database
   },
   {
     key: "settings",
@@ -227,6 +235,7 @@ export function ControlCenterView({
         {activeModule === "team" ? (
           <TeamCenter session={session} onSessionChange={onSessionChange} />
         ) : null}
+        {activeModule === "admin" ? <AdminDashboard session={session} /> : null}
         {activeModule === "ideas" ? <IdeasView session={session} /> : null}
         {activeModule === "journal" ? <JournalView session={session} /> : null}
         {activeModule === "integrations" ? (
