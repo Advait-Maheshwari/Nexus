@@ -117,7 +117,7 @@ function App() {
           return;
         }
         void logoutSession();
-        if (activeSession.identityProvider === "google") {
+        if (activeSession.identityProvider === "google" || activeSession.identityProvider === "password") {
           void signOutFirebase();
         }
         sessionStorage.removeItem(SESSION_KEY);
@@ -159,7 +159,7 @@ async function restoreSession(saved: NexusSession | null): Promise<NexusSession 
     try {
       return await validateSession(saved);
     } catch {
-      if (saved.identityProvider !== "google") {
+      if (saved.identityProvider !== "google" && saved.identityProvider !== "password") {
         throw new Error("Saved session is no longer valid");
       }
     }

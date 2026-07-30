@@ -149,7 +149,10 @@ export function AuthView({
       setNotice(result.message);
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Authentication is unavailable.";
-      if (message.startsWith("Verify your email first")) {
+      if (
+        message.startsWith("Verify your email first") ||
+        message.startsWith("Email is not verified yet")
+      ) {
         setVerificationPending(true);
         setNotice(message);
       } else {

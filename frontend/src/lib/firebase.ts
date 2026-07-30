@@ -59,8 +59,9 @@ export async function completeFirebaseEmailVerification(): Promise<NexusSession>
   await user.reload();
   const currentUser = auth.currentUser ?? user;
   if (!currentUser.emailVerified) {
-    await sendEmailVerification(currentUser);
-    throw new Error("Verify your email first. I sent a fresh verification link.");
+    throw new Error(
+      "Email is not verified yet. Open the verification link, then return here and click again."
+    );
   }
   return await exchangeFirebaseUser(currentUser, "password");
 }
@@ -76,13 +77,17 @@ export async function signInWithFirebaseEmail(
       password
     );
     if (!credential.user.emailVerified) {
-      await sendEmailVerification(credential.user);
-      await signOut(auth);
-      throw new Error("Verify your email first. I sent a fresh verification link.");
+      throw new Error(
+        "Verify your email first. Open the verification email, then return here."
+      );
     }
     return await exchangeFirebaseUser(credential.user, "password");
   } catch (reason) {
-    if (reason instanceof Error && reason.message.startsWith("Verify your email first")) {
+    if (
+      reason instanceof Error &&
+      (reason.message.startsWith("Verify your email first") ||
+        reason.message.startsWith("Email is not verified yet"))
+    ) {
       throw reason;
     }
     throw new Error(firebaseAuthErrorMessage(reason));
@@ -108,10 +113,13 @@ export async function signInWithGoogle(): Promise<NexusSession> {
 
 export async function resumeGoogleSession(): Promise<NexusSession | null> {
   await auth.authStateReady();
-  if (!auth.currentUser) return null;
+  const user = auth.currentUser;
+  if (!user) return null;
   try {
-    if (!auth.currentUser.emailVerified) return null;
-    return await exchangeFirebaseUser(auth.currentUser, currentIdentityProvider(auth.currentUser));
+    await user.reload();
+    const currentUser = auth.currentUser ?? user;
+    if (!currentUser.emailVerified) return null;
+    return await exchangeFirebaseUser(currentUser, currentIdentityProvider(currentUser));
   } catch (reason) {
     throw new Error(firebaseAuthErrorMessage(reason));
   }
@@ -172,6 +180,9 @@ function firebaseAuthErrorMessage(reason: unknown): string {
   }
   if (code === "auth/operation-not-allowed") {
     return "This sign-in method is not enabled in Firebase Authentication.";
+  }
+  if (code === "auth/too-many-requests") {
+    return "Firebase temporarily blocked this action because it was tried too many times. Wait a little, then try again.";
   }
   if (code === "auth/network-request-failed") {
     return "Google could not be reached. Check your connection or privacy extensions and try again.";
