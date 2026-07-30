@@ -9,6 +9,7 @@ import {
   validateSession
 } from "@/lib/api";
 import { resumeGoogleSession, signOutFirebase } from "@/lib/firebase";
+import { publicPreviewMissionData } from "@/lib/publicPreview";
 import { AuthView } from "@/pages/AuthView";
 import { ControlCenterView } from "@/pages/AccountViews";
 import { CityBuilderView } from "@/pages/CityBuilder";
@@ -22,12 +23,25 @@ import {
 import type { NexusSession } from "@/types/auth";
 
 const SESSION_KEY = "nexus.session.v1";
+const PREVIEW_SESSION: NexusSession = {
+  mode: "api",
+  accessToken: "public-preview",
+  userId: "public-preview",
+  workspaceId: "public-preview",
+  email: "preview@nexus.local",
+  displayName: "Public Preview",
+  identityProvider: "password",
+  role: "viewer"
+};
 
 function App() {
   const [session, setSession] = useState<NexusSession | null>(loadSession);
   const [sessionReady, setSessionReady] = useState(false);
   const [activeView, setActiveView] = useState<ViewKey>("mission");
+  const [previewMode, setPreviewMode] = useState(false);
   const { data: missionData } = useMissionData(session);
+  const activeSession = previewMode ? PREVIEW_SESSION : session;
+  const activeMissionData = previewMode ? publicPreviewMissionData : missionData;
 
   useEffect(() => {
     purgeLegacyLocalData();
@@ -72,14 +86,19 @@ function App() {
     );
   }
 
-  if (!session) {
+  if (!activeSession) {
     return (
       <AuthView
         onAuthenticated={(nextSession) => {
           void activateInvitation(nextSession).then((activated) => {
             persistSession(activated);
+            setPreviewMode(false);
             setSession(activated);
           });
+        }}
+        onPreview={() => {
+          setActiveView("mission");
+          setPreviewMode(true);
         }}
       />
     );
@@ -88,11 +107,17 @@ function App() {
   return (
     <AppShell
       activeView={activeView}
-      session={session}
+      session={activeSession}
+      previewMode={previewMode}
       onViewChange={setActiveView}
       onLogout={() => {
+        if (previewMode) {
+          setPreviewMode(false);
+          setActiveView("mission");
+          return;
+        }
         void logoutSession();
-        if (session.identityProvider === "google") {
+        if (activeSession.identityProvider === "google") {
           void signOutFirebase();
         }
         sessionStorage.removeItem(SESSION_KEY);
@@ -100,17 +125,17 @@ function App() {
       }}
     >
       {activeView === "mission" ? (
-        <MissionControl data={missionData} session={session} />
+        <MissionControl data={activeMissionData} session={activeSession} previewMode={previewMode} />
       ) : null}
-      {activeView === "projects" ? <ProjectsView session={session} /> : null}
-      {activeView === "galaxy" ? <GalaxyView data={missionData} /> : null}
-      {activeView === "analytics" ? <AnalyticsView data={missionData} /> : null}
-      {activeView === "city" ? <CityBuilderView data={missionData} /> : null}
-      {activeView === "calendar" ? <CalendarView session={session} /> : null}
-      {activeView === "control" ? (
+      {!previewMode && activeView === "projects" ? <ProjectsView session={activeSession} /> : null}
+      {activeView === "galaxy" ? <GalaxyView data={activeMissionData} /> : null}
+      {activeView === "analytics" ? <AnalyticsView data={activeMissionData} /> : null}
+      {activeView === "city" ? <CityBuilderView data={activeMissionData} /> : null}
+      {!previewMode && activeView === "calendar" ? <CalendarView session={activeSession} /> : null}
+      {!previewMode && activeView === "control" ? (
         <ControlCenterView
-          session={session}
-          missionData={missionData}
+          session={activeSession}
+          missionData={activeMissionData}
           onSessionChange={(nextSession) => {
             persistSession(nextSession);
             setSession(nextSession);

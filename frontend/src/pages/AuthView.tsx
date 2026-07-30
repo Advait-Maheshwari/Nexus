@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   ArrowLeft,
   Chrome,
+  Eye,
+  FlaskConical,
   KeyRound,
   LogIn,
   MailCheck,
@@ -14,6 +16,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import {
   authenticate,
+  enterPrivateDemo,
   requestPasswordReset,
   resendAccountVerification,
   resetAccountPassword,
@@ -26,8 +29,18 @@ type AuthMode = "login" | "register" | "forgot" | "reset";
 
 const passwordRegistrationEnabled =
   import.meta.env.DEV || import.meta.env.VITE_ALLOW_PASSWORD_REGISTRATION === "true";
+const privateDemoOwnerHashes = String(import.meta.env.VITE_PRIVATE_DEMO_OWNER_EMAIL_HASHES ?? "")
+  .split(",")
+  .map((hash) => hash.trim().toLowerCase())
+  .filter(Boolean);
 
-export function AuthView({ onAuthenticated }: { onAuthenticated: (session: NexusSession) => void }) {
+export function AuthView({
+  onAuthenticated,
+  onPreview
+}: {
+  onAuthenticated: (session: NexusSession) => void;
+  onPreview: () => void;
+}) {
   const initialResetToken = readActionToken("reset_password");
   const [mode, setMode] = useState<AuthMode>(
     initialResetToken ? "reset" : passwordRegistrationEnabled ? "register" : "login"
@@ -39,6 +52,7 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
+  const [privateDemoAvailable, setPrivateDemoAvailable] = useState(false);
 
   useEffect(() => {
     const token = readActionToken("verify_email");
@@ -58,6 +72,27 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || privateDemoOwnerHashes.length === 0) {
+      setPrivateDemoAvailable(false);
+      return;
+    }
+
+    void sha256Hex(normalizedEmail)
+      .then((hash) => {
+        if (active) setPrivateDemoAvailable(privateDemoOwnerHashes.includes(hash));
+      })
+      .catch(() => {
+        if (active) setPrivateDemoAvailable(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [email]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -129,8 +164,32 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
     }
   }
 
+  async function openPrivateDemo() {
+    setLoading(true);
+    setError("");
+    setNotice("");
+    try {
+      const ownerSession = await signInWithGoogle();
+      const demoSession = await enterPrivateDemo(ownerSession.accessToken);
+      onAuthenticated({
+        ...demoSession,
+        identityProvider: ownerSession.identityProvider,
+        displayName: ownerSession.displayName,
+        email: ownerSession.email,
+        photoUrl: ownerSession.photoUrl
+      });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Private demo is unavailable.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const isPrimaryAuth = mode === "login" || mode === "register";
   const googleOnlyRegistration = mode === "register" && !passwordRegistrationEnabled;
+  const showEmailInput =
+    mode !== "reset" &&
+    (!googleOnlyRegistration || privateDemoOwnerHashes.length > 0);
   const showResend = mode === "login" && error.toLowerCase().includes("verification");
 
   return (
@@ -187,7 +246,7 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
                 </p>
               ) : googleOnlyRegistration ? (
                 <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Create your isolated Nexus workspace with Google. No payment method is required.
+                  Create your isolated Nexus workspace with Google. Preview works without any account.
                 </p>
               ) : null}
             </div>
@@ -201,8 +260,14 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
                 autoComplete="name"
               />
             ) : null}
-            {mode !== "reset" && !googleOnlyRegistration ? (
-              <AuthInput label="Email" type="email" value={email} onChange={setEmail} />
+            {showEmailInput ? (
+              <AuthInput
+                label={googleOnlyRegistration ? "Email for owner access" : "Email"}
+                type="email"
+                value={email}
+                onChange={setEmail}
+                required={!googleOnlyRegistration}
+              />
             ) : null}
             {mode !== "forgot" && !googleOnlyRegistration ? (
               <AuthInput
@@ -275,6 +340,28 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (session: Nexus
               >
                 {googleOnlyRegistration ? "Sign Up with Google" : "Continue with Google"}
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="mb-3 w-full"
+                icon={<Eye size={16} />}
+                disabled={loading}
+                onClick={onPreview}
+              >
+                Preview Nexus
+              </Button>
+              {privateDemoAvailable ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  icon={<FlaskConical size={16} />}
+                  disabled={loading}
+                  onClick={openPrivateDemo}
+                >
+                  Open Private Demo
+                </Button>
+              ) : null}
             </>
           ) : null}
         </div>
@@ -300,6 +387,14 @@ function replaceSearch(params: URLSearchParams) {
     "",
     `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash}`
   );
+}
+
+async function sha256Hex(value: string) {
+  const encoded = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", encoded);
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
 }
 
 function modeEyebrow(mode: AuthMode) {
@@ -360,7 +455,8 @@ function AuthInput({
   minLength,
   autoComplete,
   pattern,
-  title
+  title,
+  required = true
 }: {
   label: string;
   value: string;
@@ -370,12 +466,13 @@ function AuthInput({
   autoComplete?: string;
   pattern?: string;
   title?: string;
+  required?: boolean;
 }) {
   return (
     <label className="grid gap-1.5 text-xs uppercase tracking-[0.16em] text-slate-500">
       {label}
       <input
-        required
+        required={required}
         type={type}
         value={value}
         minLength={minLength}

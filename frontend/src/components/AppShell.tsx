@@ -51,23 +51,36 @@ const navGroups = [
   { label: "Command", items: commandItems },
   { label: "System", items: systemItems }
 ];
-
-const navItems = [...commandItems, ...systemItems];
-const mobilePrimaryItems = commandItems.slice(0, 4);
-const mobileMoreItems = [...commandItems.slice(4), ...systemItems];
+const previewItems = commandItems.filter((item) =>
+  ["mission", "galaxy", "city", "analytics"].includes(item.key)
+);
 
 interface AppShellProps {
   activeView: ViewKey;
   session: NexusSession;
+  previewMode?: boolean;
   onViewChange: (view: ViewKey) => void;
   onLogout: () => void;
   children: React.ReactNode;
 }
 
-export function AppShell({ activeView, session, onViewChange, onLogout, children }: AppShellProps) {
+export function AppShell({
+  activeView,
+  session,
+  previewMode = false,
+  onViewChange,
+  onLogout,
+  children
+}: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const closeMobileMenuRef = useRef<HTMLButtonElement>(null);
-  const activeItem = navItems.find((item) => item.key === activeView);
+  const visibleNavGroups = previewMode
+    ? [{ label: "Preview", items: previewItems }]
+    : navGroups;
+  const visibleNavItems = visibleNavGroups.flatMap((group) => group.items);
+  const mobilePrimaryItems = visibleNavItems.slice(0, 4);
+  const mobileMoreItems = visibleNavItems.slice(4);
+  const activeItem = visibleNavItems.find((item) => item.key === activeView);
   const mobileMoreActive = mobileMoreItems.some((item) => item.key === activeView);
 
   useEffect(() => {
@@ -107,7 +120,7 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-4">
-          {navGroups.map((group) => (
+          {visibleNavGroups.map((group) => (
             <div key={group.label}>
               <p className="mb-2 px-2 font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
                 {group.label}
@@ -155,7 +168,9 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
 
         <div className="mt-3 flex items-center gap-2 border-t border-white/10 px-2 pt-4 text-xs text-success">
           <ShieldCheck size={15} />
-          <span className="font-semibold">Zero-cost policy active</span>
+          <span className="font-semibold">
+            {previewMode ? "Read-only preview" : "Zero-cost policy active"}
+          </span>
         </div>
       </aside>
 
@@ -169,11 +184,11 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
           </div>
           <div className="hidden items-center gap-2 sm:flex">
             <Button
-              icon={<Sparkles size={16} />}
-              variant="primary"
-              onClick={() => selectView("mission")}
+              icon={previewMode ? <LogOut size={16} /> : <Sparkles size={16} />}
+              variant={previewMode ? "secondary" : "primary"}
+              onClick={previewMode ? onLogout : () => selectView("mission")}
             >
-              AI Briefing
+              {previewMode ? "Exit Preview" : "AI Briefing"}
             </Button>
             <Button
               icon={<LogOut size={16} />}
@@ -264,7 +279,10 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
 
       <nav
         aria-label="Primary navigation"
-        className="glass-panel fixed bottom-3 left-3 right-3 z-30 grid grid-cols-5 gap-1 rounded-lg p-2 lg:hidden"
+        className={cn(
+          "glass-panel fixed bottom-3 left-3 right-3 z-30 grid gap-1 rounded-lg p-2 lg:hidden",
+          mobileMoreItems.length > 0 ? "grid-cols-5" : "grid-cols-4"
+        )}
         style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
         {mobilePrimaryItems.map((item) => {
@@ -289,21 +307,23 @@ export function AppShell({ activeView, session, onViewChange, onLogout, children
             </button>
           );
         })}
-        <button
-          type="button"
-          aria-expanded={mobileMenuOpen}
-          aria-controls="mobile-more-navigation"
-          onClick={() => setMobileMenuOpen(true)}
-          className={cn(
-            "flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-md border px-1 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan",
-            mobileMoreActive
-              ? "border-cyan/45 bg-cyan/15 text-cyan shadow-glow"
-              : "border-transparent text-slate-400 hover:bg-white/[0.06] hover:text-white"
-          )}
-        >
-          <MoreHorizontal size={19} />
-          <span className="text-[10px] font-medium">More</span>
-        </button>
+        {mobileMoreItems.length > 0 ? (
+          <button
+            type="button"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-more-navigation"
+            onClick={() => setMobileMenuOpen(true)}
+            className={cn(
+              "flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-md border px-1 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan",
+              mobileMoreActive
+                ? "border-cyan/45 bg-cyan/15 text-cyan shadow-glow"
+                : "border-transparent text-slate-400 hover:bg-white/[0.06] hover:text-white"
+            )}
+          >
+            <MoreHorizontal size={19} />
+            <span className="text-[10px] font-medium">More</span>
+          </button>
+        ) : null}
       </nav>
     </div>
   );

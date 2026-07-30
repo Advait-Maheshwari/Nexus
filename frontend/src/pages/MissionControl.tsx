@@ -32,10 +32,12 @@ const GalaxyScene = lazy(() => import("@/scenes/GalaxyScene"));
 
 export function MissionControl({
   data,
-  session
+  session,
+  previewMode = false
 }: {
   data: MissionData;
   session: NexusSession;
+  previewMode?: boolean;
 }) {
   const briefing = useMemo(() => createLocalBriefing(data), [data]);
   const intelligence = data.executionIntelligence;
@@ -168,9 +170,11 @@ export function MissionControl({
           </details>
         </section>
 
-        <ReviewSection eyebrow="Briefing automation" title="Daily and Weekly Reviews">
-          <OperationalBriefings session={session} embedded />
-        </ReviewSection>
+        {!previewMode ? (
+          <ReviewSection eyebrow="Briefing automation" title="Daily and Weekly Reviews">
+            <OperationalBriefings session={session} embedded />
+          </ReviewSection>
+        ) : null}
 
         <ReviewSection
           eyebrow="Team intelligence"
