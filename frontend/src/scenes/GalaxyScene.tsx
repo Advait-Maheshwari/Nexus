@@ -24,6 +24,9 @@ const relationshipColor: Record<ProjectRelationship["type"], string> = {
 };
 
 type OrbitControlsHandle = ComponentRef<typeof OrbitControls>;
+type GalaxyProject = ProjectSummary & {
+  visualCoordinates: [number, number, number];
+};
 
 interface GalaxyFrame {
   center: THREE.Vector3;
@@ -39,7 +42,7 @@ function ProjectStar({
   onSelect,
   onSelectPlanet
 }: {
-  project: ProjectSummary;
+  project: GalaxyProject;
   index: number;
   selected: boolean;
   focusMode: boolean;
@@ -59,7 +62,7 @@ function ProjectStar({
     const elapsed = clock.getElapsedTime();
     if (group.current) {
       group.current.rotation.y = elapsed * (0.12 + index * 0.03);
-      group.current.position.y = project.coordinates[1] + Math.sin(elapsed + index) * 0.08;
+      group.current.position.y = project.visualCoordinates[1] + Math.sin(elapsed + index) * 0.08;
       const distanceScale = THREE.MathUtils.clamp(
         camera.position.distanceTo(group.current.position) / 3.9,
         1,
@@ -70,8 +73,8 @@ function ProjectStar({
         : focusMode
           ? 0.62
           : project.planets.length === 0
-            ? 0.9
-            : 0.62;
+            ? 1.02
+            : 0.82;
       group.current.scale.setScalar(focusScale * Math.min(distanceScale, focusMode ? 1.26 : 1.08));
     }
     if (orbit.current) {
@@ -88,9 +91,10 @@ function ProjectStar({
     () =>
       project.planets.map((planet, planetIndex) => {
         const angle = (planetIndex / project.planets.length) * Math.PI * 2;
-        const radiusMultiplier = selected ? 2.08 : focusMode ? 1.5 : 1;
-        const radius = planet.orbitRadius * radiusMultiplier;
-        const progressScale = 0.078 + planet.progress / 1600 + Math.min(planet.taskCount, 18) / 2200;
+        const visualBaseRadius = 0.56 + planetIndex * 0.24 + Math.min(planetIndex, 5) * 0.035;
+        const radiusMultiplier = selected ? 1.9 : focusMode ? 1.42 : 1.18;
+        const radius = visualBaseRadius * radiusMultiplier;
+        const progressScale = 0.095 + planet.progress / 1450 + Math.min(planet.taskCount, 18) / 1850;
         const completedTaskCount = Math.round(planet.taskCount * (planet.progress / 100));
         const openTaskCount = Math.max(0, planet.taskCount - completedTaskCount - planet.blockedTaskCount);
         return {
@@ -115,7 +119,7 @@ function ProjectStar({
   return (
     <group
       ref={group}
-      position={project.coordinates}
+      position={project.visualCoordinates}
       onClick={(event) => {
         event.stopPropagation();
         onSelect?.(project.id);
@@ -673,19 +677,19 @@ function ProjectLink({
   target
 }: {
   relationship: ProjectRelationship;
-  source: ProjectSummary;
-  target: ProjectSummary;
+  source: GalaxyProject;
+  target: GalaxyProject;
 }) {
   const pulse = useRef<THREE.Mesh>(null);
   const color = relationshipColor[relationship.type];
   const curvePoints = useMemo(() => {
-    const sourcePoint = new THREE.Vector3(...source.coordinates);
-    const targetPoint = new THREE.Vector3(...target.coordinates);
+    const sourcePoint = new THREE.Vector3(...source.visualCoordinates);
+    const targetPoint = new THREE.Vector3(...target.visualCoordinates);
     const midpoint = sourcePoint.clone().lerp(targetPoint, 0.5);
     midpoint.y += 0.28 + relationship.strength * 0.36;
     const curve = new THREE.QuadraticBezierCurve3(sourcePoint, midpoint, targetPoint);
     return curve.getPoints(28);
-  }, [relationship.strength, source.coordinates, target.coordinates]);
+  }, [relationship.strength, source.visualCoordinates, target.visualCoordinates]);
   const labelPoint = curvePoints[Math.floor(curvePoints.length / 2)].clone().add(new THREE.Vector3(0, 0.13, 0));
 
   useFrame(({ clock }) => {
@@ -724,7 +728,7 @@ function ProjectLinks({
   projects,
   relationships
 }: {
-  projects: ProjectSummary[];
+  projects: GalaxyProject[];
   relationships: ProjectRelationship[];
 }) {
   const projectMap = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
@@ -745,21 +749,59 @@ function ProjectLinks({
   );
 }
 
+function layoutGalaxyProjects(projects: ProjectSummary[]): GalaxyProject[] {
+  if (projects.length === 0) return [];
+  if (projects.length === 1) {
+    return [{ ...projects[0], visualCoordinates: [0, 0, 0] }];
+  }
+
+  if (projects.length <= 4) {
+    const radius = projects.length === 2 ? 2.45 : 2.9;
+    return projects.map((project, index) => {
+      const angle = (index / projects.length) * Math.PI * 2 - Math.PI / 2;
+      return {
+        ...project,
+        visualCoordinates: [
+          Math.cos(angle) * radius,
+          ((index % 2) - 0.5) * 0.38,
+          Math.sin(angle) * radius
+        ] as [number, number, number]
+      };
+    });
+  }
+
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+  return projects.map((project, index) => {
+    const radius = 1.35 + Math.sqrt(index + 1) * 1.55;
+    const angle = index * goldenAngle;
+    return {
+      ...project,
+      visualCoordinates: [
+        Math.cos(angle) * radius,
+        ((index % 3) - 1) * 0.42,
+        Math.sin(angle) * radius
+      ] as [number, number, number]
+    };
+  });
+}
+
 function calculateGalaxyFrame(
-  projects: ProjectSummary[],
-  selectedProject?: ProjectSummary
+  projects: GalaxyProject[],
+  selectedProject?: GalaxyProject
 ): GalaxyFrame {
   if (selectedProject) {
     if (selectedProject.planets.length === 0) {
       return {
-        center: new THREE.Vector3(...selectedProject.coordinates),
-        radius: 1.45
+        center: new THREE.Vector3(...selectedProject.visualCoordinates),
+        radius: 1.9
       };
     }
-    const largestOrbit = Math.max(0.8, ...selectedProject.planets.map((planet) => planet.orbitRadius));
+    const largestOrbit = selectedProject.planets.length > 0
+      ? 0.56 + (selectedProject.planets.length - 1) * 0.275
+      : 0.8;
     return {
-      center: new THREE.Vector3(...selectedProject.coordinates),
-      radius: Math.max(2.8, largestOrbit * 2.75 + 0.8)
+      center: new THREE.Vector3(...selectedProject.visualCoordinates),
+      radius: Math.max(2.9, largestOrbit * 2.8 + 1.05)
     };
   }
 
@@ -769,16 +811,16 @@ function calculateGalaxyFrame(
 
   if (projects.length === 1 && projects[0].planets.length === 0) {
     return {
-      center: new THREE.Vector3(...projects[0].coordinates),
-      radius: 1.75
+      center: new THREE.Vector3(...projects[0].visualCoordinates),
+      radius: 2.25
     };
   }
 
   const bounds = new THREE.Box3();
   for (const project of projects) {
-    const largestOrbit = Math.max(0.8, ...project.planets.map((planet) => planet.orbitRadius));
-    const systemRadius = Math.max(1.25, largestOrbit * 0.52 + 0.55);
-    const center = new THREE.Vector3(...project.coordinates);
+    const visualOrbit = project.planets.length > 0 ? 0.56 + (project.planets.length - 1) * 0.275 : 0.82;
+    const systemRadius = Math.max(1.45, visualOrbit * 1.55 + 0.7);
+    const center = new THREE.Vector3(...project.visualCoordinates);
     bounds.expandByPoint(center.clone().addScalar(systemRadius));
     bounds.expandByPoint(center.clone().addScalar(-systemRadius));
   }
@@ -850,11 +892,12 @@ export function GalaxyScene({
   onSelectProject?: (projectId: string) => void;
   onSelectPlanet?: (projectId: string, planetId: string) => void;
 }) {
-  const selectedProject = projects.find((project) => project.id === selectedProjectId);
+  const visualProjects = useMemo(() => layoutGalaxyProjects(projects), [projects]);
+  const selectedProject = visualProjects.find((project) => project.id === selectedProjectId);
   const controls = useRef<OrbitControlsHandle>(null);
   const frame = useMemo(
-    () => calculateGalaxyFrame(projects, selectedProject),
-    [projects, selectedProject]
+    () => calculateGalaxyFrame(visualProjects, selectedProject),
+    [visualProjects, selectedProject]
   );
 
   return (
@@ -880,8 +923,8 @@ export function GalaxyScene({
         selectedProjectId={selectedProjectId}
         resetSignal={resetSignal}
       />
-      <ProjectLinks projects={projects} relationships={relationships} />
-      {projects.map((project, index) => (
+      <ProjectLinks projects={visualProjects} relationships={relationships} />
+      {visualProjects.map((project, index) => (
         <ProjectStar
           key={project.id}
           project={project}

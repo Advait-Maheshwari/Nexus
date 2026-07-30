@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -30,20 +30,10 @@ export function GalaxyView({ data }: { data: MissionData }) {
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedPlanetId, setSelectedPlanetId] = useState("");
   const [sceneRevision, setSceneRevision] = useState(0);
-  const initializedSelection = useRef(false);
   const selectedProject = data.projects.find((project) => project.id === selectedProjectId);
   const selectedPlanet = selectedProject?.planets.find(
     (planet) => planet.id === selectedPlanetId
   );
-
-  useEffect(() => {
-    if (initializedSelection.current || data.projects.length === 0) return;
-
-    const [project] = data.projects;
-    initializedSelection.current = true;
-    setSelectedProjectId(project.id);
-    setSelectedPlanetId(project.planets[0]?.id ?? "");
-  }, [data.projects]);
 
   useEffect(() => {
     if (!selectedProjectId || data.projects.some((project) => project.id === selectedProjectId)) {
