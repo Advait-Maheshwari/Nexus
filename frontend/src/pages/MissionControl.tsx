@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import {
   ArrowDownToLine,
   CheckCircle2,
+  ChevronDown,
   CircleDot,
   Gauge,
   Radar,
@@ -55,6 +56,8 @@ export function MissionControl({
           ))}
         </section>
 
+        <CommandFocus data={data} />
+
         <section className="grid min-w-0 max-w-full gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0">
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -85,106 +88,214 @@ export function MissionControl({
         </section>
 
         <section className="glass-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="max-w-3xl">
-              <div className="flex items-center gap-2">
-                <Waypoints size={17} className="text-cyan" />
-                <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan">
-                  Execution intelligence
+          <details className="group">
+            <summary className="flex cursor-pointer list-none flex-wrap items-start justify-between gap-3">
+              <div className="max-w-3xl">
+                <div className="flex items-center gap-2">
+                  <Waypoints size={17} className="text-cyan" />
+                  <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan">
+                    Execution intelligence
+                  </p>
+                </div>
+                <h2 className="mt-2 text-xl font-semibold text-white">Next Best Actions</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  {intelligence.headline}
                 </p>
               </div>
-              <h2 className="mt-2 text-xl font-semibold text-white">Next Best Actions</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-300">{intelligence.headline}</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-success/25 bg-success/10 px-2.5 font-mono text-[11px] uppercase text-success">
-                <ShieldCheck size={13} />
-                $0 local engine
-              </span>
-              <Button
-                variant="ghost"
-                icon={<ArrowDownToLine size={15} />}
-                onClick={() =>
-                  downloadTextFile("nexus-local-report.md", briefing.report, "text/markdown")
-                }
-              >
-                Export
-              </Button>
-            </div>
-          </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-success/25 bg-success/10 px-2.5 font-mono text-[11px] uppercase text-success">
+                  <ShieldCheck size={13} />
+                  $0 local engine
+                </span>
+                <Button
+                  variant="ghost"
+                  icon={<ArrowDownToLine size={15} />}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    downloadTextFile("nexus-local-report.md", briefing.report, "text/markdown");
+                  }}
+                >
+                  Export
+                </Button>
+                <ChevronDown
+                  size={18}
+                  className="mt-1 text-slate-500 transition-transform group-open:rotate-180"
+                />
+              </div>
+            </summary>
 
-          <div className="mt-5 grid min-w-0 max-w-full gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.75fr)]">
-            <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                Ranked queue
-              </p>
-              {intelligence.nextActions.length > 0 ? (
-                <ol className="overflow-hidden rounded-md border border-white/10 bg-black/15">
-                  {intelligence.nextActions.map((action, index) => (
-                    <ExecutionActionRow
-                      key={action.taskId ?? action.title + "-" + index}
-                      action={action}
-                      index={index}
-                    />
-                  ))}
-                </ol>
-              ) : (
-                <div className="flex min-h-32 items-center gap-3 rounded-md border border-dashed border-white/15 px-4 text-sm text-slate-400">
-                  <CheckCircle2 size={19} className="shrink-0 text-success" />
-                  No open action is ranked yet. Add a task with a priority or deadline.
-                </div>
-              )}
-            </div>
+            <div className="mt-5 grid min-w-0 max-w-full gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.75fr)]">
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                  Ranked queue
+                </p>
+                {intelligence.nextActions.length > 0 ? (
+                  <ol className="overflow-hidden rounded-md border border-white/10 bg-black/15">
+                    {intelligence.nextActions.map((action, index) => (
+                      <ExecutionActionRow
+                        key={action.taskId ?? action.title + "-" + index}
+                        action={action}
+                        index={index}
+                      />
+                    ))}
+                  </ol>
+                ) : (
+                  <div className="flex min-h-32 items-center gap-3 rounded-md border border-dashed border-white/15 px-4 text-sm text-slate-400">
+                    <CheckCircle2 size={19} className="shrink-0 text-success" />
+                    No open action is ranked yet. Add a task with a priority or deadline.
+                  </div>
+                )}
+              </div>
 
-            <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                Risk watch
-              </p>
-              {intelligence.riskSignals.length > 0 ? (
-                <div className="divide-y divide-white/10 border-y border-white/10">
-                  {intelligence.riskSignals.map((signal) => (
-                    <RiskRow key={signal.key} signal={signal} />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex min-h-32 items-center gap-3 border-y border-white/10 px-1 text-sm text-slate-400">
-                  <ShieldCheck size={19} className="shrink-0 text-success" />
-                  No deadline breach or blocked path is visible.
-                </div>
-              )}
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                  Risk watch
+                </p>
+                {intelligence.riskSignals.length > 0 ? (
+                  <div className="divide-y divide-white/10 border-y border-white/10">
+                    {intelligence.riskSignals.map((signal) => (
+                      <RiskRow key={signal.key} signal={signal} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex min-h-32 items-center gap-3 border-y border-white/10 px-1 text-sm text-slate-400">
+                    <ShieldCheck size={19} className="shrink-0 text-success" />
+                    No deadline breach or blocked path is visible.
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          </details>
         </section>
 
-        <OperationalBriefings session={session} />
+        <ReviewSection eyebrow="Briefing automation" title="Daily and Weekly Reviews">
+          <OperationalBriefings session={session} embedded />
+        </ReviewSection>
 
-        <TeamIntelligencePanel data={data} />
+        <ReviewSection
+          eyebrow="Team intelligence"
+          title="Ownership and Capacity"
+          summary={data.teamIntelligence.headline}
+        >
+          <TeamIntelligencePanel data={data} embedded />
+        </ReviewSection>
 
-        <section className="grid min-w-0 max-w-full gap-4 xl:grid-cols-2">
+        <ReviewSection eyebrow="Workspace signals" title="Mission and Activity">
+          <section className="grid min-w-0 max-w-full gap-4 xl:grid-cols-2">
           <SignalList
             eyebrow="Today's mission"
             title="Focused Queue"
             icon={<Radar size={20} className="text-cyan" />}
             items={data.todayMission}
             numbered
+            embedded
           />
           <SignalList
             eyebrow="Recent signal"
             title="Workspace Activity"
             icon={<CheckCircle2 size={20} className="text-success" />}
             items={data.activity.slice(0, 5)}
+            embedded
           />
-        </section>
+          </section>
+        </ReviewSection>
       </div>
     </div>
   );
 }
 
-function TeamIntelligencePanel({ data }: { data: MissionData }) {
+function CommandFocus({ data }: { data: MissionData }) {
+  const action = data.executionIntelligence.nextActions[0];
+  const mission = data.todayMission[0];
+  const risk = data.executionIntelligence.riskSignals[0];
+
+  return (
+    <section className="glass-panel grid min-w-0 gap-4 rounded-lg p-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.44fr)] lg:items-center">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 text-cyan">
+          <Radar size={18} />
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan">
+            Today's command
+          </p>
+        </div>
+        <h2 className="mt-2 text-xl font-semibold text-white">
+          {action?.title ?? mission ?? "Create the next useful project signal"}
+        </h2>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+          {action?.reason ??
+            "Add a project goal, define the first feature, and create one task so Nexus can calculate useful health and next-action guidance."}
+        </p>
+      </div>
+      <div className="grid gap-2 rounded-md border border-white/10 bg-white/[0.035] p-3">
+        <FocusLine label="Schedule" value={`${data.executionIntelligence.forecast.scheduleConfidence}% confidence`} />
+        <FocusLine
+          label="Ownership"
+          value={`${data.teamIntelligence.unassignedTasks} unowned tasks`}
+          risk={data.teamIntelligence.unassignedTasks > 0}
+        />
+        <FocusLine
+          label="Risk"
+          value={risk ? risk.title : "No critical risk visible"}
+          risk={Boolean(risk)}
+        />
+      </div>
+    </section>
+  );
+}
+
+function FocusLine({
+  label,
+  value,
+  risk = false
+}: {
+  label: string;
+  value: string;
+  risk?: boolean;
+}) {
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
+      <span className="shrink-0 text-slate-500">{label}</span>
+      <span className={cn("min-w-0 truncate text-right text-slate-300", risk && "text-solar")}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function ReviewSection({
+  eyebrow,
+  title,
+  summary,
+  children
+}: {
+  eyebrow: string;
+  title: string;
+  summary?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="glass-panel group rounded-lg p-4 sm:p-5">
+      <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-slate-500">{eyebrow}</p>
+          <h2 className="mt-1 text-lg font-semibold text-white">{title}</h2>
+          {summary ? <p className="mt-2 text-sm leading-6 text-slate-400">{summary}</p> : null}
+        </div>
+        <ChevronDown
+          size={18}
+          className="mt-1 shrink-0 text-slate-500 transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <div className="mt-4">{children}</div>
+    </details>
+  );
+}
+
+function TeamIntelligencePanel({ data, embedded = false }: { data: MissionData; embedded?: boolean }) {
   const intelligence = data.teamIntelligence;
 
   return (
-    <section className="glass-panel rounded-lg p-4 sm:p-5">
+    <section className={cn(!embedded && "glass-panel rounded-lg p-4 sm:p-5")}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-3xl">
           <div className="flex items-center gap-2">
@@ -431,16 +542,25 @@ function SignalList({
   title,
   icon,
   items,
-  numbered = false
+  numbered = false,
+  embedded = false
 }: {
   eyebrow: string;
   title: string;
   icon: React.ReactNode;
   items: string[];
   numbered?: boolean;
+  embedded?: boolean;
 }) {
   return (
-    <section className="glass-panel rounded-lg p-4">
+    <section
+      className={cn(
+        "rounded-lg p-4",
+        embedded
+          ? "border border-white/10 bg-white/[0.035]"
+          : "glass-panel"
+      )}
+    >
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-slate-500">{eyebrow}</p>

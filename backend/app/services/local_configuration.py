@@ -39,7 +39,14 @@ class LocalConfiguration:
         project = local_store.projects.get(project_id)
         if project is None or project.workspace_id != auth.workspace_id:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
-        task_ids = {task_id for team in data.teams for task_id in team.task_ids}
+        task_ids = {
+            task_id
+            for team in data.teams
+            for task_id in [
+                *team.task_ids,
+                *(task_id for subteam in team.subteams for task_id in subteam.task_ids),
+            ]
+        }
         valid_ids = {
             task.id
             for task in local_store.tasks.values()

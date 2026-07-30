@@ -4,6 +4,7 @@ from app.schemas.configuration import (
     ProjectBlueprintWrite,
     ProjectGoal,
     ProjectStep,
+    ProjectSubTeam,
     ProjectTeam,
 )
 
@@ -149,6 +150,12 @@ def _nexus_blueprint() -> ProjectBlueprintWrite:
             _step(
                 "Phase 6: Operational Intelligence",
                 "Complete server-owned execution intelligence, client/server state, and production verification.",
+                "done",
+                "critical",
+            ),
+            _step(
+                "Phase 7: Calm UX and Goal-Aware Collaboration",
+                "Reduce post-login overload, score health against project goals, and make teams/sub-teams accountable for delivery.",
                 "active",
                 "critical",
             ),
@@ -158,21 +165,69 @@ def _nexus_blueprint() -> ProjectBlueprintWrite:
                 "Product & Delivery",
                 "Project owner",
                 "Own scope, goals, priorities, and release acceptance.",
+                [
+                    _subteam(
+                        "Roadmap Control",
+                        "Project owner",
+                        "Own phase sequencing, final goals, acceptance checks, and zero-cost decisions.",
+                    ),
+                    _subteam(
+                        "Quality Review",
+                        "QA owner",
+                        "Own bug triage, regression checks, and release-readiness evidence.",
+                    ),
+                ],
             ),
             _team(
                 "Client Experience",
                 "Experience lead",
                 "Own HCI, accessibility, responsive UI, analytics, Galaxy, and City.",
+                [
+                    _subteam(
+                        "Spatial Systems",
+                        "3D experience lead",
+                        "Own Galaxy and City semantics, camera behavior, density, and canvas performance.",
+                    ),
+                    _subteam(
+                        "Interaction Design",
+                        "HCI lead",
+                        "Own calm layouts, progressive disclosure, keyboard access, and non-overwhelming workflows.",
+                    ),
+                ],
             ),
             _team(
                 "Server Platform & Security",
                 "Platform lead",
                 "Own APIs, data, authentication, authorization, tests, and security.",
+                [
+                    _subteam(
+                        "Identity & Tenancy",
+                        "Security lead",
+                        "Own authentication, authorization, workspace isolation, and account lifecycle.",
+                    ),
+                    _subteam(
+                        "Domain Intelligence",
+                        "Backend lead",
+                        "Own goal-aware health, analytics, recommendations, and briefing logic.",
+                    ),
+                ],
             ),
             _team(
                 "Cloud & Reliability",
                 "Operations lead",
                 "Own deployment, database, monitoring, backups, recovery, and releases.",
+                [
+                    _subteam(
+                        "Deployment",
+                        "Release owner",
+                        "Own Firebase, Render, free-tier limits, production verification, and rollback notes.",
+                    ),
+                    _subteam(
+                        "Backup & Recovery",
+                        "Reliability owner",
+                        "Own Neon backup, restore drills, checksums, and incident response evidence.",
+                    ),
+                ],
             ),
         ],
     )
@@ -197,8 +252,23 @@ def _step(
     )
 
 
-def _team(name: str, lead: str, responsibility: str) -> ProjectTeam:
+def _team(
+    name: str,
+    lead: str,
+    responsibility: str,
+    subteams: list[ProjectSubTeam] | None = None,
+) -> ProjectTeam:
     return ProjectTeam(
+        id=str(uuid4()),
+        name=name,
+        lead=lead,
+        responsibility=responsibility,
+        subteams=subteams or [],
+    )
+
+
+def _subteam(name: str, lead: str, responsibility: str) -> ProjectSubTeam:
+    return ProjectSubTeam(
         id=str(uuid4()),
         name=name,
         lead=lead,

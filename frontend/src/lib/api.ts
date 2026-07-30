@@ -1012,7 +1012,14 @@ export async function updateProjectBlueprint(
         name: team.name,
         lead: team.lead,
         responsibility: team.responsibility,
-        task_ids: team.taskIds
+        task_ids: team.taskIds,
+        subteams: (team.subteams ?? []).map((subteam) => ({
+          id: subteam.id,
+          name: subteam.name,
+          lead: subteam.lead,
+          responsibility: subteam.responsibility,
+          task_ids: subteam.taskIds
+        }))
       }))
     })
   });
@@ -1075,6 +1082,13 @@ function mapBlueprint(value: {
     lead: string;
     responsibility: string;
     task_ids: string[];
+    subteams?: Array<{
+      id: string;
+      name: string;
+      lead: string;
+      responsibility: string;
+      task_ids: string[];
+    }>;
   }>;
   version: number;
   updated_at: string;
@@ -1092,7 +1106,14 @@ function mapBlueprint(value: {
       name: team.name,
       lead: team.lead,
       responsibility: team.responsibility,
-      taskIds: team.task_ids
+      taskIds: team.task_ids,
+      subteams: (team.subteams ?? []).map((subteam) => ({
+        id: subteam.id,
+        name: subteam.name,
+        lead: subteam.lead,
+        responsibility: subteam.responsibility,
+        taskIds: subteam.task_ids
+      }))
     })),
     version: value.version,
     updatedAt: value.updated_at

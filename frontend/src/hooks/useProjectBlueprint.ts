@@ -102,8 +102,21 @@ function mergeLegacyBlueprint(
     constraints: legacy.constraints?.length ? legacy.constraints : server.constraints,
     goals: legacy.goals?.length ? legacy.goals : server.goals,
     steps: legacy.steps?.length ? legacy.steps : server.steps,
-    teams: Array.isArray(legacy.teams) ? legacy.teams : server.teams,
+    teams: normalizeTeams(Array.isArray(legacy.teams) ? legacy.teams : server.teams),
     version: server.version,
     updatedAt: server.updatedAt
   };
+}
+
+function normalizeTeams(teams: ProjectBlueprint["teams"]): ProjectBlueprint["teams"] {
+  return teams.map((team) => ({
+    ...team,
+    taskIds: Array.isArray(team.taskIds) ? team.taskIds : [],
+    subteams: Array.isArray(team.subteams)
+      ? team.subteams.map((subteam) => ({
+          ...subteam,
+          taskIds: Array.isArray(subteam.taskIds) ? subteam.taskIds : []
+        }))
+      : []
+  }));
 }

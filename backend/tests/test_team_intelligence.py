@@ -60,7 +60,16 @@ def test_team_intelligence_identifies_lagging_team_and_unowned_work() -> None:
                     "name": "Platform",
                     "lead": "Operations lead",
                     "responsibility": "Own secure releases",
-                    "task_ids": ["done", "blocked"],
+                    "task_ids": ["done"],
+                    "subteams": [
+                        {
+                            "id": "deploy",
+                            "name": "Deploy",
+                            "lead": "Release owner",
+                            "responsibility": "Own production release blockers",
+                            "task_ids": ["blocked"],
+                        }
+                    ],
                 }
             ]
         },
@@ -77,6 +86,7 @@ def test_team_intelligence_identifies_lagging_team_and_unowned_work() -> None:
     assert signal.blocked_task_count == 1
     assert signal.assigned_task_titles == ["Secure authentication", "Release backend"]
     assert "Release backend" in signal.recovery_action
+    assert "sub-team" in signal.recovery_action
 
 
 def test_team_intelligence_has_honest_no_team_guidance() -> None:

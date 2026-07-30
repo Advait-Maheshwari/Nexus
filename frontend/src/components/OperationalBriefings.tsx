@@ -14,7 +14,13 @@ import type {
   OperationsOverview
 } from "@/types/operations";
 
-export function OperationalBriefings({ session }: { session: NexusSession }) {
+export function OperationalBriefings({
+  session,
+  embedded = false
+}: {
+  session: NexusSession;
+  embedded?: boolean;
+}) {
   const [overview, setOverview] = useState<OperationsOverview | null>(null);
   const [busyType, setBusyType] = useState<BriefingType | null>(null);
   const [status, setStatus] = useState("");
@@ -68,7 +74,7 @@ export function OperationalBriefings({ session }: { session: NexusSession }) {
   const canWrite = session.role !== "viewer";
 
   return (
-    <section className="glass-panel rounded-lg p-4 sm:p-5">
+    <section className={cn(!embedded && "glass-panel rounded-lg p-4 sm:p-5")}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-cyan">

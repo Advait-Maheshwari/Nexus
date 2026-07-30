@@ -39,7 +39,7 @@ def build_team_intelligence(
         for raw_team in teams_by_project.get(project.id, []):
             task_ids = [
                 task_id
-                for task_id in raw_team.get("task_ids", [])
+                for task_id in _team_task_ids(raw_team)
                 if isinstance(task_id, str)
             ]
             assigned_tasks = [task_by_id[task_id] for task_id in task_ids if task_id in task_by_id]
@@ -193,6 +193,23 @@ def _build_team_signal(
     )
 
 
+def _team_task_ids(raw_team: dict) -> list[str]:
+    direct_ids = raw_team.get("task_ids", [])
+    if not isinstance(direct_ids, list):
+        direct_ids = []
+    subteam_ids = [
+        task_id
+        for subteam in raw_team.get("subteams", [])
+        if isinstance(subteam, dict)
+        for task_id in subteam.get("task_ids", [])
+    ]
+    return [
+        task_id
+        for task_id in [*direct_ids, *subteam_ids]
+        if isinstance(task_id, str)
+    ]
+
+
 def _recovery_action(
     raw_team: dict,
     open_tasks: list[ExecutionTask],
@@ -201,14 +218,18 @@ def _recovery_action(
     state: str,
 ) -> str:
     lead = _text(raw_team.get("lead"), "The team lead")
+    subteams = [subteam for subteam in raw_team.get("subteams", []) if isinstance(subteam, dict)]
+    subteam_note = ""
+    if subteams:
+        subteam_note = f" across {len(subteams)} sub-team{'s' if len(subteams) != 1 else ''}"
     if state == "unassigned":
         return f"{lead} should claim one finishable task or remove this empty team."
     if blocked_tasks:
-        return f"{lead} should clear the blocker on {blocked_tasks[0].title} before starting more work."
+        return f"{lead} should clear the blocker on {blocked_tasks[0].title}{subteam_note} before starting more work."
     if overdue_tasks:
-        return f"{lead} should rescope or recover the deadline for {overdue_tasks[0].title}."
+        return f"{lead} should rescope or recover the deadline for {overdue_tasks[0].title}{subteam_note}."
     if state == "watch" and open_tasks:
-        return f"{lead} should move {open_tasks[0].title} into a clear active or blocked state."
+        return f"{lead} should move {open_tasks[0].title}{subteam_note} into a clear active or blocked state."
     if open_tasks:
         return f"{lead} should protect the current flow and finish {open_tasks[0].title}."
     return f"{lead} should define the team's next measurable outcome."

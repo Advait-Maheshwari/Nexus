@@ -6,14 +6,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import AuthContext
 from app.models.feature import Feature
-from app.models.enums import ActivityAction
+from app.models.enums import ActivityAction, WorkStatus
 from app.models.project import Project
+from app.models.project_blueprint import ProjectBlueprint
 from app.models.task import Task, TaskDependency
 from app.models.workspace import Workspace
 from app.schemas.feature import FeatureCreate, FeatureRead, FeatureUpdate
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
 from app.services.audit import record_activity
+from app.services.configuration_defaults import default_blueprint
+from app.services.goal_health import (
+    blueprint_to_health_payload,
+    calculate_goal_aware_health,
+)
 from app.services.plans import limits_for, require_capacity
 
 
@@ -361,6 +367,42 @@ class DatabaseWorkspace:
             )
         ).one()
         progress = round((done / total) * 100, 1) if total else 0
+        blocked = await session.scalar(
+            select(func.count(Task.id)).where(
+                Task.project_id == project.id,
+                Task.workspace_id == project.workspace_id,
+                Task.status == WorkStatus.blocked.value,
+            )
+        )
+        open_task_ids = set(
+            await session.scalars(
+                select(Task.id).where(
+                    Task.project_id == project.id,
+                    Task.workspace_id == project.workspace_id,
+                    Task.status.notin_([WorkStatus.done.value, WorkStatus.archived.value]),
+                )
+            )
+        )
+        blueprint = await session.scalar(
+            select(ProjectBlueprint).where(
+                ProjectBlueprint.project_id == project.id,
+                ProjectBlueprint.workspace_id == project.workspace_id,
+            )
+        )
+        blueprint_payload = (
+            blueprint_to_health_payload(blueprint)
+            if blueprint
+            else default_blueprint(project.name).model_dump(mode="json")
+        )
+        health_score = calculate_goal_aware_health(
+            base_health_score=project.health_score,
+            progress=progress,
+            task_count=total,
+            blocked_task_count=blocked or 0,
+            open_task_ids=open_task_ids,
+            deadline=project.deadline,
+            blueprint=blueprint_payload,
+        )
         return ProjectRead(
             id=project.id,
             workspace_id=project.workspace_id,
@@ -369,7 +411,7 @@ class DatabaseWorkspace:
             description=project.description,
             status=project.status,
             priority=project.priority,
-            health_score=project.health_score,
+            health_score=health_score,
             progress=progress,
             deadline=project.deadline,
         )

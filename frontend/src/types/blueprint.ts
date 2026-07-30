@@ -13,12 +13,21 @@ export interface ProjectStep {
   priority: "low" | "medium" | "high" | "critical";
 }
 
+export interface ProjectSubTeam {
+  id: string;
+  name: string;
+  lead: string;
+  responsibility: string;
+  taskIds: string[];
+}
+
 export interface ProjectTeam {
   id: string;
   name: string;
   lead: string;
   responsibility: string;
   taskIds: string[];
+  subteams: ProjectSubTeam[];
 }
 
 export interface ProjectBlueprint {

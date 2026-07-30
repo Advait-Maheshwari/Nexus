@@ -187,3 +187,20 @@ Implementation checkpoint:
   owned operational history before deleting the workspace.
 - Validation currently passes with `57` backend tests, one intentional skip, Ruff, TypeScript, and
   the production frontend build.
+
+## Phase 7 Checkpoint
+
+Status: active.
+
+In progress:
+
+- Mission Control is being simplified around a calm "next move first" layout so the first
+  post-login screen does not overwhelm the user with every signal at once.
+- Project health now uses the editable project goal, definition of done, strategy, completion
+  route, goal completion, task progress, ownership, blockers, and deadlines instead of only raw
+  task counts.
+- Project teams now support nested sub-teams with separate leads, responsibilities, and exclusive
+  task assignments.
+- Nexus's own built-in project blueprint now treats Phase 7 as the active work and splits delivery
+  ownership across product, experience, platform, security, deployment, and recovery lanes.
+- The zero-cost policy remains mandatory for every default workflow.

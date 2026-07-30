@@ -13,7 +13,12 @@ from app.models.project_blueprint import ProjectBlueprint
 from app.models.task import Task, TaskDependency
 from app.schemas.analytics import AIRecommendation, MetricCard, MissionControlSummary
 from app.schemas.project import ProjectSummary
+from app.services.configuration_defaults import default_blueprint
 from app.services.execution_intelligence import ExecutionTask, build_execution_intelligence
+from app.services.goal_health import (
+    blueprint_to_health_payload,
+    calculate_goal_aware_health,
+)
 from app.services.local_store import LocalStore
 from app.services.team_intelligence import build_team_intelligence
 
@@ -28,6 +33,14 @@ async def build_database_mission_control(
             .order_by(Project.updated_at.desc())
         )
     ).all()
+    blueprints = (
+        await session.scalars(
+            select(ProjectBlueprint).where(
+                ProjectBlueprint.workspace_id == auth.workspace_id,
+            )
+        )
+    ).all()
+    blueprint_by_project_id = {blueprint.project_id: blueprint for blueprint in blueprints}
     summaries: list[ProjectSummary] = []
     total_tasks = 0
     done_tasks = 0
@@ -63,6 +76,29 @@ async def build_database_mission_control(
             )
         )
         progress = round((task_done / task_total) * 100, 1) if task_total else 0
+        open_task_ids = set(
+            await session.scalars(
+                select(Task.id).where(
+                    Task.workspace_id == auth.workspace_id,
+                    Task.project_id == project.id,
+                    Task.status.notin_([WorkStatus.done.value, WorkStatus.archived.value]),
+                )
+            )
+        )
+        blueprint_payload = (
+            blueprint_to_health_payload(blueprint_by_project_id[project.id])
+            if project.id in blueprint_by_project_id
+            else default_blueprint(project.name).model_dump(mode="json")
+        )
+        goal_health_score = calculate_goal_aware_health(
+            base_health_score=project.health_score,
+            progress=progress,
+            task_count=task_total,
+            blocked_task_count=task_blocked,
+            open_task_ids=open_task_ids,
+            deadline=project.deadline,
+            blueprint=blueprint_payload,
+        )
         total_tasks += task_total
         done_tasks += task_done
         blocked_tasks += task_blocked
@@ -73,8 +109,8 @@ async def build_database_mission_control(
                 name=project.name,
                 codename=project.codename,
                 status=project.status,
-                health=classify_health(project.health_score),
-                health_score=project.health_score,
+                health=classify_health(goal_health_score),
+                health_score=goal_health_score,
                 progress=progress,
                 priority=project.priority,
                 deadline=project.deadline.isoformat() if project.deadline else None,
@@ -132,13 +168,6 @@ async def build_database_mission_control(
         for task in workspace_tasks
     ]
     execution_intelligence = build_execution_intelligence(summaries, execution_tasks)
-    blueprints = (
-        await session.scalars(
-            select(ProjectBlueprint).where(
-                ProjectBlueprint.workspace_id == auth.workspace_id,
-            )
-        )
-    ).all()
     team_intelligence = build_team_intelligence(
         summaries,
         execution_tasks,

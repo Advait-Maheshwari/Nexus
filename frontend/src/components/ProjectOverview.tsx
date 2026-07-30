@@ -23,7 +23,12 @@ import {
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { useProjectBlueprint } from "@/hooks/useProjectBlueprint";
-import type { ProjectBlueprint, ProjectStep, ProjectTeam } from "@/types/blueprint";
+import type {
+  ProjectBlueprint,
+  ProjectStep,
+  ProjectSubTeam,
+  ProjectTeam
+} from "@/types/blueprint";
 import type { WorkspaceFeature, WorkspaceTask } from "@/types/workspace";
 
 type GuidanceTone = "cyan" | "violet" | "solar" | "risk" | "success";
@@ -93,7 +98,7 @@ export function ProjectOverview({
     [blueprint.teams, tasks, projectProgress]
   );
   const assignedTaskIds = useMemo(
-    () => new Set(blueprint.teams.flatMap((team) => team.taskIds)),
+    () => new Set(blueprint.teams.flatMap((team) => teamTaskIds(team))),
     [blueprint.teams]
   );
   const unassignedTasks = tasks.filter((task) => !assignedTaskIds.has(task.id));
@@ -154,7 +159,8 @@ export function ProjectOverview({
           name: "New delivery team",
           lead: "Unassigned",
           responsibility: "Define the outcome this team owns.",
-          taskIds: []
+          taskIds: [],
+          subteams: []
         }
       ]
     }));
@@ -174,6 +180,60 @@ export function ProjectOverview({
     }));
   }
 
+  function addSubTeam(teamId: string) {
+    setDraft((current) => ({
+      ...current,
+      teams: current.teams.map((team) =>
+        team.id === teamId
+          ? {
+              ...team,
+              subteams: [
+                ...team.subteams,
+                {
+                  id: crypto.randomUUID(),
+                  name: "New sub-team",
+                  lead: "Unassigned",
+                  responsibility: "Define the specialized lane this sub-team owns.",
+                  taskIds: []
+                }
+              ]
+            }
+          : team
+      )
+    }));
+  }
+
+  function updateSubTeam(
+    teamId: string,
+    subteamId: string,
+    patch: Partial<ProjectSubTeam>
+  ) {
+    setDraft((current) => ({
+      ...current,
+      teams: current.teams.map((team) =>
+        team.id === teamId
+          ? {
+              ...team,
+              subteams: team.subteams.map((subteam) =>
+                subteam.id === subteamId ? { ...subteam, ...patch } : subteam
+              )
+            }
+          : team
+      )
+    }));
+  }
+
+  function removeSubTeam(teamId: string, subteamId: string) {
+    setDraft((current) => ({
+      ...current,
+      teams: current.teams.map((team) =>
+        team.id === teamId
+          ? { ...team, subteams: team.subteams.filter((subteam) => subteam.id !== subteamId) }
+          : team
+      )
+    }));
+  }
+
   function assignTask(teamId: string, taskId: string) {
     if (!taskId) {
       return;
@@ -185,7 +245,31 @@ export function ProjectOverview({
         taskIds:
           team.id === teamId
             ? [...team.taskIds.filter((id) => id !== taskId), taskId]
-            : team.taskIds.filter((id) => id !== taskId)
+            : team.taskIds.filter((id) => id !== taskId),
+        subteams: team.subteams.map((subteam) => ({
+          ...subteam,
+          taskIds: subteam.taskIds.filter((id) => id !== taskId)
+        }))
+      }))
+    }));
+  }
+
+  function assignSubTeamTask(teamId: string, subteamId: string, taskId: string) {
+    if (!taskId) {
+      return;
+    }
+    setDraft((current) => ({
+      ...current,
+      teams: current.teams.map((team) => ({
+        ...team,
+        taskIds: team.taskIds.filter((id) => id !== taskId),
+        subteams: team.subteams.map((subteam) => ({
+          ...subteam,
+          taskIds:
+            team.id === teamId && subteam.id === subteamId
+              ? [...subteam.taskIds.filter((id) => id !== taskId), taskId]
+              : subteam.taskIds.filter((id) => id !== taskId)
+        }))
       }))
     }));
   }
@@ -196,6 +280,24 @@ export function ProjectOverview({
       teams: current.teams.map((team) =>
         team.id === teamId
           ? { ...team, taskIds: team.taskIds.filter((id) => id !== taskId) }
+          : team
+      )
+    }));
+  }
+
+  function unassignSubTeamTask(teamId: string, subteamId: string, taskId: string) {
+    setDraft((current) => ({
+      ...current,
+      teams: current.teams.map((team) =>
+        team.id === teamId
+          ? {
+              ...team,
+              subteams: team.subteams.map((subteam) =>
+                subteam.id === subteamId
+                  ? { ...subteam, taskIds: subteam.taskIds.filter((id) => id !== taskId) }
+                  : subteam
+              )
+            }
           : team
       )
     }));
@@ -710,15 +812,14 @@ export function ProjectOverview({
             {draft.teams.length > 0 ? (
               draft.teams.map((team) => {
                 const assignedTasks = tasks.filter((task) => team.taskIds.includes(task.id));
-                const assignedElsewhere = new Set(
-                  draft.teams
-                    .filter((item) => item.id !== team.id)
-                    .flatMap((item) => item.taskIds)
+                const assignedElsewhere = assignedTaskIdsOutsideTeam(draft.teams, team.id);
+                const assignedToSubteams = new Set(team.subteams.flatMap((subteam) => subteam.taskIds));
+                const availableTasks = tasks.filter(
+                  (task) => !assignedElsewhere.has(task.id) && !assignedToSubteams.has(task.id)
                 );
-                const availableTasks = tasks.filter((task) => !assignedElsewhere.has(task.id));
 
                 return (
-                  <div key={team.id} className="grid gap-4 py-4 xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.8fr)]">
+                  <div key={team.id} className="grid gap-4 py-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.86fr)]">
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="text-xs text-slate-500">
                         Team name
@@ -747,16 +848,19 @@ export function ProjectOverview({
                     </div>
                     <div>
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs text-slate-500">Assigned tasks</span>
-                        <button
-                          type="button"
-                          onClick={() => removeTeam(team.id)}
-                          className="text-slate-500 transition hover:text-risk"
-                          aria-label={`Remove ${team.name}`}
-                          title="Remove team"
-                        >
-                          <X size={15} />
-                        </button>
+                        <span className="text-xs text-slate-500">Team-owned tasks</span>
+                        <div className="flex items-center gap-2">
+                          <AddButton label="Add sub-team" onClick={() => addSubTeam(team.id)} />
+                          <button
+                            type="button"
+                            onClick={() => removeTeam(team.id)}
+                            className="text-slate-500 transition hover:text-risk"
+                            aria-label={`Remove ${team.name}`}
+                            title="Remove team"
+                          >
+                            <X size={15} />
+                          </button>
+                        </div>
                       </div>
                       <select
                         value=""
@@ -789,6 +893,117 @@ export function ProjectOverview({
                           </div>
                         ))}
                       </div>
+                      {team.subteams.length > 0 ? (
+                        <div className="mt-4 space-y-3">
+                          {team.subteams.map((subteam) => {
+                            const subteamTasks = tasksForIds(subteam.taskIds, tasks);
+                            const assignedOutsideSubteam = assignedTaskIdsOutsideSubTeam(
+                              draft.teams,
+                              team.id,
+                              subteam.id
+                            );
+                            const subteamAvailableTasks = tasks.filter(
+                              (task) => !assignedOutsideSubteam.has(task.id)
+                            );
+
+                            return (
+                              <div
+                                key={subteam.id}
+                                className="rounded-md border border-white/10 bg-white/[0.035] p-3"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
+                                    <label className="text-xs text-slate-500">
+                                      Sub-team
+                                      <input
+                                        value={subteam.name}
+                                        onChange={(event) =>
+                                          updateSubTeam(team.id, subteam.id, {
+                                            name: event.target.value
+                                          })
+                                        }
+                                        className="mt-1 h-9 w-full rounded-md border border-white/10 bg-navy px-2 text-sm text-white outline-none focus:border-cyan/50"
+                                      />
+                                    </label>
+                                    <label className="text-xs text-slate-500">
+                                      Lead
+                                      <input
+                                        value={subteam.lead}
+                                        onChange={(event) =>
+                                          updateSubTeam(team.id, subteam.id, {
+                                            lead: event.target.value
+                                          })
+                                        }
+                                        className="mt-1 h-9 w-full rounded-md border border-white/10 bg-navy px-2 text-sm text-white outline-none focus:border-cyan/50"
+                                      />
+                                    </label>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeSubTeam(team.id, subteam.id)}
+                                    className="mt-6 text-slate-500 transition hover:text-risk"
+                                    aria-label={`Remove ${subteam.name}`}
+                                    title="Remove sub-team"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                                <label className="mt-2 block text-xs text-slate-500">
+                                  Responsibility
+                                  <textarea
+                                    value={subteam.responsibility}
+                                    onChange={(event) =>
+                                      updateSubTeam(team.id, subteam.id, {
+                                        responsibility: event.target.value
+                                      })
+                                    }
+                                    className="mt-1 min-h-16 w-full resize-y rounded-md border border-white/10 bg-navy p-2 text-sm leading-5 text-white outline-none focus:border-cyan/50"
+                                  />
+                                </label>
+                                <select
+                                  value=""
+                                  onChange={(event) =>
+                                    assignSubTeamTask(team.id, subteam.id, event.target.value)
+                                  }
+                                  className="mt-2 h-9 w-full rounded-md border border-white/10 bg-navy px-2 text-sm text-white outline-none focus:border-cyan/50"
+                                >
+                                  <option value="">Assign sub-team task...</option>
+                                  {subteamAvailableTasks
+                                    .filter((task) => !subteam.taskIds.includes(task.id))
+                                    .map((task) => (
+                                      <option key={task.id} value={task.id}>
+                                        {task.title}
+                                      </option>
+                                    ))}
+                                </select>
+                                <div className="mt-2 space-y-1.5">
+                                  {subteamTasks.map((task) => (
+                                    <div
+                                      key={task.id}
+                                      className="flex items-center justify-between gap-3 rounded-md bg-black/15 px-2.5 py-2"
+                                    >
+                                      <span className="min-w-0 truncate text-sm text-slate-300">
+                                        {task.title}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          unassignSubTeamTask(team.id, subteam.id, task.id)
+                                        }
+                                        className="shrink-0 text-slate-500 transition hover:text-risk"
+                                        aria-label={`Unassign ${task.title}`}
+                                        title="Unassign task"
+                                      >
+                                        <X size={14} />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -840,6 +1055,20 @@ function TeamDeliveryRow({ delivery }: { delivery: TeamDelivery }) {
           <span>{delivery.team.lead}</span>
         </div>
         <p className="mt-2 text-sm leading-5 text-slate-400">{delivery.team.responsibility}</p>
+        {delivery.team.subteams.length > 0 ? (
+          <div className="mt-3 space-y-1.5">
+            {delivery.team.subteams.slice(0, 3).map((subteam) => (
+              <p key={subteam.id} className="truncate text-xs text-slate-500">
+                {subteam.name} / {subteam.lead}
+              </p>
+            ))}
+            {delivery.team.subteams.length > 3 ? (
+              <p className="text-xs text-slate-500">
+                +{delivery.team.subteams.length - 3} more sub-teams
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div>
@@ -993,6 +1222,38 @@ function calculateCompletion(blueprint: ProjectBlueprint): number {
   return Math.round(((completedGoals + completedSteps) / total) * 100);
 }
 
+function teamTaskIds(team: ProjectTeam): string[] {
+  return [...team.taskIds, ...team.subteams.flatMap((subteam) => subteam.taskIds)];
+}
+
+function tasksForIds(taskIds: string[], tasks: WorkspaceTask[]): WorkspaceTask[] {
+  const taskById = new Map(tasks.map((task) => [task.id, task]));
+  return taskIds
+    .map((taskId) => taskById.get(taskId))
+    .filter((task): task is WorkspaceTask => Boolean(task));
+}
+
+function assignedTaskIdsOutsideTeam(teams: ProjectTeam[], teamId: string): Set<string> {
+  return new Set(
+    teams.filter((team) => team.id !== teamId).flatMap((team) => teamTaskIds(team))
+  );
+}
+
+function assignedTaskIdsOutsideSubTeam(
+  teams: ProjectTeam[],
+  teamId: string,
+  subteamId: string
+): Set<string> {
+  return new Set(
+    teams.flatMap((team) => [
+      ...(team.id === teamId ? [] : team.taskIds),
+      ...team.subteams
+        .filter((subteam) => team.id !== teamId || subteam.id !== subteamId)
+        .flatMap((subteam) => subteam.taskIds)
+    ])
+  );
+}
+
 function buildTeamDelivery(
   teams: ProjectTeam[],
   tasks: WorkspaceTask[],
@@ -1003,7 +1264,7 @@ function buildTeamDelivery(
   today.setHours(0, 0, 0, 0);
 
   return teams.map((team) => {
-    const assignedTasks = team.taskIds
+    const assignedTasks = teamTaskIds(team)
       .map((taskId) => taskById.get(taskId))
       .filter((task): task is WorkspaceTask => Boolean(task));
     const completedCount = assignedTasks.filter((task) => task.status === "done").length;

@@ -112,6 +112,20 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 - Desktop command workflows stay primary; mobile provides focused review and action controls.
 - No paid inference, hosting, storage, or integration is required.
 
+## Phase 7: Calm UX and Goal-Aware Collaboration
+
+- Status: active.
+- Make the post-login workspace calmer by showing the next move first and keeping deeper
+  intelligence behind explicit review sections.
+- Calculate project health from the editable project goal, definition of done, completion route,
+  active steps, ownership, blockers, deadlines, and live task progress.
+- Add sub-teams under each project team so Nexus can show which group owns which lane, who is
+  lagging, and where work is unassigned.
+- Keep Mission Control focused on desktop/laptop command workflows while preserving responsive
+  phone review paths.
+- Maintain the zero-cost policy: no paid AI, paid assets, paid analytics, or paid collaboration
+  provider is required.
+
 ## Permanent Constraint: Zero Cost
 
 Nexus must cost `0` from Phase 1 through the final phase while it is being built for personal use.

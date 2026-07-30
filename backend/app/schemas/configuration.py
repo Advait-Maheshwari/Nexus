@@ -19,12 +19,21 @@ class ProjectStep(BaseModel):
     priority: Literal["low", "medium", "high", "critical"] = "medium"
 
 
+class ProjectSubTeam(BaseModel):
+    id: str = Field(min_length=1, max_length=80)
+    name: str = Field(min_length=1, max_length=160)
+    lead: str = Field(min_length=1, max_length=160)
+    responsibility: str = Field(min_length=1, max_length=2_000)
+    task_ids: list[str] = Field(default_factory=list, max_length=500)
+
+
 class ProjectTeam(BaseModel):
     id: str = Field(min_length=1, max_length=80)
     name: str = Field(min_length=1, max_length=160)
     lead: str = Field(min_length=1, max_length=160)
     responsibility: str = Field(min_length=1, max_length=2_000)
     task_ids: list[str] = Field(default_factory=list, max_length=500)
+    subteams: list[ProjectSubTeam] = Field(default_factory=list, max_length=50)
 
 
 class ProjectBlueprintWrite(BaseModel):
@@ -47,9 +56,22 @@ class ProjectBlueprintWrite(BaseModel):
             if len(values) != len(set(values)):
                 raise ValueError(f"Duplicate {label} identifiers are not allowed")
 
-        assignments = [task_id for team in self.teams for task_id in team.task_ids]
+        subteam_ids = [
+            subteam.id for team in self.teams for subteam in team.subteams
+        ]
+        if len(subteam_ids) != len(set(subteam_ids)):
+            raise ValueError("Duplicate sub-team identifiers are not allowed")
+
+        assignments = [
+            task_id
+            for team in self.teams
+            for task_id in [
+                *team.task_ids,
+                *(task_id for subteam in team.subteams for task_id in subteam.task_ids),
+            ]
+        ]
         if len(assignments) != len(set(assignments)):
-            raise ValueError("A task can be assigned to only one team")
+            raise ValueError("A task can be assigned to only one team or sub-team")
         if any(
             not constraint.strip() or len(constraint) > 1_000 for constraint in self.constraints
         ):

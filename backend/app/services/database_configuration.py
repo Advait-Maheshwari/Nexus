@@ -50,7 +50,14 @@ class DatabaseConfiguration:
         data: ProjectBlueprintWrite,
     ) -> ProjectBlueprintRead:
         await self._project(session, auth, project_id)
-        task_ids = {task_id for team in data.teams for task_id in team.task_ids}
+        task_ids = {
+            task_id
+            for team in data.teams
+            for task_id in [
+                *team.task_ids,
+                *(task_id for subteam in team.subteams for task_id in subteam.task_ids),
+            ]
+        }
         if task_ids:
             valid_ids = set(
                 await session.scalars(
