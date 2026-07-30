@@ -1,9 +1,13 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
 import {
+  createUserWithEmailAndPassword,
   getAuth,
   GoogleAuthProvider,
+  sendEmailVerification,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  updateProfile,
   type User
 } from "firebase/auth";
 
@@ -27,6 +31,50 @@ const firebaseConfig = {
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
+export async function registerWithFirebaseEmail(input: {
+  email: string;
+  password: string;
+  fullName: string;
+}): Promise<string> {
+  try {
+    const credential = await createUserWithEmailAndPassword(
+      auth,
+      input.email.trim().toLowerCase(),
+      input.password
+    );
+    await updateProfile(credential.user, { displayName: input.fullName.trim() });
+    await sendEmailVerification(credential.user);
+    await signOut(auth);
+    return "Account created. Check your email, verify it, then log in to open your Nexus workspace.";
+  } catch (reason) {
+    throw new Error(firebaseAuthErrorMessage(reason));
+  }
+}
+
+export async function signInWithFirebaseEmail(
+  email: string,
+  password: string
+): Promise<NexusSession> {
+  try {
+    const credential = await signInWithEmailAndPassword(
+      auth,
+      email.trim().toLowerCase(),
+      password
+    );
+    if (!credential.user.emailVerified) {
+      await sendEmailVerification(credential.user);
+      await signOut(auth);
+      throw new Error("Verify your email first. I sent a fresh verification link.");
+    }
+    return await exchangeFirebaseUser(credential.user, "password");
+  } catch (reason) {
+    if (reason instanceof Error && reason.message.startsWith("Verify your email first")) {
+      throw reason;
+    }
+    throw new Error(firebaseAuthErrorMessage(reason));
+  }
+}
+
 export async function signInWithGoogle(): Promise<NexusSession> {
   if (window.location.hostname === "127.0.0.1") {
     throw new Error(
@@ -38,9 +86,9 @@ export async function signInWithGoogle(): Promise<NexusSession> {
   provider.setCustomParameters({ prompt: "select_account" });
   try {
     const credential = await signInWithPopup(auth, provider);
-    return await exchangeGoogleUser(credential.user);
+    return await exchangeFirebaseUser(credential.user, "google");
   } catch (reason) {
-    throw new Error(googleAuthErrorMessage(reason));
+    throw new Error(firebaseAuthErrorMessage(reason));
   }
 }
 
@@ -48,9 +96,10 @@ export async function resumeGoogleSession(): Promise<NexusSession | null> {
   await auth.authStateReady();
   if (!auth.currentUser) return null;
   try {
-    return await exchangeGoogleUser(auth.currentUser);
+    if (!auth.currentUser.emailVerified) return null;
+    return await exchangeFirebaseUser(auth.currentUser, currentIdentityProvider(auth.currentUser));
   } catch (reason) {
-    throw new Error(googleAuthErrorMessage(reason));
+    throw new Error(firebaseAuthErrorMessage(reason));
   }
 }
 
@@ -60,23 +109,44 @@ export async function signOutFirebase(): Promise<void> {
   }
 }
 
-async function exchangeGoogleUser(user: User): Promise<NexusSession> {
+async function exchangeFirebaseUser(
+  user: User,
+  identityProvider: NexusSession["identityProvider"]
+): Promise<NexusSession> {
   const accessToken = await user.getIdToken();
   return {
     ...(await exchangeFirebaseToken(accessToken)),
-    identityProvider: "google",
+    identityProvider,
     displayName: user.displayName ?? undefined,
     email: user.email ?? undefined,
     photoUrl: user.photoURL ?? undefined
   };
 }
 
-function googleAuthErrorMessage(reason: unknown): string {
+function currentIdentityProvider(user: User): NexusSession["identityProvider"] {
+  return user.providerData.some((profile) => profile.providerId === "password")
+    ? "password"
+    : "google";
+}
+
+function firebaseAuthErrorMessage(reason: unknown): string {
   const code =
     typeof reason === "object" && reason !== null && "code" in reason
       ? String((reason as { code: unknown }).code)
       : "";
 
+  if (code === "auth/email-already-in-use") {
+    return "This email already has a Nexus sign-in. Switch to Log In.";
+  }
+  if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
+    return "Invalid email or password.";
+  }
+  if (code === "auth/user-not-found") {
+    return "No Nexus account exists for this email yet.";
+  }
+  if (code === "auth/weak-password") {
+    return "Use a stronger password with at least 10 characters.";
+  }
   if (code === "auth/popup-blocked") {
     return "Your browser blocked the Google window. Allow pop-ups for Nexus and try again.";
   }
@@ -87,7 +157,7 @@ function googleAuthErrorMessage(reason: unknown): string {
     return "This address is not authorized for Google sign-in. Use the official Nexus site or localhost.";
   }
   if (code === "auth/operation-not-allowed") {
-    return "Google sign-in is not enabled in Firebase Authentication.";
+    return "This sign-in method is not enabled in Firebase Authentication.";
   }
   if (code === "auth/network-request-failed") {
     return "Google could not be reached. Check your connection or privacy extensions and try again.";

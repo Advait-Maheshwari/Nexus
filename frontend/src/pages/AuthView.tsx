@@ -22,12 +22,16 @@ import {
   resetAccountPassword,
   verifyAccountEmail
 } from "@/lib/api";
-import { signInWithGoogle } from "@/lib/firebase";
+import {
+  registerWithFirebaseEmail,
+  signInWithFirebaseEmail,
+  signInWithGoogle
+} from "@/lib/firebase";
 import type { NexusSession } from "@/types/auth";
 
 type AuthMode = "login" | "register" | "forgot" | "reset";
 
-const passwordRegistrationEnabled =
+const backendPasswordRegistrationEnabled =
   import.meta.env.DEV || import.meta.env.VITE_ALLOW_PASSWORD_REGISTRATION === "true";
 const privateDemoOwnerHashes = String(import.meta.env.VITE_PRIVATE_DEMO_OWNER_EMAIL_HASHES ?? "")
   .split(",")
@@ -43,7 +47,7 @@ export function AuthView({
 }) {
   const initialResetToken = readActionToken("reset_password");
   const [mode, setMode] = useState<AuthMode>(
-    initialResetToken ? "reset" : passwordRegistrationEnabled ? "register" : "login"
+    initialResetToken ? "reset" : "register"
   );
   const [resetToken] = useState(initialResetToken);
   const [fullName, setFullName] = useState("");
@@ -111,6 +115,22 @@ export function AuthView({
         setPassword("");
         setMode("login");
         setNotice("Password reset. Log in with your new password.");
+        return;
+      }
+      if (!backendPasswordRegistrationEnabled) {
+        if (mode === "register") {
+          setNotice(
+            await registerWithFirebaseEmail({
+              email,
+              password,
+              fullName: fullName.trim()
+            })
+          );
+          setPassword("");
+          setMode("login");
+          return;
+        }
+        onAuthenticated(await signInWithFirebaseEmail(email, password));
         return;
       }
       const result = await authenticate(mode, {
@@ -186,10 +206,8 @@ export function AuthView({
   }
 
   const isPrimaryAuth = mode === "login" || mode === "register";
-  const googleOnlyRegistration = mode === "register" && !passwordRegistrationEnabled;
-  const showEmailInput =
-    mode !== "reset" &&
-    (!googleOnlyRegistration || privateDemoOwnerHashes.length > 0);
+  const firebaseEmailRegistration = mode === "register" && !backendPasswordRegistrationEnabled;
+  const showEmailInput = mode !== "reset";
   const showResend = mode === "login" && error.toLowerCase().includes("verification");
 
   return (
@@ -240,17 +258,17 @@ export function AuthView({
                 {modeEyebrow(mode)}
               </p>
               <h2 className="mt-2 text-2xl font-semibold text-white">{modeHeading(mode)}</h2>
-              {!passwordRegistrationEnabled && mode === "login" ? (
+              {!backendPasswordRegistrationEnabled && mode === "login" ? (
                 <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Use your Nexus password, or continue with the Google account connected to your workspace.
+                  Log in with email/password or Google. Verified users are synchronized to the Nexus database.
                 </p>
-              ) : googleOnlyRegistration ? (
+              ) : firebaseEmailRegistration ? (
                 <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Create your isolated Nexus workspace with Google. Preview works without any account.
+                  Create your workspace with email/password or Google. The demo account opens without signup.
                 </p>
               ) : null}
             </div>
-            {mode === "register" && passwordRegistrationEnabled ? (
+            {mode === "register" ? (
               <AuthInput
                 label="Full name"
                 value={fullName}
@@ -262,14 +280,13 @@ export function AuthView({
             ) : null}
             {showEmailInput ? (
               <AuthInput
-                label={googleOnlyRegistration ? "Email for owner access" : "Email"}
+                label="Email"
                 type="email"
                 value={email}
                 onChange={setEmail}
-                required={!googleOnlyRegistration}
               />
             ) : null}
-            {mode !== "forgot" && !googleOnlyRegistration ? (
+            {mode !== "forgot" ? (
               <AuthInput
                 label={mode === "reset" ? "New password" : "Password"}
                 type="password"
@@ -310,24 +327,22 @@ export function AuthView({
                 Resend Verification
               </Button>
             ) : null}
-            {!googleOnlyRegistration ? (
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={loading}
-                className="w-full"
-                icon={modeIcon(mode)}
-              >
-                {modeAction(mode)}
-              </Button>
-            ) : null}
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={loading}
+              className="w-full"
+              icon={modeIcon(mode)}
+            >
+              {modeAction(mode)}
+            </Button>
           </form>
 
           {isPrimaryAuth ? (
             <>
               <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-[0.16em] text-slate-600">
                 <span className="h-px flex-1 bg-white/10" />
-                {googleOnlyRegistration ? "Secure registration" : "Cloud identity"}
+                Cloud identity
                 <span className="h-px flex-1 bg-white/10" />
               </div>
               <Button
@@ -338,17 +353,17 @@ export function AuthView({
                 disabled={loading}
                 onClick={continueWithGoogle}
               >
-                {googleOnlyRegistration ? "Sign Up with Google" : "Continue with Google"}
+                Continue with Google
               </Button>
               <Button
                 type="button"
-                variant="ghost"
+                variant="primary"
                 className="mb-3 w-full"
                 icon={<Eye size={16} />}
                 disabled={loading}
                 onClick={onPreview}
               >
-                Preview Nexus
+                Open Demo Account
               </Button>
               {privateDemoAvailable ? (
                 <Button
