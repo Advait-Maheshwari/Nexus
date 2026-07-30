@@ -23,6 +23,7 @@ import {
   verifyAccountEmail
 } from "@/lib/api";
 import {
+  completeFirebaseEmailVerification,
   registerWithFirebaseEmail,
   signInWithFirebaseEmail,
   signInWithGoogle
@@ -57,6 +58,7 @@ export function AuthView({
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [privateDemoAvailable, setPrivateDemoAvailable] = useState(false);
+  const [verificationPending, setVerificationPending] = useState(false);
 
   useEffect(() => {
     const token = readActionToken("verify_email");
@@ -127,7 +129,7 @@ export function AuthView({
             })
           );
           setPassword("");
-          setMode("login");
+          setVerificationPending(true);
           return;
         }
         onAuthenticated(await signInWithFirebaseEmail(email, password));
@@ -146,7 +148,13 @@ export function AuthView({
       setMode("login");
       setNotice(result.message);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Authentication is unavailable.");
+      const message = reason instanceof Error ? reason.message : "Authentication is unavailable.";
+      if (message.startsWith("Verify your email first")) {
+        setVerificationPending(true);
+        setNotice(message);
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -170,6 +178,7 @@ export function AuthView({
     setError("");
     setNotice("");
     setPassword("");
+    setVerificationPending(false);
   }
 
   async function continueWithGoogle() {
@@ -200,6 +209,19 @@ export function AuthView({
       });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Private demo is unavailable.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function continueAfterVerification() {
+    setLoading(true);
+    setError("");
+    setNotice("");
+    try {
+      onAuthenticated(await completeFirebaseEmailVerification());
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Email verification is not complete yet.");
     } finally {
       setLoading(false);
     }
@@ -268,7 +290,25 @@ export function AuthView({
                 </p>
               ) : null}
             </div>
-            {mode === "register" ? (
+            {verificationPending ? (
+              <div className="rounded-md border border-cyan/25 bg-cyan/10 p-4">
+                <p className="text-sm font-semibold text-white">Verify your email to finish signup</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  Nexus is holding this signup session. Open the Firebase verification email, then
+                  come back here and continue.
+                </p>
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="mt-4 w-full"
+                  disabled={loading}
+                  onClick={() => void continueAfterVerification()}
+                >
+                  I Verified My Email
+                </Button>
+              </div>
+            ) : null}
+            {mode === "register" && !verificationPending ? (
               <AuthInput
                 label="Full name"
                 value={fullName}
@@ -278,7 +318,7 @@ export function AuthView({
                 autoComplete="name"
               />
             ) : null}
-            {showEmailInput ? (
+            {showEmailInput && !verificationPending ? (
               <AuthInput
                 label="Email"
                 type="email"
@@ -286,7 +326,7 @@ export function AuthView({
                 onChange={setEmail}
               />
             ) : null}
-            {mode !== "forgot" ? (
+            {mode !== "forgot" && !verificationPending ? (
               <AuthInput
                 label={mode === "reset" ? "New password" : "Password"}
                 type="password"
@@ -296,7 +336,7 @@ export function AuthView({
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
               />
             ) : null}
-            {mode === "login" ? (
+            {mode === "login" && !verificationPending ? (
               <button
                 type="button"
                 onClick={() => chooseMode("forgot")}
@@ -327,15 +367,17 @@ export function AuthView({
                 Resend Verification
               </Button>
             ) : null}
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={loading}
-              className="w-full"
-              icon={modeIcon(mode)}
-            >
-              {modeAction(mode)}
-            </Button>
+            {!verificationPending ? (
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={loading}
+                className="w-full"
+                icon={modeIcon(mode)}
+              >
+                {modeAction(mode)}
+              </Button>
+            ) : null}
           </form>
 
           {isPrimaryAuth ? (

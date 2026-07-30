@@ -44,11 +44,25 @@ export async function registerWithFirebaseEmail(input: {
     );
     await updateProfile(credential.user, { displayName: input.fullName.trim() });
     await sendEmailVerification(credential.user);
-    await signOut(auth);
-    return "Account created. Check your email, verify it, then log in to open your Nexus workspace.";
+    return "Account created. Check your email, verify it, then continue here to open your Nexus workspace.";
   } catch (reason) {
     throw new Error(firebaseAuthErrorMessage(reason));
   }
+}
+
+export async function completeFirebaseEmailVerification(): Promise<NexusSession> {
+  await auth.authStateReady();
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("Your signup session expired. Log in after verifying your email.");
+  }
+  await user.reload();
+  const currentUser = auth.currentUser ?? user;
+  if (!currentUser.emailVerified) {
+    await sendEmailVerification(currentUser);
+    throw new Error("Verify your email first. I sent a fresh verification link.");
+  }
+  return await exchangeFirebaseUser(currentUser, "password");
 }
 
 export async function signInWithFirebaseEmail(
@@ -113,7 +127,7 @@ async function exchangeFirebaseUser(
   user: User,
   identityProvider: NexusSession["identityProvider"]
 ): Promise<NexusSession> {
-  const accessToken = await user.getIdToken();
+  const accessToken = await user.getIdToken(true);
   return {
     ...(await exchangeFirebaseToken(accessToken)),
     identityProvider,
