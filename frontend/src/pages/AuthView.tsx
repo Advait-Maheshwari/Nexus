@@ -34,6 +34,8 @@ type AuthMode = "login" | "register" | "forgot" | "reset";
 
 const backendPasswordRegistrationEnabled =
   import.meta.env.DEV || import.meta.env.VITE_ALLOW_PASSWORD_REGISTRATION === "true";
+const publicPreviewEnabled =
+  import.meta.env.DEV || import.meta.env.VITE_ALLOW_PUBLIC_PREVIEW === "true";
 const privateDemoOwnerHashes = String(import.meta.env.VITE_PRIVATE_DEMO_OWNER_EMAIL_HASHES ?? "")
   .split(",")
   .map((hash) => hash.trim().toLowerCase())
@@ -289,7 +291,7 @@ export function AuthView({
                 </p>
               ) : firebaseEmailRegistration ? (
                 <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Create your workspace with email/password or Google. The demo account opens without signup.
+                  Create your workspace with email/password or Google. Owner demo access appears after your email is recognized.
                 </p>
               ) : null}
             </div>
@@ -400,16 +402,18 @@ export function AuthView({
               >
                 Continue with Google
               </Button>
-              <Button
-                type="button"
-                variant="primary"
-                className="mb-3 w-full"
-                icon={<Eye size={16} />}
-                disabled={loading}
-                onClick={onPreview}
-              >
-                Open Demo Account
-              </Button>
+              {publicPreviewEnabled ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="mb-3 w-full"
+                  icon={<Eye size={16} />}
+                  disabled={loading}
+                  onClick={onPreview}
+                >
+                  Open Public Preview
+                </Button>
+              ) : null}
               {privateDemoAvailable ? (
                 <Button
                   type="button"
