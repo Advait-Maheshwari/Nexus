@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 import jwt
+from cryptography import x509
 from fastapi import HTTPException, status
 from jwt import InvalidTokenError
 
@@ -49,14 +50,16 @@ class FirebaseTokenVerifier:
             raise _invalid_token()
 
         try:
+            verification_key = _public_key_from_certificate(certificate)
             payload = jwt.decode(
                 id_token,
-                certificate,
+                verification_key,
                 algorithms=["RS256"],
                 audience=settings.firebase_project_id,
                 issuer=f"https://securetoken.google.com/{settings.firebase_project_id}",
+                leeway=60,
             )
-        except InvalidTokenError as error:
+        except (InvalidTokenError, ValueError) as error:
             raise _invalid_token() from error
 
         uid = str(payload.get("sub", "")).strip()
@@ -115,6 +118,10 @@ def _cache_max_age(cache_control: str) -> int:
         if separator and key.lower() == "max-age" and value.isdigit():
             return max(60, min(int(value), 86_400))
     return 3_600
+
+
+def _public_key_from_certificate(certificate: str):
+    return x509.load_pem_x509_certificate(certificate.encode("utf-8")).public_key()
 
 
 def _invalid_token() -> HTTPException:
