@@ -23,6 +23,7 @@ class FirebaseIdentity:
     email: str
     full_name: str
     avatar_url: str | None
+    email_verified: bool
 
 
 class FirebaseTokenVerifier:
@@ -60,16 +61,17 @@ class FirebaseTokenVerifier:
 
         uid = str(payload.get("sub", "")).strip()
         email = str(payload.get("email", "")).strip().lower()
-        if not uid or not email or payload.get("email_verified") is not True:
+        if not uid or not email:
             raise HTTPException(
                 status.HTTP_401_UNAUTHORIZED,
-                "A verified Firebase email is required",
+                "A Firebase email is required",
             )
         return FirebaseIdentity(
             uid=uid,
             email=email,
             full_name=_safe_name(str(payload.get("name", ""))),
             avatar_url=str(payload["picture"])[:500] if payload.get("picture") else None,
+            email_verified=payload.get("email_verified") is True,
         )
 
     async def _get_certificates(self) -> dict[str, str]:

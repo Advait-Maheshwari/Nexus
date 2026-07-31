@@ -3,7 +3,6 @@ import {
   createUserWithEmailAndPassword,
   getAuth,
   GoogleAuthProvider,
-  sendEmailVerification,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -35,7 +34,7 @@ export async function registerWithFirebaseEmail(input: {
   email: string;
   password: string;
   fullName: string;
-}): Promise<string> {
+}): Promise<NexusSession> {
   try {
     const credential = await createUserWithEmailAndPassword(
       auth,
@@ -43,27 +42,10 @@ export async function registerWithFirebaseEmail(input: {
       input.password
     );
     await updateProfile(credential.user, { displayName: input.fullName.trim() });
-    await sendEmailVerification(credential.user);
-    return "Account created. Check your email, verify it, then continue here to open your Nexus workspace.";
+    return await exchangeFirebaseUser(credential.user, "password");
   } catch (reason) {
     throw new Error(firebaseAuthErrorMessage(reason));
   }
-}
-
-export async function completeFirebaseEmailVerification(): Promise<NexusSession> {
-  await auth.authStateReady();
-  const user = auth.currentUser;
-  if (!user) {
-    throw new Error("Your signup session expired. Log in after verifying your email.");
-  }
-  await user.reload();
-  const currentUser = auth.currentUser ?? user;
-  if (!currentUser.emailVerified) {
-    throw new Error(
-      "Email is not verified yet. Open the verification link, then return here and click again."
-    );
-  }
-  return await exchangeFirebaseUser(currentUser, "password");
 }
 
 export async function signInWithFirebaseEmail(
@@ -76,20 +58,8 @@ export async function signInWithFirebaseEmail(
       email.trim().toLowerCase(),
       password
     );
-    if (!credential.user.emailVerified) {
-      throw new Error(
-        "Verify your email first. Open the verification email, then return here."
-      );
-    }
     return await exchangeFirebaseUser(credential.user, "password");
   } catch (reason) {
-    if (
-      reason instanceof Error &&
-      (reason.message.startsWith("Verify your email first") ||
-        reason.message.startsWith("Email is not verified yet"))
-    ) {
-      throw reason;
-    }
     throw new Error(firebaseAuthErrorMessage(reason));
   }
 }
@@ -118,7 +88,6 @@ export async function resumeGoogleSession(): Promise<NexusSession | null> {
   try {
     await user.reload();
     const currentUser = auth.currentUser ?? user;
-    if (!currentUser.emailVerified) return null;
     return await exchangeFirebaseUser(currentUser, currentIdentityProvider(currentUser));
   } catch (reason) {
     throw new Error(firebaseAuthErrorMessage(reason));

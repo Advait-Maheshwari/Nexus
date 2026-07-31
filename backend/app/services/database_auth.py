@@ -132,7 +132,7 @@ async def exchange_firebase_identity(
             full_name=identity.full_name,
             avatar_url=identity.avatar_url,
             firebase_uid=identity.uid,
-            email_verified_at=datetime.now(UTC),
+            email_verified_at=datetime.now(UTC) if identity.email_verified else None,
         )
         workspace = Workspace(
             name=f"{identity.full_name}'s Nexus",
@@ -153,7 +153,8 @@ async def exchange_firebase_identity(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Account is disabled")
     if user.firebase_uid is None:
         user.firebase_uid = identity.uid
-    user.email_verified_at = user.email_verified_at or datetime.now(UTC)
+    if identity.email_verified:
+        user.email_verified_at = user.email_verified_at or datetime.now(UTC)
     user.avatar_url = identity.avatar_url or user.avatar_url
     membership = await session.scalar(
         select(WorkspaceMember)

@@ -23,7 +23,6 @@ import {
   verifyAccountEmail
 } from "@/lib/api";
 import {
-  completeFirebaseEmailVerification,
   registerWithFirebaseEmail,
   signInWithFirebaseEmail,
   signInWithGoogle
@@ -60,7 +59,6 @@ export function AuthView({
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [privateDemoAvailable, setPrivateDemoAvailable] = useState(false);
-  const [verificationPending, setVerificationPending] = useState(false);
 
   useEffect(() => {
     const token = readActionToken("verify_email");
@@ -123,15 +121,13 @@ export function AuthView({
       }
       if (!backendPasswordRegistrationEnabled) {
         if (mode === "register") {
-          setNotice(
+          onAuthenticated(
             await registerWithFirebaseEmail({
               email,
               password,
               fullName: fullName.trim()
             })
           );
-          setPassword("");
-          setVerificationPending(true);
           return;
         }
         onAuthenticated(await signInWithFirebaseEmail(email, password));
@@ -151,15 +147,7 @@ export function AuthView({
       setNotice(result.message);
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Authentication is unavailable.";
-      if (
-        message.startsWith("Verify your email first") ||
-        message.startsWith("Email is not verified yet")
-      ) {
-        setVerificationPending(true);
-        setNotice(message);
-      } else {
-        setError(message);
-      }
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -183,7 +171,6 @@ export function AuthView({
     setError("");
     setNotice("");
     setPassword("");
-    setVerificationPending(false);
   }
 
   async function continueWithGoogle() {
@@ -219,19 +206,6 @@ export function AuthView({
     }
   }
 
-  async function continueAfterVerification() {
-    setLoading(true);
-    setError("");
-    setNotice("");
-    try {
-      onAuthenticated(await completeFirebaseEmailVerification());
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Email verification is not complete yet.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   const isPrimaryAuth = mode === "login" || mode === "register";
   const firebaseEmailRegistration = mode === "register" && !backendPasswordRegistrationEnabled;
   const showEmailInput = mode !== "reset";
@@ -253,7 +227,7 @@ export function AuthView({
           </div>
           <div className="space-y-3 text-sm leading-6 text-slate-300">
             <SecurityLine text="Separate workspace ownership for every account." />
-            <SecurityLine text="Verification and reset tokens are single-use and expire." />
+            <SecurityLine text="Password reset tokens are single-use and expire." />
             <SecurityLine text="Password hashes and recovery tokens never leave the API." />
             <SecurityLine text="Public users only see cloud authentication paths." />
           </div>
@@ -287,33 +261,15 @@ export function AuthView({
               <h2 className="mt-2 text-2xl font-semibold text-white">{modeHeading(mode)}</h2>
               {!backendPasswordRegistrationEnabled && mode === "login" ? (
                 <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Log in with email/password or Google. Verified users are synchronized to the Nexus database.
+                  Log in with email/password or Google. Nexus opens the workspace after the secure Firebase session is confirmed.
                 </p>
               ) : firebaseEmailRegistration ? (
                 <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Create your workspace with email/password or Google. Owner demo access appears after your email is recognized.
+                  Create your workspace with email/password or Google. No verification step is required to start.
                 </p>
               ) : null}
             </div>
-            {verificationPending ? (
-              <div className="rounded-md border border-cyan/25 bg-cyan/10 p-4">
-                <p className="text-sm font-semibold text-white">Verify your email to finish signup</p>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Nexus is holding this signup session. Open the Firebase verification email, then
-                  come back here and continue.
-                </p>
-                <Button
-                  type="button"
-                  variant="primary"
-                  className="mt-4 w-full"
-                  disabled={loading}
-                  onClick={() => void continueAfterVerification()}
-                >
-                  I Verified My Email
-                </Button>
-              </div>
-            ) : null}
-            {mode === "register" && !verificationPending ? (
+            {mode === "register" ? (
               <AuthInput
                 label="Full name"
                 value={fullName}
@@ -323,7 +279,7 @@ export function AuthView({
                 autoComplete="name"
               />
             ) : null}
-            {showEmailInput && !verificationPending ? (
+            {showEmailInput ? (
               <AuthInput
                 label="Email"
                 type="email"
@@ -331,7 +287,7 @@ export function AuthView({
                 onChange={setEmail}
               />
             ) : null}
-            {mode !== "forgot" && !verificationPending ? (
+            {mode !== "forgot" ? (
               <AuthInput
                 label={mode === "reset" ? "New password" : "Password"}
                 type="password"
@@ -341,7 +297,7 @@ export function AuthView({
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
               />
             ) : null}
-            {mode === "login" && !verificationPending ? (
+            {mode === "login" ? (
               <button
                 type="button"
                 onClick={() => chooseMode("forgot")}
@@ -372,17 +328,15 @@ export function AuthView({
                 Resend Verification
               </Button>
             ) : null}
-            {!verificationPending ? (
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={loading}
-                className="w-full"
-                icon={modeIcon(mode)}
-              >
-                {modeAction(mode)}
-              </Button>
-            ) : null}
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={loading}
+              className="w-full"
+              icon={modeIcon(mode)}
+            >
+              {modeAction(mode)}
+            </Button>
           </form>
 
           {isPrimaryAuth ? (
