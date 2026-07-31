@@ -33,6 +33,8 @@ import {
   deleteAccount,
   enterPrivateDemo,
   fetchAccount,
+  fetchAdminWorkspaceDashboard,
+  fetchOperations,
   fetchPreferences,
   fetchWorkspaceUsage,
   listWorkspaceMembers,
@@ -51,6 +53,7 @@ import { IntegrationsView } from "@/pages/IntegrationsView";
 import { OperationsView } from "@/pages/OperationsView";
 import { IdeasView, JournalView } from "@/pages/PlanningViews";
 import type {
+  AdminWorkspaceDashboard,
   NexusAccount,
   NexusRole,
   NexusSession,
@@ -59,6 +62,7 @@ import type {
   WorkspaceUsage
 } from "@/types/auth";
 import type { MissionData } from "@/types/domain";
+import type { OperationsOverview } from "@/types/operations";
 import { defaultPreferences, type Preferences } from "@/types/preferences";
 
 
@@ -77,6 +81,7 @@ function resolveAvatarUrl(value?: string) {
 }
 
 type ControlModule =
+  | "readiness"
   | "settings"
   | "team"
   | "admin"
@@ -93,6 +98,12 @@ const controlModules: Array<{
   description: string;
   icon: typeof Settings;
 }> = [
+  {
+    key: "readiness",
+    label: "Readiness",
+    description: "SaaS launch posture, onboarding gaps, production checks, and next actions.",
+    icon: Gauge
+  },
   {
     key: "team",
     label: "Team",
@@ -160,7 +171,7 @@ export function ControlCenterView({
   onSessionChange: (session: NexusSession) => void;
   onSessionRevoked: () => void;
 }) {
-  const [activeModule, setActiveModule] = useState<ControlModule>("settings");
+  const [activeModule, setActiveModule] = useState<ControlModule>("readiness");
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -224,6 +235,9 @@ export function ControlCenterView({
       </aside>
 
       <div className="min-w-0">
+        {activeModule === "readiness" ? (
+          <ReadinessCenter session={session} missionData={missionData} />
+        ) : null}
         {activeModule === "settings" ? (
           <SettingsView
             session={session}
@@ -250,6 +264,362 @@ export function ControlCenterView({
         ) : null}
       </div>
     </section>
+  );
+}
+
+function ReadinessCenter({
+  session,
+  missionData
+}: {
+  session: NexusSession;
+  missionData: MissionData;
+}) {
+  const [usage, setUsage] = useState<WorkspaceUsage | null>(null);
+  const [operations, setOperations] = useState<OperationsOverview | null>(null);
+  const [admin, setAdmin] = useState<AdminWorkspaceDashboard | null>(null);
+  const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    setStatus("");
+
+    void Promise.allSettled([
+      fetchWorkspaceUsage(session.accessToken),
+      fetchOperations(session.accessToken),
+      session.role === "owner"
+        ? fetchAdminWorkspaceDashboard(session.accessToken)
+        : Promise.resolve(null)
+    ]).then(([usageResult, operationsResult, adminResult]) => {
+      if (!active) return;
+      if (usageResult.status === "fulfilled") setUsage(usageResult.value);
+      if (operationsResult.status === "fulfilled") setOperations(operationsResult.value);
+      if (adminResult.status === "fulfilled") setAdmin(adminResult.value);
+
+      const rejected = [usageResult, operationsResult, adminResult].find(
+        (result) => result.status === "rejected"
+      );
+      if (rejected?.status === "rejected") {
+        setStatus(
+          rejected.reason instanceof Error
+            ? rejected.reason.message
+            : "Some readiness signals could not be loaded."
+        );
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [session.accessToken, session.role]);
+
+  const readiness = buildReadinessSignals(session, missionData, usage, operations, admin);
+  const completed = readiness.filter((item) => item.state === "ready").length;
+  const needsWork = readiness.length - completed;
+  const score = Math.round((completed / Math.max(1, readiness.length)) * 100);
+  const topAction =
+    readiness.find((item) => item.state === "blocked") ??
+    readiness.find((item) => item.state === "watch") ??
+    readiness.find((item) => item.state === "planned");
+
+  return (
+    <section className="mx-auto max-w-6xl">
+      <header className="mb-6">
+        <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">Phase 8</p>
+        <h2 className="mt-1 text-2xl font-semibold text-white">SaaS Readiness</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+          A calm launch-control view for the parts that matter before Nexus becomes usable by
+          more people: onboarding, data model clarity, admin visibility, security, cost, and ops.
+        </p>
+      </header>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="glass-panel rounded-lg p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan">
+                Launch posture
+              </p>
+              <h3 className="mt-2 text-xl font-semibold text-white">
+                {score >= 85 ? "Ready for controlled beta" : "Stabilizing for beta"}
+              </h3>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                {topAction
+                  ? topAction.action
+                  : "All tracked readiness signals are in the ready state."}
+              </p>
+            </div>
+            <div className="min-w-[150px] rounded-md border border-cyan/20 bg-cyan/10 p-4 text-center">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-cyan">
+                Readiness
+              </p>
+              <p className="mt-2 font-mono text-4xl font-semibold text-white">{score}%</p>
+              <p className="mt-1 text-xs text-slate-400">
+                {completed} ready / {needsWork} open
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {readiness.map((item) => (
+              <ReadinessCard key={item.key} item={item} />
+            ))}
+          </div>
+        </section>
+
+        <aside className="space-y-4">
+          <section className="glass-panel rounded-lg p-5">
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-success">
+              Cost boundary
+            </p>
+            <h3 className="mt-2 text-lg font-semibold text-white">$0 policy is active</h3>
+            <div className="mt-4 space-y-3">
+              <ReadinessLine label="Hosting" value="Firebase free tier" />
+              <ReadinessLine label="API" value="Render free service" />
+              <ReadinessLine label="Database" value="Neon free tier" />
+              <ReadinessLine label="AI" value="Local heuristics by default" />
+            </div>
+          </section>
+
+          <section className="glass-panel rounded-lg p-5">
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet">
+              Next launch move
+            </p>
+            <h3 className="mt-2 text-lg font-semibold text-white">
+              {topAction?.title ?? "Keep the beta window small"}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              {topAction?.action ??
+                "Invite only one trusted test user first, then compare their onboarding path against your own."}
+            </p>
+          </section>
+
+          {usage ? (
+            <section className="glass-panel rounded-lg p-5">
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan">
+                Free-plan capacity
+              </p>
+              <div className="mt-4 space-y-4">
+                <UsageLine label="Projects" value={usage.projects} limit={usage.projectLimit} />
+                <UsageLine label="Tasks" value={usage.tasks} limit={usage.taskLimit} />
+                <UsageLine label="Members" value={usage.members} limit={usage.memberLimit} />
+              </div>
+            </section>
+          ) : null}
+        </aside>
+      </div>
+
+      {status ? (
+        <p role="status" className="mt-4 rounded-md border border-solar/25 bg-solar/10 px-3 py-2 text-sm text-solar">
+          {status}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+type ReadinessState = "ready" | "watch" | "planned" | "blocked";
+
+interface ReadinessSignal {
+  key: string;
+  title: string;
+  body: string;
+  action: string;
+  state: ReadinessState;
+  metric: string;
+}
+
+function buildReadinessSignals(
+  session: NexusSession,
+  missionData: MissionData,
+  usage: WorkspaceUsage | null,
+  operations: OperationsOverview | null,
+  admin: AdminWorkspaceDashboard | null
+): ReadinessSignal[] {
+  const projectCount = missionData.projects.length;
+  const taskCount = missionData.projects.reduce((sum, project) => sum + project.taskCount, 0);
+  const featureCount = missionData.projects.reduce((sum, project) => sum + project.featureCount, 0);
+  const blockedCount = missionData.projects.reduce(
+    (sum, project) => sum + project.blockedTaskCount,
+    0
+  );
+  const avgHealth = Math.round(
+    missionData.projects.reduce((sum, project) => sum + project.healthScore, 0) /
+      Math.max(1, projectCount)
+  );
+  const capacityNearLimit = usage
+    ? usage.projects / usage.projectLimit > 0.82 ||
+      usage.tasks / usage.taskLimit > 0.82 ||
+      usage.members / usage.memberLimit > 0.82
+    : false;
+  const localProvider = operations?.providers.find((provider) => provider.provider === "local");
+  const hasBriefingRule = Boolean(operations?.rules.some((rule) => rule.enabled));
+  const hasAdminTelemetry = Boolean(admin && admin.users.length > 0);
+  const activeSessions = admin?.activeSessionCount ?? 0;
+  const teamSignals = missionData.teamIntelligence;
+
+  return [
+    {
+      key: "onboarding",
+      title: "First-run onboarding",
+      body: "Nexus needs one project, one feature, and one task to explain health and next moves clearly.",
+      action:
+        projectCount === 0
+          ? "Create the first real project before inviting users."
+          : featureCount === 0
+            ? "Add at least one feature so Galaxy and City have meaningful planets and districts."
+            : taskCount === 0
+              ? "Add one finishable task so progress, health, and AI briefing have real work signals."
+              : "The workspace has enough real data for the first-run experience.",
+      state: projectCount && featureCount && taskCount ? "ready" : "blocked",
+      metric: `${projectCount} projects / ${featureCount} features / ${taskCount} tasks`
+    },
+    {
+      key: "project-health",
+      title: "Goal-aware health",
+      body: "Health combines goals, ownership, blockers, deadlines, and progress instead of only task count.",
+      action:
+        projectCount === 0
+          ? "Create a project goal so Nexus can explain why health is high or low."
+          : blockedCount > 0
+            ? "Clear blocked work first; blockers reduce readiness more than low progress."
+            : avgHealth < 70
+              ? "Open the project overview and strengthen goals, steps, or ownership."
+              : "Current project health is strong enough for beta usage.",
+      state: projectCount === 0 ? "planned" : blockedCount > 0 || avgHealth < 70 ? "watch" : "ready",
+      metric: `${avgHealth}/100 avg health`
+    },
+    {
+      key: "teams",
+      title: "Team accountability",
+      body: "Future SaaS users need to see who owns what, which team is lagging, and what is unassigned.",
+      action:
+        teamSignals.totalTeams === 0
+          ? "Add at least one project team in Project Overview before using Nexus with other people."
+          : teamSignals.unassignedTasks > 0
+            ? "Assign unowned tasks to teams or sub-teams so accountability is visible."
+            : teamSignals.laggingTeams > 0
+              ? "Review lagging teams and reduce blocked or overdue scope."
+              : "Team responsibility is visible and usable.",
+      state:
+        teamSignals.totalTeams === 0
+          ? "planned"
+          : teamSignals.unassignedTasks > 0 || teamSignals.laggingTeams > 0
+            ? "watch"
+            : "ready",
+      metric: `${teamSignals.totalTeams} teams / ${teamSignals.unassignedTasks} unassigned`
+    },
+    {
+      key: "admin",
+      title: "Admin visibility",
+      body: "Owner dashboard should show users, active sessions, login method, last login, and IDs safely.",
+      action:
+        session.role !== "owner"
+          ? "Owner-only telemetry is hidden for this role."
+          : hasAdminTelemetry
+            ? "Admin telemetry is available for owner review."
+            : "Open Admin once as owner to confirm users and active sessions load.",
+      state: session.role !== "owner" ? "planned" : hasAdminTelemetry ? "ready" : "watch",
+      metric:
+        session.role === "owner"
+          ? `${admin?.totalUsers ?? 0} users / ${activeSessions} active sessions`
+          : "Owner only"
+    },
+    {
+      key: "operations",
+      title: "Free AI operations",
+      body: "Daily/weekly reviews must stay rule-based and free unless you explicitly add a paid provider later.",
+      action:
+        localProvider?.enabled && hasBriefingRule
+          ? "Free briefing automation is active."
+          : localProvider?.enabled
+            ? "Add a daily or weekly briefing rule when you want repeatable review receipts."
+            : "Keep paid AI providers disabled; local heuristics should remain the default.",
+      state: localProvider?.enabled && hasBriefingRule ? "ready" : "planned",
+      metric: `${operations?.rules.length ?? 0} rules / ${operations?.recentRuns.length ?? 0} receipts`
+    },
+    {
+      key: "cost",
+      title: "Zero-cost capacity",
+      body: "Phase 8 must protect the free-tier boundary before more users or heavier automation.",
+      action: capacityNearLimit
+        ? "You are near a free-plan limit; archive unused work before adding more users or projects."
+        : "Free-tier usage is inside the intended launch boundary.",
+      state: capacityNearLimit ? "watch" : "ready",
+      metric: usage ? usage.planCode : "Free tiers"
+    },
+    {
+      key: "security",
+      title: "Security posture",
+      body: "Production security depends on server sessions, tenant isolation, account deletion, and dependency checks.",
+      action:
+        session.mode === "api"
+          ? "Security controls are server-backed; keep dependency and tenant tests green before each deploy."
+          : "Use cloud sign-in for server-backed account and workspace boundaries.",
+      state: session.mode === "api" ? "ready" : "blocked",
+      metric: session.identityProvider === "google" ? "Google identity" : "API session"
+    },
+    {
+      key: "backup",
+      title: "Backup and restore",
+      body: "Neon data needs repeatable encrypted backup and restore testing before outside users depend on it.",
+      action:
+        "Keep the encrypted GitHub Actions backup secret active, then run restore verification before beta invites.",
+      state: "planned",
+      metric: "Restore check required"
+    }
+  ];
+}
+
+function ReadinessCard({ item }: { item: ReadinessSignal }) {
+  return (
+    <article className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "grid h-7 w-7 shrink-0 place-items-center rounded-md border",
+                readinessTone(item.state)
+              )}
+            >
+              {item.state === "ready" ? <Check size={14} /> : <Gauge size={14} />}
+            </span>
+            <h3 className="text-sm font-semibold text-white">{item.title}</h3>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-slate-400">{item.body}</p>
+        </div>
+        <span
+          className={cn(
+            "rounded-md border px-2 py-1 font-mono text-[10px] uppercase",
+            readinessTone(item.state)
+          )}
+        >
+          {item.state}
+        </span>
+      </div>
+      <div className="mt-4 rounded-md border border-white/10 bg-black/15 p-3">
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+          {item.metric}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-300">{item.action}</p>
+      </div>
+    </article>
+  );
+}
+
+function readinessTone(state: ReadinessState) {
+  if (state === "ready") return "border-success/25 bg-success/10 text-success";
+  if (state === "watch") return "border-solar/25 bg-solar/10 text-solar";
+  if (state === "blocked") return "border-danger/30 bg-danger/10 text-danger";
+  return "border-white/10 bg-white/[0.04] text-slate-400";
+}
+
+function ReadinessLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
+      <span className="shrink-0 text-slate-500">{label}</span>
+      <span className="min-w-0 truncate text-right text-slate-300">{value}</span>
+    </div>
   );
 }
 
