@@ -39,7 +39,7 @@ function App() {
   const [sessionReady, setSessionReady] = useState(false);
   const [activeView, setActiveView] = useState<ViewKey>("mission");
   const [previewMode, setPreviewMode] = useState(false);
-  const { data: missionData } = useMissionData(session);
+  const { data: missionData, status: missionStatus, error: missionError } = useMissionData(session);
   const activeSession = previewMode ? PREVIEW_SESSION : session;
   const activeMissionData = previewMode ? publicPreviewMissionData : missionData;
 
@@ -124,6 +124,11 @@ function App() {
         setSession(null);
       }}
     >
+      {!previewMode && missionStatus === "error" ? (
+        <section className="mb-4 rounded-lg border border-risk/30 bg-risk/10 px-4 py-3 text-sm text-risk">
+          Mission sync failed: {missionError}. Sign out and reconnect, or try again after the API wakes up.
+        </section>
+      ) : null}
       {activeView === "mission" ? (
         <MissionControl data={activeMissionData} session={activeSession} previewMode={previewMode} />
       ) : null}
@@ -141,6 +146,9 @@ function App() {
             setSession(nextSession);
           }}
           onSessionRevoked={() => {
+            if (activeSession.identityProvider === "google" || activeSession.identityProvider === "password") {
+              void signOutFirebase();
+            }
             sessionStorage.removeItem(SESSION_KEY);
             setSession(null);
           }}

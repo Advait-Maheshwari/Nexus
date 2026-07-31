@@ -45,6 +45,7 @@ const emptyMissionData: MissionData = {
 export function useMissionData(session: NexusSession | null) {
   const [data, setData] = useState<MissionData>(emptyMissionData);
   const [status, setStatus] = useState<MissionDataStatus>("loading");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -52,6 +53,7 @@ export function useMissionData(session: NexusSession | null) {
     if (!session) {
       setData(emptyMissionData);
       setStatus("loading");
+      setError("");
       return () => {
         active = false;
       };
@@ -63,11 +65,13 @@ export function useMissionData(session: NexusSession | null) {
           if (!active) return;
           setData(apiData);
           setStatus("ready");
+          setError("");
         })
-        .catch(() => {
+        .catch((reason: unknown) => {
           if (!active) return;
           setData(emptyMissionData);
           setStatus("error");
+          setError(reason instanceof Error ? reason.message : "Mission Control API is unavailable");
         });
     };
 
@@ -80,5 +84,5 @@ export function useMissionData(session: NexusSession | null) {
     };
   }, [session]);
 
-  return { data, status };
+  return { data, status, error };
 }

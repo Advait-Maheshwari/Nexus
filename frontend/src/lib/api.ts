@@ -531,7 +531,7 @@ export async function fetchMissionControl(accessToken: string): Promise<MissionD
   const payload = (await response.json()) as ApiMissionControl;
   const projects = await Promise.all(
     payload.projects.map(async (project, index) => {
-      const features = await listWorkspaceFeatures(project.id, accessToken).catch(() => []);
+      const features = await listWorkspaceFeatures(project.id, accessToken);
       return mergeProject(project, index, features);
     })
   );
