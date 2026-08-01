@@ -1,5 +1,6 @@
 import { Billboard, Grid, Line, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef } from "react";
 import type { ComponentRef, MutableRefObject } from "react";
 import * as THREE from "three";
@@ -964,6 +965,7 @@ export default function CityScene({
 }) {
   const style = getCityStyle(project);
   const controls = useRef<OrbitControlsHandle>(null);
+  const reducedMotion = useReducedMotion();
   const minDistance = mode === "street" ? 1.4 : 2.2;
   const maxDistance = mode === "street" ? 18 : mode === "risk" ? 40 : 42;
 
@@ -971,6 +973,7 @@ export default function CityScene({
     <Canvas
       camera={{ position: [5.4, 4.15, 6.1], fov: 52 }}
       dpr={[1, 1.75]}
+      frameloop={reducedMotion ? "demand" : "always"}
       gl={{
         alpha: false,
         antialias: true,

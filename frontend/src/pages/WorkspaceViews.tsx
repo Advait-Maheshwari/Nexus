@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -8,8 +8,10 @@ import {
   Factory,
   Gauge,
   Lightbulb,
+  Minus,
   NotebookPen,
   Orbit,
+  Plus,
   RotateCcw,
   Settings,
   ShieldCheck,
@@ -30,20 +32,46 @@ export function GalaxyView({ data }: { data: MissionData }) {
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedPlanetId, setSelectedPlanetId] = useState("");
   const [sceneRevision, setSceneRevision] = useState(0);
+  const [cameraZoom, setCameraZoom] = useState(1);
+  const initialSelectionMade = useRef(false);
   const selectedProject = data.projects.find((project) => project.id === selectedProjectId);
   const selectedPlanet = selectedProject?.planets.find(
     (planet) => planet.id === selectedPlanetId
   );
 
   useEffect(() => {
-    if (!selectedProjectId || data.projects.some((project) => project.id === selectedProjectId)) {
+    if (data.projects.length === 0) {
+      initialSelectionMade.current = false;
       return;
     }
-    const [project] = data.projects;
-    setSelectedProjectId(project?.id ?? "");
-    setSelectedPlanetId(project?.planets[0]?.id ?? "");
-    setSceneRevision((revision) => revision + 1);
+
+    if (selectedProjectId && !data.projects.some((project) => project.id === selectedProjectId)) {
+      const [project] = data.projects;
+      setSelectedProjectId(project?.id ?? "");
+      setSelectedPlanetId(project?.planets[0]?.id ?? "");
+      setSceneRevision((revision) => revision + 1);
+      return;
+    }
+
+    if (!initialSelectionMade.current && data.projects.length === 1) {
+      const [project] = data.projects;
+      setSelectedProjectId(project.id);
+      setSelectedPlanetId(project.planets[0]?.id ?? "");
+      initialSelectionMade.current = true;
+      setSceneRevision((revision) => revision + 1);
+      return;
+    }
+
+    initialSelectionMade.current = true;
   }, [data.projects, selectedProjectId]);
+
+  const portfolioProgress = data.projects.length
+    ? Math.round(data.projects.reduce((total, project) => total + project.progress, 0) / data.projects.length)
+    : 0;
+  const portfolioHealth = data.projects.length
+    ? Math.round(data.projects.reduce((total, project) => total + project.healthScore, 0) / data.projects.length)
+    : 0;
+  const blockedTasks = data.projects.reduce((total, project) => total + project.blockedTaskCount, 0);
 
   const linkedProjects = useMemo(() => {
     if (!selectedProject) {
@@ -69,9 +97,22 @@ export function GalaxyView({ data }: { data: MissionData }) {
       .filter((link) => link.project);
   }, [data.projects, data.relationships, selectedProject]);
 
+  function selectProject(project: ProjectSummary) {
+    setSelectedProjectId(project.id);
+    setSelectedPlanetId(project.planets[0]?.id ?? "");
+    setCameraZoom(0);
+  }
+
+  function resetGalaxy() {
+    setSelectedProjectId("");
+    setSelectedPlanetId("");
+    setCameraZoom(1);
+    setSceneRevision((revision) => revision + 1);
+  }
+
   return (
-    <section className="grid min-h-[calc(100vh-8rem)] min-w-0 w-full gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="relative h-[clamp(520px,72vh,820px)] min-w-0 w-full overflow-hidden rounded-lg border border-white/10 bg-void xl:h-[calc(100vh-7rem)] xl:min-h-[620px] xl:max-h-[820px] xl:self-start">
+    <section className="grid min-h-[calc(100vh-8rem)] min-w-0 w-full gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="relative h-[500px] min-w-0 w-full overflow-hidden rounded-lg border border-white/10 bg-void sm:h-[clamp(560px,76vh,900px)] xl:h-[calc(100vh-7.5rem)] xl:min-h-[640px] xl:max-h-[900px] xl:self-start">
         <Suspense fallback={<div className="h-full w-full bg-void" />}>
           <GalaxyScene
             key={data.projects
@@ -82,10 +123,10 @@ export function GalaxyView({ data }: { data: MissionData }) {
             selectedProjectId={selectedProjectId}
             selectedPlanetId={selectedPlanetId}
             resetSignal={sceneRevision}
+            cameraZoom={cameraZoom}
             onSelectProject={(projectId) => {
-              setSelectedProjectId(projectId);
               const project = data.projects.find((item) => item.id === projectId);
-              setSelectedPlanetId(project?.planets[0]?.id ?? "");
+              if (project) selectProject(project);
             }}
             onSelectPlanet={(projectId, planetId) => {
               setSelectedProjectId(projectId);
@@ -102,72 +143,74 @@ export function GalaxyView({ data }: { data: MissionData }) {
             </div>
           </div>
         ) : null}
-        <div className="pointer-events-none absolute bottom-4 left-4 rounded-md border border-white/10 bg-void/80 px-3 py-2 backdrop-blur-md">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
-            Navigation
+        <div className="pointer-events-none absolute left-4 top-4 rounded-md border border-white/10 bg-void/80 px-3 py-2 backdrop-blur-md">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-cyan">
+            {selectedProject ? "System focus" : "Portfolio orbit"}
           </p>
-          <p className="mt-1 text-xs text-slate-300">Select a star / drag to orbit / scroll to zoom</p>
+          <p className="mt-1 text-xs text-slate-300">
+            {selectedProject ? selectedProject.name : `${data.projects.length} project systems`}
+          </p>
         </div>
-        <button
-          type="button"
-          title="Fit all project systems"
-          aria-label="Reset galaxy camera"
-          onClick={() => {
-            setSelectedProjectId("");
-            setSelectedPlanetId("");
-            setSceneRevision((revision) => revision + 1);
-          }}
-          className="absolute bottom-4 right-4 grid h-9 w-9 place-items-center rounded-md border border-white/10 bg-void/80 text-slate-300 backdrop-blur-md transition hover:border-cyan/35 hover:text-cyan"
-        >
-          <RotateCcw size={15} />
-        </button>
+        <div className="absolute bottom-4 right-4 flex overflow-hidden rounded-md border border-white/10 bg-void/80 backdrop-blur-md">
+          <button
+            type="button"
+            title="Zoom out"
+            aria-label="Zoom out"
+            onClick={() => setCameraZoom((zoom) => Math.max(-3, zoom - 1))}
+            className="grid h-11 w-11 place-items-center text-slate-300 transition hover:bg-white/[0.06] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-cyan"
+          >
+            <Minus size={17} />
+          </button>
+          <button
+            type="button"
+            title="Fit all project systems"
+            aria-label="Reset galaxy camera"
+            onClick={resetGalaxy}
+            className="grid h-11 w-11 place-items-center border-x border-white/10 text-slate-300 transition hover:bg-white/[0.06] hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-cyan"
+          >
+            <RotateCcw size={16} />
+          </button>
+          <button
+            type="button"
+            title="Zoom in"
+            aria-label="Zoom in"
+            onClick={() => setCameraZoom((zoom) => Math.min(3, zoom + 1))}
+            className="grid h-11 w-11 place-items-center text-slate-300 transition hover:bg-white/[0.06] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-cyan"
+          >
+            <Plus size={17} />
+          </button>
+        </div>
       </div>
-      <div className="min-w-0 space-y-3">
+      <aside className="min-w-0 space-y-3 xl:max-h-[calc(100vh-7.5rem)] xl:overflow-y-auto xl:pr-1">
         {selectedProject ? (
           <>
             <ProjectOrbitCard project={selectedProject} />
             <section className="glass-panel rounded-lg p-4">
-              <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">
-                System Meaning
-              </p>
-              <div className="mt-3 grid gap-2">
-                <GalaxyLegend color={selectedProject.accent} label="Star" text="Selected project and its overall health." />
-                <GalaxyLegend color="#8d67ff" label="Planets" text="Project features, sized by completion and colored by status." />
-                <GalaxyLegend color="#4ade80" label="Moons" text="Tasks around each feature: green done, gray open, red blocked." />
-                <GalaxyLegend color="#f5c451" label="Links" text="Dependencies, shared AI, deadlines, and inspiration between projects." />
-              </div>
-            </section>
-            <section className="glass-panel rounded-lg p-4">
-              <div className="mb-4 grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-3 gap-2 text-center">
                 <PlanetMetric label="Solar health" value={selectedProject.healthScore} />
                 <PlanetMetric label="Gravity" value={selectedProject.priority} />
                 <PlanetMetric label="Velocity" value={selectedProject.velocity.toFixed(1)} />
               </div>
-              <p className="font-mono text-xs uppercase tracking-[0.24em] text-violet">
+              <p className="mt-5 font-mono text-xs uppercase tracking-[0.24em] text-violet">
                 Feature Planets
               </p>
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 max-h-[360px] space-y-2 overflow-y-auto pr-1">
                 {selectedProject.planets.map((planet) => (
                   <button
                     key={planet.id}
                     type="button"
                     onClick={() => setSelectedPlanetId(planet.id)}
-                    className={`w-full rounded-md border p-3 text-left transition ${
+                    className={`w-full rounded-md border p-3 text-left transition duration-200 ${
                       selectedPlanetId === planet.id
                         ? "border-violet/45 bg-violet/10"
-                        : "border-white/10 bg-white/[0.04] hover:border-white/20"
+                        : "border-transparent bg-white/[0.035] hover:border-white/15 hover:bg-white/[0.05]"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm font-semibold text-white">{planet.name}</span>
                       <span className="font-mono text-xs text-cyan">{planet.progress}%</span>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {planetClass(planet.progress, planet.blockedTaskCount)}
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-slate-400">
-                      Feature planet with {planet.taskCount} task moon{planet.taskCount === 1 ? "" : "s"}.
-                    </p>
+                    <p className="mt-1 text-xs text-slate-400">{planetClass(planet.progress, planet.blockedTaskCount)} / {planet.taskCount} task moon{planet.taskCount === 1 ? "" : "s"}</p>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-violet to-cyan"
@@ -192,7 +235,7 @@ export function GalaxyView({ data }: { data: MissionData }) {
                     <PlanetMetric label="Blocked" value={selectedPlanet.blockedTaskCount} />
                     <PlanetMetric label="Progress" value={`${selectedPlanet.progress}%`} />
                   </div>
-                  <div className="mt-3 flex items-center justify-between rounded-md border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <div className="mt-3 flex items-center justify-between border-t border-white/10 px-1 pt-3">
                     <span className="text-xs text-slate-400">Task moon signal</span>
                     <div className="flex gap-1.5">
                       {Array.from({ length: Math.min(8, selectedPlanet.taskCount) }, (_, index) => (
@@ -212,25 +255,28 @@ export function GalaxyView({ data }: { data: MissionData }) {
                       ))}
                     </div>
                   </div>
-                  <div className="mt-3 rounded-md border border-white/10 bg-white/[0.035] p-3">
+                  <div className="mt-3 border-t border-white/10 pt-3">
                     <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
                       Planet Readout
                     </p>
                     <p className="mt-2 text-sm leading-6 text-slate-300">
                       {planetReadout(selectedPlanet.progress, selectedPlanet.blockedTaskCount)}
                     </p>
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Moons are tasks. Red moons are blocked tasks. Stable green moons represent completed work.
-                    </p>
                   </div>
                 </>
               ) : null}
-            </section>
-            <section className="glass-panel rounded-lg p-4">
-              <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">
-                Constellation Links
-              </p>
-              <div className="mt-3 space-y-3">
+              <details className="mt-4 border-t border-white/10 pt-3">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-300 transition hover:text-white">System meaning</summary>
+                <div className="mt-3 grid gap-2">
+                  <GalaxyLegend color={selectedProject.accent} label="Star" text="Project health and progress." />
+                  <GalaxyLegend color="#8d67ff" label="Planet" text="Feature world with a purpose-based biome." />
+                  <GalaxyLegend color="#4ade80" label="Moon" text="Task state: done, open, or blocked." />
+                  <GalaxyLegend color="#f5c451" label="Link" text="Relationship between projects." />
+                </div>
+              </details>
+              <details className="mt-3 border-t border-white/10 pt-3">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-300 transition hover:text-white">Constellation links ({linkedProjects.length})</summary>
+                <div className="mt-3 space-y-2">
                 {linkedProjects.length > 0 ? (
                   linkedProjects.map(({ relationship, project }) => (
                     <button
@@ -242,7 +288,7 @@ export function GalaxyView({ data }: { data: MissionData }) {
                           setSelectedPlanetId(project.planets[0]?.id ?? "");
                         }
                       }}
-                      className="w-full rounded-md border border-white/10 bg-white/[0.04] p-3 text-left transition hover:border-cyan/30 hover:bg-cyan/[0.06]"
+                      className="w-full rounded-md border border-white/10 bg-white/[0.035] p-3 text-left transition hover:border-cyan/30 hover:bg-cyan/[0.06]"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-sm font-semibold text-white">{project?.name}</span>
@@ -256,15 +302,42 @@ export function GalaxyView({ data }: { data: MissionData }) {
                 ) : (
                   <p className="text-sm text-slate-400">No active links in this constellation.</p>
                 )}
-              </div>
+                </div>
+              </details>
             </section>
           </>
         ) : (
-          <section className="glass-panel rounded-lg p-5 text-sm text-slate-300">
-            Select a project star to inspect its system.
+          <section className="glass-panel rounded-lg p-4">
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">Portfolio orbit</p>
+            <h2 className="mt-2 text-lg font-semibold text-white">Mission map</h2>
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+              <PlanetMetric label="Progress" value={`${portfolioProgress}%`} />
+              <PlanetMetric label="Health" value={portfolioHealth} />
+              <PlanetMetric label="Blocked" value={blockedTasks} />
+            </div>
+            <div className="mt-4 space-y-2">
+              {data.projects.map((project) => (
+                <button
+                  key={project.id}
+                  type="button"
+                  onClick={() => selectProject(project)}
+                  className="flex min-h-14 w-full items-center gap-3 rounded-md border border-transparent bg-white/[0.035] px-3 text-left transition duration-200 hover:border-cyan/25 hover:bg-cyan/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan"
+                >
+                  <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: project.accent }} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-white">{project.name}</span>
+                    <span className="mt-0.5 block text-xs text-slate-500">{project.progress}% / {project.planets.length} feature worlds</span>
+                  </span>
+                  <StatusPill health={project.health} />
+                </button>
+              ))}
+              {data.projects.length === 0 ? (
+                <p className="py-4 text-sm leading-6 text-slate-400">Your first project will form a star system here.</p>
+              ) : null}
+            </div>
           </section>
         )}
-      </div>
+      </aside>
     </section>
   );
 }
@@ -317,7 +390,7 @@ export function AnalyticsView({ data }: { data: MissionData }) {
   return (
     <section className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="glass-panel rounded-lg p-5">
+        <section className="min-w-0">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">
@@ -325,10 +398,10 @@ export function AnalyticsView({ data }: { data: MissionData }) {
               </p>
               <h2 className="mt-2 text-2xl font-semibold text-white">Project Command Dashboard</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-                Progress, risk, time, blockers, and feature health are combined into one operating view.
+                {data.projects.length} projects / {portfolio.totalHours} focus hours / {portfolio.blockedTasks} blocked tasks
               </p>
             </div>
-            <div className="rounded-md border border-cyan/20 bg-cyan/10 px-4 py-3">
+            <div className="border-l border-cyan/30 py-1 pl-4 md:max-w-[300px]">
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-cyan">Recommended Focus</p>
               <p className="mt-2 text-sm font-semibold text-white">{focusProject?.name ?? "No projects"}</p>
               <p className="mt-1 text-xs leading-5 text-slate-400">
@@ -337,7 +410,7 @@ export function AnalyticsView({ data }: { data: MissionData }) {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
             <AnalyticsMetric icon={<Gauge size={18} />} label="Avg Health" value={portfolio.averageHealth} suffix="/100" tone="green" />
             <AnalyticsMetric icon={<Target size={18} />} label="Avg Progress" value={portfolio.averageProgress} suffix="%" tone="cyan" />
             <AnalyticsMetric icon={<AlertTriangle size={18} />} label="Blocked Tasks" value={portfolio.blockedTasks} tone="red" />
@@ -345,7 +418,7 @@ export function AnalyticsView({ data }: { data: MissionData }) {
           </div>
 
           <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
-            <section className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+            <section className="glass-panel rounded-lg p-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan">Portfolio Pulse</p>
                 <Activity className="text-cyan" size={18} />
@@ -358,7 +431,7 @@ export function AnalyticsView({ data }: { data: MissionData }) {
               </div>
             </section>
 
-            <section className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+            <section className="glass-panel rounded-lg p-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="font-mono text-xs uppercase tracking-[0.2em] text-risk">Risk Radar</p>
                 <ShieldCheck className="text-risk" size={18} />
@@ -498,9 +571,11 @@ function AnalyticsMetric({
   }[tone];
 
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
-      <span className={colorClass}>{icon}</span>
-      <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</p>
+    <div className="glass-panel min-w-0 rounded-lg p-3 sm:p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500 sm:tracking-[0.18em]">{label}</p>
+        <span className={colorClass}>{icon}</span>
+      </div>
       <p className="mt-1 text-2xl font-semibold text-white">
         {value}
         <span className="text-sm text-slate-500">{suffix}</span>

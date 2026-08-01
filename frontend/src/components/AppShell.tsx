@@ -107,11 +107,11 @@ export function AppShell({
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-void text-slate-100">
-      <div className="grid-field pointer-events-none absolute inset-0 opacity-30" />
+      <div className="grid-field pointer-events-none absolute inset-0 opacity-20" />
 
-      <aside className="no-scrollbar glass-panel fixed left-3 top-3 z-30 hidden h-[calc(100vh-1.5rem)] w-[220px] overflow-y-auto rounded-lg p-3 lg:flex lg:flex-col">
-        <div className="mb-3 flex items-center gap-3 border-b border-white/10 px-2 pb-4 pt-1">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-cyan/30 bg-cyan/10">
+      <aside className="no-scrollbar glass-panel fixed left-3 top-3 z-30 hidden h-[calc(100vh-1.5rem)] w-[196px] overflow-y-auto rounded-lg p-3 lg:flex lg:flex-col">
+        <div className="mb-4 flex items-center gap-3 border-b border-white/10 px-2 pb-4 pt-1">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-cyan/25 bg-cyan/[0.08]">
             <Sparkles className="text-cyan" size={20} />
           </span>
           <div className="min-w-0">
@@ -119,13 +119,13 @@ export function AppShell({
             <p className="truncate text-sm font-semibold text-white">Command OS</p>
           </div>
         </div>
-        <nav className="flex flex-1 flex-col gap-4">
+        <nav className="flex flex-1 flex-col gap-5">
           {visibleNavGroups.map((group) => (
             <div key={group.label}>
               <p className="mb-2 px-2 font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
                 {group.label}
               </p>
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeView === item.key;
@@ -137,22 +137,14 @@ export function AppShell({
                       aria-current={isActive ? "page" : undefined}
                       onClick={() => selectView(item.key)}
                       className={cn(
-                        "group flex min-h-11 w-full items-center gap-3 rounded-md border px-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan",
+                        "group relative flex min-h-11 w-full items-center gap-3 rounded-md border px-3 text-left transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan",
                         isActive
-                          ? "border-cyan/45 bg-cyan/15 text-cyan shadow-glow"
-                          : "border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.06] hover:text-white"
+                          ? "border-cyan/30 bg-cyan/[0.09] text-cyan"
+                          : "border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-white"
                       )}
                     >
-                      <span
-                        className={cn(
-                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition",
-                          isActive
-                            ? "border-cyan/35 bg-cyan/15"
-                            : "border-white/10 bg-white/[0.03] group-hover:border-white/20"
-                        )}
-                      >
-                        <Icon size={17} />
-                      </span>
+                      {isActive ? <span className="absolute bottom-2 left-0 top-2 w-0.5 rounded-full bg-cyan" /> : null}
+                      <Icon className={cn("shrink-0", isActive ? "text-cyan" : "text-slate-500 group-hover:text-slate-300")} size={18} />
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-semibold text-white">
                           {item.label}
@@ -174,8 +166,8 @@ export function AppShell({
         </div>
       </aside>
 
-      <header className="fixed left-0 right-0 top-0 z-20 border-b border-white/10 bg-void/55 px-4 py-3 backdrop-blur-xl lg:left-[244px]">
-        <div className="flex items-center justify-between gap-3">
+      <header className="fixed left-0 right-0 top-0 z-20 border-b border-white/10 bg-void/80 px-4 py-3 backdrop-blur-xl lg:left-[220px] lg:px-6">
+        <div className="mx-auto flex max-w-[1680px] items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="font-mono text-xs uppercase tracking-[0.28em] text-cyan">Nexus</p>
             <h1 className="truncate text-xl font-semibold text-white sm:text-2xl">
@@ -209,8 +201,8 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="relative z-10 min-h-screen w-full max-w-full overflow-x-hidden px-4 pb-28 pt-20 lg:pb-6 lg:pl-[260px]">
-        <div className="min-w-0 max-w-full">{children}</div>
+      <main className="relative z-10 min-h-screen w-full max-w-full overflow-x-hidden px-4 pb-28 pt-20 lg:pb-8 lg:pl-[236px] lg:pr-6 lg:pt-24">
+        <div className="page-frame min-w-0 max-w-full">{children}</div>
       </main>
 
       {mobileMenuOpen ? (

@@ -43,24 +43,23 @@ export function MissionControl({
   const intelligence = data.executionIntelligence;
 
   return (
-    <div className="relative min-h-[calc(100vh-6rem)] min-w-0 max-w-full">
-      <section className="absolute inset-x-0 top-0 h-[48vh] min-h-[320px] overflow-hidden rounded-lg border border-white/10 bg-void/80 shadow-violet">
+    <div className="min-h-[calc(100vh-6rem)] min-w-0 max-w-full space-y-4">
+      <section className="relative h-[220px] overflow-hidden rounded-lg border border-white/10 bg-void/80 sm:h-[clamp(240px,34vh,320px)]">
         <Suspense fallback={<div className="h-full w-full bg-void" />}>
-          <GalaxyScene projects={data.projects} relationships={data.relationships} />
+          <GalaxyScene projects={data.projects} relationships={data.relationships} cameraZoom={2} />
         </Suspense>
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,transparent_0%,rgba(2,4,10,0.1)_38%,rgba(2,4,10,0.82)_100%)]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-void/50" />
       </section>
 
-      <div className="relative min-w-0 max-w-full space-y-4">
-        <section className="grid min-w-0 max-w-full gap-3 pt-[42vh] sm:grid-cols-2 xl:grid-cols-4">
-          {data.metrics.map((metric, index) => (
-            <MetricTile key={metric.label} metric={metric} index={index} />
-          ))}
-        </section>
+      <section className="grid min-w-0 max-w-full grid-cols-2 gap-3 xl:grid-cols-4">
+        {data.metrics.map((metric, index) => (
+          <MetricTile key={metric.label} metric={metric} index={index} />
+        ))}
+      </section>
 
-        <CommandFocus data={data} />
+      <CommandFocus data={data} />
 
-        <section className="grid min-w-0 max-w-full gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <section className="grid min-w-0 max-w-full gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
           <div className="min-w-0">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
@@ -87,9 +86,9 @@ export function MissionControl({
           </div>
 
           <ForecastPanel data={data} />
-        </section>
+      </section>
 
-        <section className="glass-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
+      <section className="glass-panel min-w-0 max-w-full rounded-lg p-4 sm:p-5">
           <details className="group">
             <summary className="flex cursor-pointer list-none flex-wrap items-start justify-between gap-3">
               <div className="max-w-3xl">
@@ -168,24 +167,24 @@ export function MissionControl({
               </div>
             </div>
           </details>
-        </section>
+      </section>
 
-        {!previewMode ? (
-          <ReviewSection eyebrow="Briefing automation" title="Daily and Weekly Reviews">
-            <OperationalBriefings session={session} embedded />
-          </ReviewSection>
-        ) : null}
-
-        <ReviewSection
-          eyebrow="Team intelligence"
-          title="Ownership and Capacity"
-          summary={data.teamIntelligence.headline}
-        >
-          <TeamIntelligencePanel data={data} embedded />
+      {!previewMode ? (
+        <ReviewSection eyebrow="Briefing automation" title="Daily and Weekly Reviews">
+          <OperationalBriefings session={session} embedded />
         </ReviewSection>
+      ) : null}
 
-        <ReviewSection eyebrow="Workspace signals" title="Mission and Activity">
-          <section className="grid min-w-0 max-w-full gap-4 xl:grid-cols-2">
+      <ReviewSection
+        eyebrow="Team intelligence"
+        title="Ownership and Capacity"
+        summary={data.teamIntelligence.headline}
+      >
+        <TeamIntelligencePanel data={data} embedded />
+      </ReviewSection>
+
+      <ReviewSection eyebrow="Workspace signals" title="Mission and Activity">
+        <section className="grid min-w-0 max-w-full gap-4 xl:grid-cols-2">
           <SignalList
             eyebrow="Today's mission"
             title="Focused Queue"
@@ -201,9 +200,8 @@ export function MissionControl({
             items={data.activity.slice(0, 5)}
             embedded
           />
-          </section>
-        </ReviewSection>
-      </div>
+        </section>
+      </ReviewSection>
     </div>
   );
 }
@@ -230,7 +228,7 @@ function CommandFocus({ data }: { data: MissionData }) {
             "Add a project goal, define the first feature, and create one task so Nexus can calculate useful health and next-action guidance."}
         </p>
       </div>
-      <div className="grid gap-2 rounded-md border border-white/10 bg-white/[0.035] p-3">
+      <div className="grid gap-2 border-l border-white/10 py-1 pl-4">
         <FocusLine label="Schedule" value={`${data.executionIntelligence.forecast.scheduleConfidence}% confidence`} />
         <FocusLine
           label="Ownership"

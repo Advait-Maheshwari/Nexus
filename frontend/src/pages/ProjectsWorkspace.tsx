@@ -46,7 +46,27 @@ export function ProjectsView({ session }: { session: NexusSession }) {
 
   return (
     <section className="grid gap-4 xl:grid-cols-[270px_minmax(0,1fr)]">
-      <aside className="glass-panel rounded-lg p-3">
+      <div className="glass-panel flex min-w-0 items-center gap-2 rounded-lg p-3 xl:hidden">
+        <select
+          aria-label="Active project"
+          value={workspace.selectedProjectId}
+          onChange={(event) => workspace.selectProject(event.target.value)}
+          className="h-11 min-w-0 flex-1 rounded-md border border-white/10 bg-navy px-3 text-sm text-white"
+        >
+          {workspace.projects.map((project) => (
+            <option key={project.id} value={project.id}>{project.name} / {project.codename}</option>
+          ))}
+        </select>
+        <Button
+          aria-label="Create project"
+          title="Create project"
+          className="h-11 w-11 shrink-0 px-0"
+          icon={<Plus size={17} />}
+          onClick={() => setShowProjectForm((visible) => !visible)}
+        />
+      </div>
+
+      <aside className="glass-panel hidden rounded-lg p-3 xl:block">
         <div className="flex items-center justify-between gap-3 px-2 py-2">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-cyan">Portfolio</p>
@@ -118,7 +138,7 @@ export function ProjectsView({ session }: { session: NexusSession }) {
 
         {workspace.selectedProject ? (
           <>
-            <header className="glass-panel rounded-lg p-5">
+            <header className="border-b border-white/10 pb-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="font-mono text-xs uppercase tracking-[0.26em] text-cyan">

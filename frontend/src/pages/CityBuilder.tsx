@@ -28,7 +28,7 @@ export function CityBuilderView({ data }: { data: MissionData }) {
 
   return (
     <section className="grid min-h-[calc(100vh-8rem)] min-w-0 w-full gap-4 xl:grid-cols-[250px_minmax(0,1fr)] 2xl:grid-cols-[260px_minmax(560px,1fr)_310px]">
-      <aside className="glass-panel min-w-0 rounded-lg p-3">
+      <aside className="glass-panel order-2 min-w-0 rounded-lg p-3 xl:order-1">
         <div className="flex items-center justify-between gap-3 px-2 py-2">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-solar">
@@ -88,7 +88,7 @@ export function CityBuilderView({ data }: { data: MissionData }) {
         </div>
       </aside>
 
-      <div className="relative h-[clamp(560px,74vh,820px)] min-w-0 w-full overflow-hidden rounded-lg border border-white/10 bg-void">
+      <div className="relative order-1 h-[500px] min-w-0 w-full overflow-hidden rounded-lg border border-white/10 bg-void sm:h-[clamp(560px,74vh,820px)] xl:order-2">
         {selected ? (
           <Suspense fallback={<div className="h-full bg-void" />}>
             <CityScene
@@ -113,7 +113,7 @@ export function CityBuilderView({ data }: { data: MissionData }) {
             {selected ? `${selected.name} City` : "Project City"}
           </h2>
           <p className="mt-2 max-w-md text-sm text-slate-400">
-            Features become districts. Tasks become towers. Blockers become visible damage.
+            {selected ? `${selected.featureCount} districts / ${selected.taskCount} task towers / ${selected.progress}% power` : "Awaiting the first project signal"}
           </p>
         </div>
         <div className="absolute bottom-4 left-4 right-4 flex flex-wrap justify-end gap-2">
@@ -122,7 +122,7 @@ export function CityBuilderView({ data }: { data: MissionData }) {
             title="Reset camera"
             aria-label="Reset city camera"
             onClick={() => setSceneRevision((revision) => revision + 1)}
-            className="grid h-9 w-9 place-items-center rounded-md border border-white/10 bg-void/75 text-slate-300 backdrop-blur-md transition hover:border-solar/35 hover:text-solar"
+            className="grid h-11 w-11 place-items-center rounded-md border border-white/10 bg-void/75 text-slate-300 backdrop-blur-md transition hover:border-solar/35 hover:text-solar focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solar"
           >
             <RotateCcw size={15} />
           </button>
@@ -139,7 +139,7 @@ export function CityBuilderView({ data }: { data: MissionData }) {
       </div>
 
       {selected ? (
-        <aside className="min-w-0 space-y-3 xl:col-span-2 2xl:col-span-1">
+        <aside className="order-3 min-w-0 space-y-3 xl:col-span-2 2xl:col-span-1">
           <section className="glass-panel rounded-lg p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -226,7 +226,7 @@ function CityModeButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-md border px-3 py-2 text-xs font-medium transition backdrop-blur-md",
+        "min-h-11 rounded-md border px-3 py-2 text-xs font-medium transition backdrop-blur-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solar",
         active
           ? "border-solar/45 bg-solar/15 text-solar shadow-glow"
           : "border-white/10 bg-void/75 text-slate-300 hover:border-white/20"

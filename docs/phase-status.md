@@ -210,9 +210,9 @@ Completed:
 
 ## Phase 8 Checkpoint
 
-Status: in progress for the zero-cost SaaS readiness release.
+Status: complete for the zero-cost SaaS readiness release.
 
-Completed so far:
+Completed:
 
 - Signup and login no longer require an email-verification detour before opening the workspace.
 - Firebase token verification now parses Google's X.509 signing certificates correctly and accepts
@@ -222,11 +222,43 @@ Completed so far:
 - The Phase 8 gate keeps the $0 policy visible across hosting, API, database, and AI defaults.
 - Render Blueprint CORS configuration now includes the Firebase Hosting origin used by the live
   Nexus web app.
+- Render and Firebase were redeployed with the Firebase certificate verifier fix and the current
+  client/server code.
+- Live email/password exchange, private owner demo access, dashboard routing, active sessions,
+  user inventory, and the owner admin endpoint were verified against Firebase Hosting and Render.
+- The annotated `phase-8-complete` tag points to commit `0048dc8` and is pushed to GitHub as the
+  production restore point.
 
-Remaining Phase 8 work:
+## Phase 9: Premium Experience and 3D Product Polish
 
-- Redeploy the Render backend so production runs the latest Firebase verifier fix.
-- Verify live signup, login, Google login, private demo, and dashboard routing against Firebase
-  Hosting plus Render.
-- Finish owner-facing SaaS admin polish for active sessions, user inventory, and beta readiness.
-- Keep backup/restore verification and release checks green before inviting outside users.
+Status: in progress under the permanent zero-cost policy.
+
+Completed in the first Phase 9 slice:
+
+- Rebalanced the shared desktop shell with a calmer navigation rail, consistent content width,
+  flatter glass surfaces, and less repeated framing across every authenticated page.
+- Rebuilt Galaxy inspection around a full 3D workspace and a progressive contextual rail instead
+  of several stacked explanation panels.
+- Added purpose-based feature-planet biomes, separate status rings, truthful zero-task systems,
+  visible forming systems, semantic task moons, and a more star-like project core.
+- Tightened multi-project spacing, corrected small-portfolio layout, auto-focused a newly created
+  single project, and added explicit accessible zoom and reset controls.
+- Added galactic dust and navigation lanes while preserving the high-performance React Three Fiber
+  path and the existing lazy-loaded scene boundary.
+- Simplified Mission Control's first viewport, made mobile metrics a stable two-column grid, moved
+  the City scene before its project list on phones, flattened Analytics hierarchy, and added a
+  compact mobile project switcher.
+- Desktop and 375px phone screenshots confirm the Galaxy and Mission layouts remain readable; a
+  canvas-only pixel probe confirms the mobile WebGL scene is nonblank.
+- Reduced-motion produces a stable, nonblank demand-rendered Galaxy frame; final fresh-load phone
+  checks report zero browser errors and confirm the City scene appears before its project list.
+- Validation passes with the frontend production build, Ruff, `61` backend tests, one intentional
+  PostgreSQL-only skip, and `pip check`.
+
+Remaining Phase 9 work:
+
+- Complete authenticated visual QA for Projects, Calendar, Control Center modules, Profile,
+  Settings, Admin, Ideas, Journal, Integrations, and authentication recovery states.
+- Finish keyboard, contrast, overflow, and authenticated interaction regression checks.
+- Continue stable Git checkpoints and deploy only after the complete Phase 9 production gate is
+  green.

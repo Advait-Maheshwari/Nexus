@@ -128,6 +128,27 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 - Desktop and 375px phone QA passed with collapsed review sections, nonblank WebGL canvases, no
   horizontal overflow, and no browser console errors.
 
+## Phase 8: Zero-Cost SaaS Readiness
+
+- Status: complete; restore point `phase-8-complete` at commit `0048dc8`.
+- Firebase email/password and Google identities exchange into tenant-scoped Nexus sessions.
+- Private demo access is owner-gated, while the sanitized public preview remains read-only.
+- Owner admin tooling exposes user inventory, active sessions, and last-login telemetry.
+- Firebase Hosting, Render, Neon-backed readiness, backup/restore controls, and live auth journeys
+  were verified without adding a paid service.
+
+## Phase 9: Premium Experience and 3D Product Polish
+
+- Status: in progress.
+- Galaxy 2.0 uses meaningful project stars, purpose-based feature worlds, task moons, status rings,
+  forming-system states, balanced framing, and explicit camera controls.
+- Shared navigation, surfaces, content width, and responsive spacing are being simplified across
+  the full product so post-login screens reveal detail progressively.
+- Mission Control, Analytics, City Builder, and Projects receive desktop-first polish with focused
+  375px companion layouts.
+- Delivery requires production builds, server regression tests, keyboard and reduced-motion checks,
+  nonblank WebGL pixel validation, Git checkpoints, and a zero-cost deployment gate.
+
 ## Permanent Constraint: Zero Cost
 
 Nexus must cost `0` from Phase 1 through the final phase while it is being built for personal use.

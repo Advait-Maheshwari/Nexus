@@ -1,5 +1,6 @@
 import { Billboard, Float, Line, OrbitControls, Stars } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef } from "react";
 import type { ComponentRef, MutableRefObject } from "react";
 import * as THREE from "three";
@@ -54,6 +55,8 @@ function ProjectStar({
   const orbit = useRef<THREE.Group>(null);
   const pulse = useRef<THREE.Sprite>(null);
   const color = new THREE.Color(project.accent);
+  const starSize = 0.18 + project.progress / 1600;
+  const healthRingColor = project.healthScore >= 75 ? "#4ade80" : project.healthScore >= 55 ? "#f5c451" : "#fb7185";
   const coronaTexture = useMemo(() => createStarCoronaTexture(project.accent), [project.accent]);
 
   useEffect(() => () => coronaTexture.dispose(), [coronaTexture]);
@@ -91,12 +94,13 @@ function ProjectStar({
     () =>
       project.planets.map((planet, planetIndex) => {
         const angle = (planetIndex / project.planets.length) * Math.PI * 2;
-        const visualBaseRadius = 0.56 + planetIndex * 0.24 + Math.min(planetIndex, 5) * 0.035;
-        const radiusMultiplier = selected ? 1.9 : focusMode ? 1.42 : 1.18;
+        const visualBaseRadius = 0.62 + planetIndex * 0.2;
+        const radiusMultiplier = selected ? 1.42 : focusMode ? 1.2 : 1.1;
         const radius = visualBaseRadius * radiusMultiplier;
         const progressScale = 0.095 + planet.progress / 1450 + Math.min(planet.taskCount, 18) / 1850;
         const completedTaskCount = Math.round(planet.taskCount * (planet.progress / 100));
         const openTaskCount = Math.max(0, planet.taskCount - completedTaskCount - planet.blockedTaskCount);
+        const archetype = resolveFeatureArchetype(planet.name, planetIndex);
         return {
           ...planet,
           angle,
@@ -107,7 +111,9 @@ function ProjectStar({
           ] as [number, number, number],
           orbitRadius: radius,
           size: progressScale,
-          color: planet.blockedTaskCount > 0 ? "#fb7185" : statusColor[planet.status],
+          color: archetype.surface,
+          statusColor: planet.blockedTaskCount > 0 ? "#fb7185" : statusColor[planet.status],
+          biomeLabel: archetype.label,
           completedTaskCount,
           openTaskCount,
           signalLabel: buildPlanetSignal(planet.progress, planet.blockedTaskCount)
@@ -134,24 +140,23 @@ function ProjectStar({
     >
       <Float speed={1.1 + index * 0.2} rotationIntensity={0.22} floatIntensity={0.16}>
         <mesh>
-          <icosahedronGeometry args={[0.1 + project.progress / 1600, 4]} />
-          <meshBasicMaterial
-            color="#ffffff"
-          />
+          <sphereGeometry args={[starSize, 48, 48]} />
+          <meshBasicMaterial color="#ffd36a" />
         </mesh>
-        <mesh scale={1.24}>
-          <icosahedronGeometry args={[0.1 + project.progress / 1600, 3]} />
+        <mesh scale={1.18}>
+          <sphereGeometry args={[starSize, 32, 32]} />
           <meshBasicMaterial
             color={project.accent}
             transparent
-            opacity={selected ? 0.54 : 0.36}
+            opacity={selected ? 0.24 : 0.15}
             depthWrite={false}
+            side={THREE.BackSide}
             blending={THREE.AdditiveBlending}
           />
         </mesh>
         <pointLight
           color={project.accent}
-          intensity={selected ? 1.6 : 0.8}
+          intensity={selected ? 1.15 : 0.66}
           distance={2.2}
           decay={2}
         />
@@ -168,16 +173,16 @@ function ProjectStar({
         <mesh rotation={[Math.PI / 2.2, 0, 0]}>
           <torusGeometry args={[selected ? 0.3 : 0.23, selected ? 0.005 : 0.0025, 16, 128]} />
           <meshBasicMaterial
-            color={selected ? "#ffffff" : project.accent}
+            color={healthRingColor}
             transparent
-            opacity={selected ? 0.9 : 0.42}
+            opacity={selected ? 0.88 : 0.42}
           />
         </mesh>
         <SolarFlares accent={project.accent} selected={selected} healthScore={project.healthScore} />
         {planets.map((planet) => (
           <mesh key={`${project.id}-${planet.id}-orbit`} rotation={[Math.PI / 2.2, 0, 0]}>
             <torusGeometry args={[planet.orbitRadius, 0.0016, 8, 128]} />
-            <meshBasicMaterial color={planet.color} transparent opacity={0.14} />
+            <meshBasicMaterial color={planet.statusColor} transparent opacity={selected ? 0.24 : 0.12} />
           </mesh>
         ))}
         <group ref={orbit}>
@@ -195,7 +200,7 @@ function ProjectStar({
         {planets.length === 0 ? (
           <FormingSystem accent={project.accent} selected={selected} />
         ) : null}
-        <Billboard position={[0, -0.42, 0]}>
+        <Billboard position={[0, selected ? -0.58 : -0.42, 0]}>
           <Text
             fontSize={selected ? 0.07 : focusMode ? 0.052 : 0.038}
             color="#dff8ff"
@@ -203,7 +208,7 @@ function ProjectStar({
             anchorY="middle"
             maxWidth={1.2}
           >
-            {project.codename}
+            {project.name.toUpperCase()}
           </Text>
           <Text
             position={[0, -0.11, 0]}
@@ -213,7 +218,7 @@ function ProjectStar({
             anchorY="middle"
             maxWidth={1.2}
           >
-            project star / {project.planets.length} feature planets
+            {project.codename} / {project.planets.length} feature planets
           </Text>
         </Billboard>
       </Float>
@@ -302,7 +307,7 @@ function SolarFlares({
   healthScore: number;
 }) {
   const group = useRef<THREE.Group>(null);
-  const flareCount = healthScore > 80 ? 12 : healthScore > 65 ? 8 : 5;
+  const flareCount = healthScore > 80 ? 8 : healthScore > 65 ? 6 : 4;
 
   useFrame(({ clock }) => {
     if (!group.current) return;
@@ -314,7 +319,7 @@ function SolarFlares({
     <group ref={group}>
       {Array.from({ length: flareCount }, (_, index) => {
         const angle = (index / flareCount) * Math.PI * 2;
-        const length = selected ? 0.34 : 0.22;
+        const length = selected ? 0.26 : 0.18;
         const start: [number, number, number] = [
           Math.cos(angle) * 0.18,
           Math.sin(angle) * 0.18,
@@ -342,12 +347,14 @@ function SolarFlares({
 
 type SceneFeaturePlanet = FeaturePlanet & {
   angle: number;
+  biomeLabel: string;
   color: string;
   completedTaskCount: number;
   openTaskCount: number;
   position: [number, number, number];
   signalLabel: string;
   size: number;
+  statusColor: string;
 };
 
 function FeaturePlanetMesh({
@@ -377,7 +384,7 @@ function FeaturePlanetMesh({
     [planet.angle]
   );
   const moonTexture = useMemo(() => createMoonTexture(Math.round(planet.angle * 20_000)), [planet.angle]);
-  const satelliteCount = Math.min(6, Math.max(1, planet.taskCount));
+  const satelliteCount = planet.taskCount === 0 ? 0 : Math.min(8, planet.taskCount);
   const moons = useMemo(
     () =>
       Array.from({ length: satelliteCount }, (_, index) => {
@@ -397,8 +404,8 @@ function FeaturePlanetMesh({
       }),
     [planet.blockedTaskCount, planet.completedTaskCount, planet.size, satelliteCount]
   );
-  const visibleMoons = moons.slice(0, selected ? 6 : systemSelected ? 3 : overview ? 1 : 2);
-  const hasRings = Math.round(planet.angle * 100) % 2 === 0;
+  const visibleMoons = moons.slice(0, selected ? 8 : systemSelected ? 4 : overview ? 1 : 2);
+  const hasRings = planet.biomeLabel === "AI intelligence" || planet.biomeLabel === "Operations";
   const showFullDetail = selected && systemSelected && !overview;
   const showSemanticLabel = systemSelected || selected;
   const showRiskMarker = !showFullDetail && planet.blockedTaskCount > 0;
@@ -424,7 +431,7 @@ function FeaturePlanetMesh({
       const worldPosition = new THREE.Vector3();
       group.current.getWorldPosition(worldPosition);
       const distanceScale = THREE.MathUtils.clamp(camera.position.distanceTo(worldPosition) / 5.2, 1, 1.55);
-      const modeScale = selected ? 1 : systemSelected ? 0.78 : overview ? 0.62 : 0.72;
+      const modeScale = selected ? 1 : systemSelected ? 0.86 : overview ? 0.72 : 0.78;
       group.current.scale.setScalar(modeScale * distanceScale);
     }
     if (mesh.current) {
@@ -498,7 +505,7 @@ function FeaturePlanetMesh({
           <mesh rotation={[Math.PI / 2, 0, 0]}>
             <torusGeometry args={[planet.size * 2.26, planet.size * 0.018, 10, 96]} />
             <meshBasicMaterial
-              color={planet.blockedTaskCount > 0 ? "#fb7185" : "#4ade80"}
+              color={planet.statusColor}
               transparent
               opacity={selected ? 0.48 : systemSelected ? 0.32 : 0.16}
               depthWrite={false}
@@ -507,7 +514,7 @@ function FeaturePlanetMesh({
           <mesh position={progressMarkerPosition}>
             <sphereGeometry args={[Math.max(0.012, planet.size * 0.16), 18, 18]} />
             <meshBasicMaterial
-              color={planet.blockedTaskCount > 0 ? "#fb7185" : "#4ade80"}
+              color={planet.statusColor}
               transparent
               opacity={0.95}
               blending={THREE.AdditiveBlending}
@@ -561,8 +568,8 @@ function FeaturePlanetMesh({
               maxWidth={0.52}
             >
               {selected
-                ? `${planet.signalLabel} / ${planet.taskCount} task moons`
-                : `feature / ${planet.progress}% / ${planet.taskCount} tasks`}
+                ? `${planet.biomeLabel} / ${planet.signalLabel} / ${planet.taskCount} task moons`
+                : `${planet.biomeLabel} / ${planet.progress}% / ${planet.taskCount} tasks`}
             </Text>
           </Billboard>
         </>
@@ -638,7 +645,7 @@ function PlanetStatusBeacon({
   planet: SceneFeaturePlanet;
   selected: boolean;
 }) {
-  const beaconColor = planet.blockedTaskCount > 0 ? "#fb7185" : planet.progress >= 70 ? "#4ade80" : planet.color;
+  const beaconColor = planet.statusColor;
   const height = planet.size * (planet.blockedTaskCount > 0 ? 1.5 : 1.08);
 
   return (
@@ -749,6 +756,81 @@ function ProjectLinks({
   );
 }
 
+function GalacticField({ frame, focusMode }: { frame: GalaxyFrame; focusMode: boolean }) {
+  const dust = useMemo(() => {
+    const count = focusMode ? 180 : 320;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const random = seededRandom(Math.round(frame.radius * 10_000) + (focusMode ? 41 : 17));
+    const cyan = new THREE.Color("#48e5ff");
+    const violet = new THREE.Color("#8d67ff");
+    const solar = new THREE.Color("#f5c451");
+
+    for (let index = 0; index < count; index += 1) {
+      const radius = frame.radius * (0.24 + random() * 1.28);
+      const angle = random() * Math.PI * 2;
+      const height = (random() - 0.5) * frame.radius * (focusMode ? 0.34 : 0.5);
+      positions[index * 3] = Math.cos(angle) * radius;
+      positions[index * 3 + 1] = height;
+      positions[index * 3 + 2] = Math.sin(angle) * radius;
+
+      const color = (index % 7 === 0 ? solar : index % 2 === 0 ? cyan : violet).clone();
+      color.multiplyScalar(0.52 + random() * 0.44);
+      colors[index * 3] = color.r;
+      colors[index * 3 + 1] = color.g;
+      colors[index * 3 + 2] = color.b;
+    }
+
+    return { positions, colors };
+  }, [focusMode, frame.radius]);
+
+  const lanes = useMemo(
+    () =>
+      Array.from({ length: focusMode ? 2 : 3 }, (_, laneIndex) => {
+        const radius = frame.radius * (0.42 + laneIndex * 0.32);
+        return Array.from({ length: 97 }, (__, pointIndex) => {
+          const angle = (pointIndex / 96) * Math.PI * 2;
+          return new THREE.Vector3(
+            Math.cos(angle) * radius,
+            -frame.radius * 0.2 + Math.sin(angle * 2) * frame.radius * 0.035,
+            Math.sin(angle) * radius
+          );
+        });
+      }),
+    [focusMode, frame.radius]
+  );
+
+  return (
+    <group position={frame.center.toArray()}>
+      <points>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[dust.positions, 3]} />
+          <bufferAttribute attach="attributes-color" args={[dust.colors, 3]} />
+        </bufferGeometry>
+        <pointsMaterial
+          size={focusMode ? 0.018 : 0.024}
+          sizeAttenuation
+          vertexColors
+          transparent
+          opacity={focusMode ? 0.28 : 0.38}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </points>
+      {lanes.map((points, index) => (
+        <Line
+          key={`galactic-lane-${index}`}
+          points={points}
+          color={index === 1 ? "#8d67ff" : "#48e5ff"}
+          lineWidth={0.7}
+          transparent
+          opacity={focusMode ? 0.09 : 0.12}
+        />
+      ))}
+    </group>
+  );
+}
+
 function layoutGalaxyProjects(projects: ProjectSummary[]): GalaxyProject[] {
   if (projects.length === 0) return [];
   if (projects.length === 1) {
@@ -756,7 +838,13 @@ function layoutGalaxyProjects(projects: ProjectSummary[]): GalaxyProject[] {
   }
 
   if (projects.length <= 4) {
-    const radius = projects.length === 2 ? 2.45 : 2.9;
+    if (projects.length === 2) {
+      return projects.map((project, index) => ({
+        ...project,
+        visualCoordinates: [index === 0 ? -1.75 : 1.75, (index - 0.5) * 0.18, 0] as [number, number, number]
+      }));
+    }
+    const radius = projects.length === 2 ? 1.8 : projects.length === 3 ? 2.1 : 2.35;
     return projects.map((project, index) => {
       const angle = (index / projects.length) * Math.PI * 2 - Math.PI / 2;
       return {
@@ -772,7 +860,7 @@ function layoutGalaxyProjects(projects: ProjectSummary[]): GalaxyProject[] {
 
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
   return projects.map((project, index) => {
-    const radius = 1.35 + Math.sqrt(index + 1) * 1.55;
+    const radius = 1.55 + Math.sqrt(index + 1) * 1.38;
     const angle = index * goldenAngle;
     return {
       ...project,
@@ -793,15 +881,13 @@ function calculateGalaxyFrame(
     if (selectedProject.planets.length === 0) {
       return {
         center: new THREE.Vector3(...selectedProject.visualCoordinates),
-        radius: 1.9
+        radius: 1.45
       };
     }
-    const largestOrbit = selectedProject.planets.length > 0
-      ? 0.56 + (selectedProject.planets.length - 1) * 0.275
-      : 0.8;
+    const largestOrbit = (0.62 + (selectedProject.planets.length - 1) * 0.2) * 1.42;
     return {
       center: new THREE.Vector3(...selectedProject.visualCoordinates),
-      radius: Math.max(2.9, largestOrbit * 2.8 + 1.05)
+      radius: Math.max(2.15, largestOrbit + 0.82)
     };
   }
 
@@ -812,14 +898,22 @@ function calculateGalaxyFrame(
   if (projects.length === 1 && projects[0].planets.length === 0) {
     return {
       center: new THREE.Vector3(...projects[0].visualCoordinates),
-      radius: 2.25
+      radius: 1.75
+    };
+  }
+
+  if (projects.length === 1) {
+    const largestOrbit = (0.62 + Math.max(0, projects[0].planets.length - 1) * 0.2) * 1.1;
+    return {
+      center: new THREE.Vector3(...projects[0].visualCoordinates),
+      radius: Math.max(2.25, largestOrbit + 0.95)
     };
   }
 
   const bounds = new THREE.Box3();
   for (const project of projects) {
-    const visualOrbit = project.planets.length > 0 ? 0.56 + (project.planets.length - 1) * 0.275 : 0.82;
-    const systemRadius = Math.max(1.45, visualOrbit * 1.55 + 0.7);
+    const visualOrbit = project.planets.length > 0 ? (0.62 + (project.planets.length - 1) * 0.2) * 1.1 : 0.82;
+    const systemRadius = Math.max(1.25, visualOrbit + 0.62);
     const center = new THREE.Vector3(...project.visualCoordinates);
     bounds.expandByPoint(center.clone().addScalar(systemRadius));
     bounds.expandByPoint(center.clone().addScalar(-systemRadius));
@@ -831,11 +925,13 @@ function calculateGalaxyFrame(
 function GalaxyCamera({
   controls,
   frame,
+  cameraZoom,
   selectedProjectId,
   resetSignal
 }: {
   controls: MutableRefObject<OrbitControlsHandle | null>;
   frame: GalaxyFrame;
+  cameraZoom: number;
   selectedProjectId?: string;
   resetSignal: number;
 }) {
@@ -847,10 +943,11 @@ function GalaxyCamera({
     const verticalFov = THREE.MathUtils.degToRad(camera.fov);
     const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
     const limitingFov = Math.min(verticalFov, horizontalFov);
-    const distance = (frame.radius / Math.sin(limitingFov / 2)) * (selectedProjectId ? 1.16 : 1.28);
+    const fitDistance = (frame.radius / Math.sin(limitingFov / 2)) * (selectedProjectId ? 1.2 : 1.3);
+    const distance = fitDistance * Math.pow(0.82, cameraZoom);
     const direction = selectedProjectId
-      ? new THREE.Vector3(0.56, 0.28, 1)
-      : new THREE.Vector3(0.62, 0.36, 1);
+      ? new THREE.Vector3(0.38, 0.72, 1)
+      : new THREE.Vector3(0.08, 0.3, 1);
 
     camera.position.copy(frame.center).add(direction.normalize().multiplyScalar(distance));
     camera.near = 0.08;
@@ -861,6 +958,7 @@ function GalaxyCamera({
     controls.current?.update();
   }, [
     camera,
+    cameraZoom,
     controls,
     frame.center.x,
     frame.center.y,
@@ -878,6 +976,7 @@ function GalaxyCamera({
 export function GalaxyScene({
   projects,
   relationships = [],
+  cameraZoom = 0,
   selectedProjectId,
   selectedPlanetId,
   resetSignal = 0,
@@ -886,6 +985,7 @@ export function GalaxyScene({
 }: {
   projects: ProjectSummary[];
   relationships?: ProjectRelationship[];
+  cameraZoom?: number;
   selectedProjectId?: string;
   selectedPlanetId?: string;
   resetSignal?: number;
@@ -895,6 +995,7 @@ export function GalaxyScene({
   const visualProjects = useMemo(() => layoutGalaxyProjects(projects), [projects]);
   const selectedProject = visualProjects.find((project) => project.id === selectedProjectId);
   const controls = useRef<OrbitControlsHandle>(null);
+  const reducedMotion = useReducedMotion();
   const frame = useMemo(
     () => calculateGalaxyFrame(visualProjects, selectedProject),
     [visualProjects, selectedProject]
@@ -904,6 +1005,7 @@ export function GalaxyScene({
     <Canvas
       camera={{ position: [0, 2.8, 16], fov: 58 }}
       dpr={[1, 1.8]}
+      frameloop={reducedMotion ? "demand" : "always"}
       gl={{
         alpha: false,
         antialias: true,
@@ -920,22 +1022,26 @@ export function GalaxyScene({
       <GalaxyCamera
         controls={controls}
         frame={frame}
+        cameraZoom={cameraZoom}
         selectedProjectId={selectedProjectId}
         resetSignal={resetSignal}
       />
-      <ProjectLinks projects={visualProjects} relationships={relationships} />
-      {visualProjects.map((project, index) => (
-        <ProjectStar
-          key={project.id}
-          project={project}
-          index={index}
-          selected={project.id === selectedProjectId}
-          focusMode={Boolean(selectedProjectId)}
-          selectedPlanetId={selectedPlanetId}
-          onSelect={onSelectProject}
-          onSelectPlanet={onSelectPlanet}
-        />
-      ))}
+      <GalacticField frame={frame} focusMode={Boolean(selectedProjectId)} />
+      {!selectedProjectId ? <ProjectLinks projects={visualProjects} relationships={relationships} /> : null}
+      {visualProjects
+        .filter((project) => !selectedProjectId || project.id === selectedProjectId)
+        .map((project, index) => (
+          <ProjectStar
+            key={project.id}
+            project={project}
+            index={index}
+            selected={project.id === selectedProjectId}
+            focusMode={Boolean(selectedProjectId)}
+            selectedPlanetId={selectedPlanetId}
+            onSelect={onSelectProject}
+            onSelectPlanet={onSelectPlanet}
+          />
+        ))}
       <OrbitControls
         ref={controls}
         makeDefault
@@ -951,7 +1057,7 @@ export function GalaxyScene({
         minDistance={selectedProject ? 2.2 : 3.2}
         maxDistance={Math.max(52, frame.radius * 12)}
         target={[frame.center.x, frame.center.y, frame.center.z]}
-        autoRotate={!selectedProjectId}
+        autoRotate={!reducedMotion && !selectedProjectId}
         autoRotateSpeed={0.32}
         maxPolarAngle={Math.PI - 0.08}
         minPolarAngle={0.08}
@@ -1091,6 +1197,37 @@ function buildPlanetSignal(progress: number, blockedTaskCount: number): string {
     return "forming feature";
   }
   return "early feature";
+}
+
+function resolveFeatureArchetype(name: string, index: number): { label: string; surface: string } {
+  const normalized = name.toLowerCase();
+
+  if (/\b(ai|agent|model|prompt|automation|ml|machine)\b/.test(normalized)) {
+    return { label: "AI intelligence", surface: "#8d67ff" };
+  }
+  if (/\b(ui|ux|design|frontend|web|mobile|interface)\b/.test(normalized)) {
+    return { label: "Interface world", surface: "#2dd4bf" };
+  }
+  if (/\b(api|backend|database|server|security|auth|cloud)\b/.test(normalized)) {
+    return { label: "Core systems", surface: "#4f8cff" };
+  }
+  if (/\b(data|analytics|report|insight|metric|research)\b/.test(normalized)) {
+    return { label: "Insight world", surface: "#48e5ff" };
+  }
+  if (/\b(plan|launch|roadmap|goal|calendar|milestone)\b/.test(normalized)) {
+    return { label: "Operations", surface: "#f5c451" };
+  }
+  if (/\b(team|people|community|client|collaboration)\b/.test(normalized)) {
+    return { label: "Team habitat", surface: "#4ade80" };
+  }
+
+  const fallback = [
+    { label: "Feature world", surface: "#48e5ff" },
+    { label: "Feature world", surface: "#8d67ff" },
+    { label: "Feature world", surface: "#4f8cff" },
+    { label: "Feature world", surface: "#2dd4bf" }
+  ];
+  return fallback[index % fallback.length];
 }
 
 function seededRandom(initialSeed: number): () => number {
