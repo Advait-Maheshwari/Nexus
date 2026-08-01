@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  AlertTriangle,
   BellRing,
   Check,
   Cloud,
@@ -15,6 +16,7 @@ import {
   LogOut,
   Monitor,
   NotebookPen,
+  Rocket,
   Save,
   Settings,
   ShieldCheck,
@@ -320,6 +322,14 @@ function ReadinessCenter({
     readiness.find((item) => item.state === "blocked") ??
     readiness.find((item) => item.state === "watch") ??
     readiness.find((item) => item.state === "planned");
+  const releaseGate = buildReleaseGate(readiness);
+  const prioritySignals = readiness
+    .filter((item) => item.state !== "ready")
+    .sort((first, second) => readinessRank(first.state) - readinessRank(second.state))
+    .slice(0, 3);
+  const evidenceSignals = [...readiness].sort(
+    (first, second) => readinessRank(first.state) - readinessRank(second.state)
+  );
 
   return (
     <section className="mx-auto max-w-6xl">
@@ -359,10 +369,59 @@ function ReadinessCenter({
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
-            {readiness.map((item) => (
-              <ReadinessCard key={item.key} item={item} />
-            ))}
+          <div className="mt-5 rounded-lg border border-white/10 bg-black/20 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 text-cyan">
+                  <Rocket size={18} />
+                  <h3 className="font-semibold text-white">Release Gate</h3>
+                </div>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                  {releaseGate.summary}
+                </p>
+              </div>
+              <span
+                className={cn(
+                  "rounded-md border px-3 py-2 font-mono text-xs uppercase tracking-[0.12em]",
+                  releaseGate.ready
+                    ? "border-success/25 bg-success/10 text-success"
+                    : "border-solar/25 bg-solar/10 text-solar"
+                )}
+              >
+                {releaseGate.label}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <ReadinessLine label="Blocked" value={String(releaseGate.blocked)} />
+              <ReadinessLine label="Watch" value={String(releaseGate.watch)} />
+              <ReadinessLine label="Planned" value={String(releaseGate.planned)} />
+            </div>
+          </div>
+
+          <div className="mt-5">
+            <div className="flex items-center gap-2 text-solar">
+              <AlertTriangle size={18} />
+              <h3 className="font-semibold text-white">Priority Actions</h3>
+            </div>
+            <div className="mt-3 grid gap-3">
+              {(prioritySignals.length ? prioritySignals : readiness.slice(0, 2)).map((item) => (
+                <PriorityReadinessCard key={item.key} item={item} />
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="font-semibold text-white">Evidence Signals</h3>
+              <span className="text-xs text-slate-500">
+                Sorted by risk so ready items stay quiet.
+              </span>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {evidenceSignals.map((item) => (
+                <ReadinessCard key={item.key} item={item} />
+              ))}
+            </div>
           </div>
         </section>
 
@@ -426,6 +485,15 @@ interface ReadinessSignal {
   action: string;
   state: ReadinessState;
   metric: string;
+}
+
+interface ReadinessReleaseGate {
+  ready: boolean;
+  label: string;
+  summary: string;
+  blocked: number;
+  watch: number;
+  planned: number;
 }
 
 function buildReadinessSignals(
@@ -568,6 +636,76 @@ function buildReadinessSignals(
       metric: "Restore check required"
     }
   ];
+}
+
+function buildReleaseGate(readiness: ReadinessSignal[]): ReadinessReleaseGate {
+  const blocked = readiness.filter((item) => item.state === "blocked").length;
+  const watch = readiness.filter((item) => item.state === "watch").length;
+  const planned = readiness.filter((item) => item.state === "planned").length;
+  if (blocked > 0) {
+    return {
+      ready: false,
+      label: "Blocked",
+      summary:
+        "Do not invite outside users yet. Clear the blocked readiness items first, then run the login, project creation, Galaxy, City, and admin checks again.",
+      blocked,
+      watch,
+      planned
+    };
+  }
+  if (watch > 0) {
+    return {
+      ready: false,
+      label: "Controlled test only",
+      summary:
+        "Nexus can be used by you, but outside testers should wait until the watch items are resolved or intentionally accepted.",
+      blocked,
+      watch,
+      planned
+    };
+  }
+  return {
+    ready: true,
+    label: "Beta ready",
+    summary:
+      planned > 0
+        ? "No active blockers are visible. The remaining planned work can be tracked while a small beta stays under the free-tier boundary."
+        : "All tracked readiness signals are ready for a small controlled beta on the zero-cost stack.",
+    blocked,
+    watch,
+    planned
+  };
+}
+
+function readinessRank(state: ReadinessState) {
+  if (state === "blocked") return 0;
+  if (state === "watch") return 1;
+  if (state === "planned") return 2;
+  return 3;
+}
+
+function PriorityReadinessCard({ item }: { item: ReadinessSignal }) {
+  return (
+    <article className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+            {item.metric}
+          </p>
+          <h3 className="mt-1 text-base font-semibold text-white">{item.title}</h3>
+        </div>
+        <span
+          className={cn(
+            "rounded-md border px-2 py-1 font-mono text-[10px] uppercase",
+            readinessTone(item.state)
+          )}
+        >
+          {item.state}
+        </span>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-slate-300">{item.action}</p>
+    </article>
+  );
 }
 
 function ReadinessCard({ item }: { item: ReadinessSignal }) {

@@ -22,7 +22,7 @@ services:
       - key: NEXUS_ALLOWED_HOSTS
         value: nexus-api-7fgu.onrender.com
       - key: NEXUS_CORS_ORIGINS
-        value: https://advait-maheshwari.github.io
+        value: https://nexus-advait-pm.web.app,https://advait-maheshwari.github.io
       - key: FIREBASE_PROJECT_ID
         value: nexus-advait-pm
       - key: NEXUS_REQUIRE_EMAIL_VERIFICATION

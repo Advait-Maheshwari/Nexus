@@ -207,3 +207,26 @@ Completed:
 - Validation passed with Ruff, `60` backend tests, one intentional PostgreSQL skip, TypeScript,
   the production frontend build, desktop browser QA, 375px phone browser QA, no horizontal
   overflow, no browser console errors, and rendered WebGL canvases.
+
+## Phase 8 Checkpoint
+
+Status: in progress for the zero-cost SaaS readiness release.
+
+Completed so far:
+
+- Signup and login no longer require an email-verification detour before opening the workspace.
+- Firebase token verification now parses Google's X.509 signing certificates correctly and accepts
+  unverified Firebase email/password accounts without marking them as Nexus-verified.
+- The Control Center readiness module now starts with a release gate, top priority actions, and
+  supporting evidence sorted by risk so the owner is not overwhelmed by every signal at once.
+- The Phase 8 gate keeps the $0 policy visible across hosting, API, database, and AI defaults.
+- Render Blueprint CORS configuration now includes the Firebase Hosting origin used by the live
+  Nexus web app.
+
+Remaining Phase 8 work:
+
+- Redeploy the Render backend so production runs the latest Firebase verifier fix.
+- Verify live signup, login, Google login, private demo, and dashboard routing against Firebase
+  Hosting plus Render.
+- Finish owner-facing SaaS admin polish for active sessions, user inventory, and beta readiness.
+- Keep backup/restore verification and release checks green before inviting outside users.
