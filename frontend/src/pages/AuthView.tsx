@@ -111,7 +111,9 @@ export function AuthView({
         return;
       }
       if (mode === "reset") {
-        if (!resetToken) throw new Error("This reset link is missing its secure token.");
+        if (resetToken.length < 32) {
+          throw new Error("This reset link is invalid or expired. Request a new link from Log In.");
+        }
         await resetAccountPassword(resetToken, password);
         clearActionToken("reset_password");
         setPassword("");
@@ -285,6 +287,7 @@ export function AuthView({
                 type="email"
                 value={email}
                 onChange={setEmail}
+                autoComplete="email"
               />
             ) : null}
             {mode !== "forgot" ? (
@@ -307,12 +310,12 @@ export function AuthView({
               </button>
             ) : null}
             {notice ? (
-              <p className="rounded-md border border-success/25 bg-success/10 px-3 py-2 text-sm text-success">
+              <p role="status" aria-live="polite" className="rounded-md border border-success/25 bg-success/10 px-3 py-2 text-sm text-success">
                 {notice}
               </p>
             ) : null}
             {error ? (
-              <p className="rounded-md border border-risk/25 bg-risk/10 px-3 py-2 text-sm text-risk">
+              <p role="alert" className="rounded-md border border-risk/25 bg-risk/10 px-3 py-2 text-sm text-risk">
                 {error}
               </p>
             ) : null}

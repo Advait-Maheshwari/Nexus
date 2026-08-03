@@ -45,7 +45,7 @@ export function CityBuilderView({ data }: { data: MissionData }) {
               type="button"
               onClick={() => setSort(item)}
               className={cn(
-                "h-8 min-w-0 overflow-hidden rounded px-1 text-[9px] uppercase tracking-[0.06em] transition sm:text-[10px] sm:tracking-[0.12em]",
+                "h-11 min-w-0 overflow-hidden rounded px-1 text-[9px] uppercase tracking-[0.06em] transition sm:text-[10px] sm:tracking-[0.12em]",
                 sort === item ? "bg-solar/15 text-solar" : "text-slate-500 hover:text-white"
               )}
             >

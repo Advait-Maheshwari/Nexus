@@ -316,6 +316,11 @@ export function ProjectOverview({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {saving ? (
+            <span role="status" className="text-xs font-medium text-cyan">
+              Syncing...
+            </span>
+          ) : null}
           <span className="rounded-full border border-success/25 bg-success/10 px-3 py-1 text-xs text-success">
             {missionScore}% ready
           </span>
@@ -492,7 +497,10 @@ export function ProjectOverview({
                       type="button"
                       disabled={editing || saving}
                       onClick={() => toggleGoal(goal.id)}
-                      className={goal.completed ? "mt-0.5 text-success" : "mt-0.5 text-slate-500"}
+                      className={cn(
+                        "-ml-2 -mt-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-md transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan disabled:opacity-50",
+                        goal.completed ? "text-success" : "text-slate-500 hover:bg-white/[0.05] hover:text-white"
+                      )}
                       aria-label={goal.completed ? "Mark goal incomplete" : "Mark goal complete"}
                     >
                       {goal.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
@@ -642,7 +650,7 @@ export function ProjectOverview({
                             )
                           }))
                         }
-                        className="h-8 rounded-md border border-white/10 bg-navy px-2 text-xs text-white outline-none focus:border-cyan/50 md:mt-3 md:w-full"
+                        className="h-11 rounded-md border border-white/10 bg-navy px-2 text-xs text-white outline-none focus:border-cyan/50 md:mt-3 md:w-full"
                       >
                         <option value="pending">Pending</option>
                         <option value="active">Active</option>

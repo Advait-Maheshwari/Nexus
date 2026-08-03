@@ -284,7 +284,7 @@ export function ProjectsView({ session }: { session: NexusSession }) {
                         {task.status !== "done" && task.status !== "archived" ? (
                           <Button
                             variant="ghost"
-                            className="min-h-8 px-2 text-xs"
+                            className="px-2 text-xs"
                             onClick={() =>
                               workspace.setTaskStatus(task.id, nextStatus[task.status])
                             }

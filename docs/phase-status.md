@@ -231,9 +231,9 @@ Completed:
 
 ## Phase 9: Premium Experience and 3D Product Polish
 
-Status: in progress under the permanent zero-cost policy.
+Status: complete under the permanent zero-cost policy.
 
-Completed in the first Phase 9 slice:
+Completed:
 
 - Rebalanced the shared desktop shell with a calmer navigation rail, consistent content width,
   flatter glass surfaces, and less repeated framing across every authenticated page.
@@ -254,11 +254,18 @@ Completed in the first Phase 9 slice:
   checks report zero browser errors and confirm the City scene appears before its project list.
 - Validation passes with the frontend production build, Ruff, `61` backend tests, one intentional
   PostgreSQL-only skip, and `pip check`.
-
-Remaining Phase 9 work:
-
-- Complete authenticated visual QA for Projects, Calendar, Control Center modules, Profile,
-  Settings, Admin, Ideas, Journal, Integrations, and authentication recovery states.
-- Finish keyboard, contrast, overflow, and authenticated interaction regression checks.
-- Continue stable Git checkpoints and deploy only after the complete Phase 9 production gate is
-  green.
+- Reorganized Control Center into compact Workspace, Planning, and Account groups on desktop and
+  a single descriptive tool selector on smaller screens, removing the ten-card navigation strip.
+- Raised shared command targets, project-goal toggles, task actions, phase selectors, and City
+  sorting controls to a 44px interaction baseline.
+- Added visible project-blueprint sync feedback so goal completion is not mistaken for an
+  unsaved selection, and verified completed goals persist after the server save and reload.
+- Added clear invalid-reset recovery guidance, email autocomplete metadata, and accessible live
+  regions for authentication notices and errors.
+- Remapped the shared muted-text token to meet the computed `4.5:1` contrast target while
+  preserving a visibly secondary hierarchy.
+- Authenticated desktop and 375px phone QA now covers Mission, Projects, Galaxy, City, Analytics,
+  Calendar, every Control Center module, signup, login, password recovery, and invalid reset.
+- The final browser matrix reports zero horizontal overflow, zero unexpected console/page errors,
+  successful keyboard focus movement, working Calendar forms, working Galaxy and City drag/zoom/
+  reset controls, and nonblank desktop/mobile WebGL canvases.

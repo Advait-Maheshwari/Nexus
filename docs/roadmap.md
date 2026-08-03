@@ -139,7 +139,7 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
 
 ## Phase 9: Premium Experience and 3D Product Polish
 
-- Status: in progress.
+- Status: complete under the permanent zero-cost policy.
 - Galaxy 2.0 uses meaningful project stars, purpose-based feature worlds, task moons, status rings,
   forming-system states, balanced framing, and explicit camera controls.
 - Shared navigation, surfaces, content width, and responsive spacing are being simplified across
@@ -148,6 +148,10 @@ Auth, CRUD persistence contracts, progress rollups, and the primary workspace UI
   375px companion layouts.
 - Delivery requires production builds, server regression tests, keyboard and reduced-motion checks,
   nonblank WebGL pixel validation, Git checkpoints, and a zero-cost deployment gate.
+- Completed: compact grouped Control Center navigation, 44px interaction targets, project-goal
+  sync feedback, accessible authentication recovery states, and a WCAG-oriented muted-text token.
+- Completed: authenticated desktop and phone QA across every primary view and secondary module,
+  with no horizontal overflow or unexpected browser errors and nonblank interactive 3D canvases.
 
 ## Permanent Constraint: Zero Cost
 

@@ -162,6 +162,27 @@ const controlModules: Array<{
   }
 ];
 
+const controlModuleGroups = [
+  {
+    label: "Workspace",
+    modules: controlModules.filter(({ key }) =>
+      (["readiness", "team", "admin", "automation"] as ControlModule[]).includes(key)
+    )
+  },
+  {
+    label: "Planning",
+    modules: controlModules.filter(({ key }) =>
+      (["ideas", "journal", "integrations"] as ControlModule[]).includes(key)
+    )
+  },
+  {
+    label: "Account",
+    modules: controlModules.filter(({ key }) =>
+      (["settings", "profile", "security"] as ControlModule[]).includes(key)
+    )
+  }
+];
+
 export function ControlCenterView({
   session,
   missionData,
@@ -174,65 +195,76 @@ export function ControlCenterView({
   onSessionRevoked: () => void;
 }) {
   const [activeModule, setActiveModule] = useState<ControlModule>("readiness");
+  const activeModuleDefinition = controlModules.find((module) => module.key === activeModule);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [activeModule]);
 
   return (
-    <section className="grid min-h-[calc(100vh-8rem)] min-w-0 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-      <aside className="glass-panel min-w-0 overflow-hidden rounded-lg p-3">
-        <div className="rounded-md border border-cyan/20 bg-cyan/10 px-3 py-3">
+    <section className="grid min-h-[calc(100vh-8rem)] min-w-0 gap-4 xl:grid-cols-[248px_minmax(0,1fr)]">
+      <aside className="glass-panel min-w-0 self-start rounded-lg p-3 xl:sticky xl:top-24">
+        <div className="border-b border-white/10 px-2 pb-4 pt-1">
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-cyan">Nexus</p>
-          <h2 className="mt-1 text-xl font-semibold text-white">Control Center</h2>
+          <h2 className="mt-1 text-lg font-semibold text-white">Control Center</h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">
-            Settings, private planning tools, integrations, and security live here so the main
-            command rail stays focused.
+            Workspace tools, planning, and account controls.
           </p>
         </div>
-        <div className="no-scrollbar mt-3 flex min-w-0 max-w-full gap-2 overflow-x-auto pb-1 xl:block xl:space-y-2 xl:overflow-visible xl:pb-0">
-          {controlModules.map((module) => {
-            const Icon = module.icon;
-            const active = activeModule === module.key;
-            return (
-              <button
-                key={module.key}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setActiveModule(module.key)}
-                className={cn(
-                  "flex min-h-12 min-w-[148px] items-center gap-3 rounded-md border p-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan xl:w-full xl:min-w-0 xl:items-start",
-                  active
-                    ? "border-cyan/45 bg-cyan/10 shadow-glow"
-                    : "border-white/10 bg-white/[0.035] hover:border-white/20 hover:bg-white/[0.06]"
-                )}
-              >
-                <span
-                  className={cn(
-                    "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border",
-                    active ? "border-cyan/35 bg-cyan/15 text-cyan" : "border-white/10 text-slate-400"
-                  )}
-                >
-                  <Icon size={17} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-white">{module.label}</span>
-                  <span className="mt-1 hidden text-xs leading-5 text-slate-500 xl:block">
-                    {module.description}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="mt-4 hidden rounded-md border border-white/10 bg-white/[0.035] p-3 xl:block">
+        <label className="mt-3 grid gap-2 px-1 text-xs uppercase tracking-[0.16em] text-slate-500 xl:hidden">
+          Tool
+          <select
+            value={activeModule}
+            onChange={(event) => setActiveModule(event.target.value as ControlModule)}
+            className="h-11 w-full rounded-md border border-white/10 bg-navy px-3 text-sm normal-case text-white outline-none focus:border-cyan/50"
+          >
+            {controlModuleGroups.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.modules.map((module) => (
+                  <option key={module.key} value={module.key}>{module.label}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          <span className="normal-case leading-5 tracking-normal text-slate-400">
+            {activeModuleDefinition?.description}
+          </span>
+        </label>
+        <nav className="mt-4 hidden space-y-5 xl:block" aria-label="Control Center tools">
+          {controlModuleGroups.map((group) => (
+            <div key={group.label}>
+              <p className="mb-2 px-2 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                {group.label}
+              </p>
+              <div className="space-y-1">
+                {group.modules.map((module) => {
+                  const Icon = module.icon;
+                  const active = activeModule === module.key;
+                  return (
+                    <button
+                      key={module.key}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setActiveModule(module.key)}
+                      className={cn(
+                        "flex min-h-11 w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan",
+                        active
+                          ? "border-cyan/35 bg-cyan/[0.09] text-cyan"
+                          : "border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-white"
+                      )}
+                    >
+                      <Icon size={17} className="shrink-0" />
+                      <span className="truncate text-sm font-semibold text-white">{module.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+        <div className="mt-5 hidden border-t border-white/10 px-2 pt-4 xl:block">
           <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Workspace mode</p>
-          <p className="mt-1 text-sm font-semibold text-white">
-            Cloud account
-          </p>
-          <p className="mt-2 text-xs leading-5 text-slate-500">
-            Email and Google identities connect to an isolated server workspace.
-          </p>
+          <p className="mt-1 text-sm font-semibold text-white">Cloud account</p>
         </div>
       </aside>
 
